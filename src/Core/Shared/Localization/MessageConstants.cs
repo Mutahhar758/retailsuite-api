@@ -1,0 +1,40 @@
+﻿namespace Retailer.Shared.Localization;
+public static class MessageConstants
+{
+    public const string RecordNotFound = "record.notfound";
+    public const string RecordAdded = "record.added";
+    public const string RecordUpdated = "record.updated";
+    public const string RecordDeleted = "record.deleted";
+    public const string RecordAlreadyExist = "record.alreadyexist";
+    public const string AppMinimunAdmins = "app.minimum.admins";
+    public const string ErrorOccurred = "error.occurred";
+    public const string ValidationErrorsOccurred = "validation.errors.occurred";
+    public const string UserRegistered = "user.registered";
+    public const string VerifyUserEmail = "user.verify.email";
+    public const string ErrorOccurredWhileConfirming = "error.occurredwhileconfirming";
+    public const string AdminStatusNotUpdatable = "admin.status.not.updatable";
+    public const string EmailAccountConfirmed = "identity.emailaccountconfirmed";
+    public const string PhoneAccountConfirmed = "identity.phoneaccountconfirmed";
+    public const string PhoneAccountConfirmedButNotEmail = "identity.phoneaccountconfirmed.but.not.email";
+    public const string UserInActive = "identity.usernotactive";
+    public const string EmailNotConfirmed = "identity.emailnotconfirmed";
+    public const string EmailVerificationFailed = "email.verification.failed";
+    public const string OTPSentToEmail = "otp.senttoemail";
+    public const string PasswordResetMailSent = "password.reset.mail.sent";
+    public const string PasswordResetSuccessful = "password.reset.successful";
+    public const string AuthFailed = "auth.failed";
+    public const string InvalidRefreshToken = "invalid.refresh.token";
+    public const string InvalidToken = "invalid.token";
+    public const string RegisterRoleFailed = "register.role.failed";
+    public const string UpdateRoleFailed = "update.role.failed";
+    public const string UpdatePermissionsFailed = "update.permissions.failed";
+    public const string UpdateProfileFailed = "update.profile.failed";
+    public const string ChangePasswordFailed = "change.password.failed";
+    public const string RoleModificationNotAllowed = "role.modification.not.allowed";
+    public const string RoleDeletionNotAllowed = "role.deletion.not.allowed";
+    public const string RoleDeletionNotAllowedInUse = "role.deletion.not.allowed.in.use";
+    public const string PermissionsModificationNotAllowed = "permissions.modification.not.allowed";
+    public const string MediaExtensionInvalid = "media.extension.invalid";
+    public const string FileSizeTooLarge = "file.size.too.large";
+    public const string TransferSuccessful = "transfer.successful";
+}

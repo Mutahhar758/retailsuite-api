@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <NoWarn>RCS1021;IDE0161;RCS1205</NoWarn>
+    </PropertyGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\..\Infrastructure\Infrastructure.csproj" />
+    </ItemGroup>
+    <ItemGroup>
+      <PackageReference Update="Roslynator.Analyzers" Version="4.2.0">
+        <PrivateAssets>all</PrivateAssets>
+        <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      </PackageReference>
+    </ItemGroup>
+    <ItemGroup>
+      <Folder Include="Migrations\Application\" />
+      <Folder Include="Migrations\Tenant\" />
+    </ItemGroup>
+    <ItemGroup>
+      <PackageReference Include="NSwag.CodeGeneration.TypeScript" Version="14.6.3" />
+      <PackageReference Include="System.IO.Packaging" Version="10.0.2" />
+      <PackageReference Include="System.Linq.Dynamic.Core" Version="1.7.1" />
+    </ItemGroup>
+</Project>

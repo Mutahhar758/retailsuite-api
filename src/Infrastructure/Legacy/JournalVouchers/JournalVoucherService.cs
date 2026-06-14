@@ -1,0 +1,211 @@
+using Microsoft.EntityFrameworkCore;
+using Retailer.Application.Common.Exceptions;
+using Retailer.Application.Common.Persistence;
+using Retailer.Application.Legacy.JournalVouchers;
+using Retailer.Domain.Legacy;
+using Retailer.Shared.Common.Constants;
+
+namespace Retailer.Infrastructure.Legacy.JournalVouchers;
+
+internal class JournalVoucherService : IJournalVoucherService
+{
+    private const string VType = "JV";
+
+    private readonly IRepository<GlEntry> _glRepository;
+
+    public JournalVoucherService(IRepository<GlEntry> glRepository)
+    {
+        _glRepository = glRepository;
+    }
+
+    public async Task<List<JournalVoucherResponse>> GetListAsync(JournalVoucherListFilter filter, CancellationToken cancellationToken)
+    {
+        var query = _glRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => x.VType == VType);
+
+        if (filter.FromDate.HasValue)
+            query = query.Where(x => x.VDate >= filter.FromDate.Value);
+
+        if (filter.ToDate.HasValue)
+            query = query.Where(x => x.VDate <= filter.ToDate.Value);
+
+        if (!string.IsNullOrWhiteSpace(filter.Account))
+            query = query.Where(x => x.CrAccountId == filter.Account);
+
+        if (!string.IsNullOrWhiteSpace(filter.Narration))
+            query = query.Where(x => x.NarrationId == filter.Narration);
+
+        return await query
+            .GroupBy(x => new { x.VoucherNo, x.VDate, Narration = x.Narration != null ? x.Narration.Title : x.NarrationId, NarrationId = x.NarrationId })
+            .Select(g => new JournalVoucherResponse
+            {
+                VoucherNo = g.Key.VoucherNo,
+                Date = g.Key.VDate,
+                Amount = g.Sum(x => x.Amount),
+                Narration = g.Key.Narration,
+                NarrationId = g.Key.NarrationId,
+                CreatedBy = g.Max(x => x.CreatedBy),
+                CreatedOn = g.Min(x => x.CreatedOn),
+                LastModifiedBy = g.Max(x => x.LastModifiedBy),
+                LastModifiedOn = g.Max(x => x.LastModifiedOn)
+            })
+            .OrderByDescending(x => x.Date)
+            .ThenByDescending(x => x.VoucherNo)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<List<JournalVoucherLineResponse>> GetDetailAsync(string voucherNo, string? account, CancellationToken cancellationToken)
+    {
+        var query = _glRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => x.VType == VType && x.VoucherNo == voucherNo);
+
+        if (!string.IsNullOrWhiteSpace(account))
+            query = query.Where(x => x.DrAccountId == account || x.CrAccountId == account);
+
+        return await query
+            .OrderBy(x => x.VSeq)
+            .Select(x => new JournalVoucherLineResponse
+            {
+                Seq = x.VSeq,
+                Date = x.VDate,
+                VoucherNo = x.VoucherNo,
+                DrAccountId = x.DrAccountId!,
+                CrAccountId = x.CrAccountId!,
+                Amount = x.Amount,
+                Narration = x.Narration != null ? x.Narration.Title : x.NarrationId,
+                NarrationId = x.NarrationId,
+                Remarks = x.Remarks,
+                CreatedBy = x.CreatedBy,
+                CreatedOn = x.CreatedOn,
+                LastModifiedBy = x.LastModifiedBy,
+                LastModifiedOn = x.LastModifiedOn
+            })
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<decimal> GetAccountBalanceAsync(string accountId, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(accountId))
+            return 0;
+
+        var dr = await _glRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => x.DrAccountId == accountId)
+            .SumAsync(x => (decimal?)x.Amount, cancellationToken) ?? 0;
+
+        var cr = await _glRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => x.CrAccountId == accountId)
+            .SumAsync(x => (decimal?)x.Amount, cancellationToken) ?? 0;
+
+        return dr - cr;
+    }
+
+    public async Task<string> CreateAsync(JournalVoucherCreateRequest request, CancellationToken cancellationToken)
+    {
+        var maxVoucherNo = await _glRepository.GetAll()
+            .IgnoreQueryFilters([GlobalQueryFilterConstants.SoftDelete])
+            .AsNoTracking()
+            .Where(x => x.VType == VType)
+            .MaxAsync(x => (string?)x.VoucherNo, cancellationToken);
+
+        var nextNum = maxVoucherNo == null ? 1L : long.Parse(maxVoucherNo) + 1;
+        var voucherNo = nextNum.ToString("D5");
+
+        foreach (var line in request.Lines)
+        {
+            await _glRepository.AddAsync(new GlEntry
+            {
+                VDate = request.Date,
+                VTime = TimeOnly.FromDateTime(DateTime.Now),
+                VoucherNo = voucherNo,
+                VType = VType,
+                VSeq = line.Seq,
+                DrAccountId = line.DrAccount,
+                Amount = line.Amount,
+                CrAccountId = line.CrAccount,
+                NarrationId = request.Narration,
+                Remarks = line.Remarks,
+                Clear = 0m
+            }, false);
+        }
+
+        await _glRepository.SaveChangesAsync(cancellationToken);
+        return voucherNo;
+    }
+
+    public async Task UpdateAsync(string voucherNo, JournalVoucherUpdateRequest request, CancellationToken cancellationToken)
+    {
+        var anyExists = await _glRepository.GetAll()
+            .AnyAsync(x => x.VType == VType && x.VoucherNo == voucherNo, cancellationToken);
+
+        if (!anyExists)
+            throw new NotFoundException($"Journal voucher '{voucherNo}' not found.");
+
+        foreach (var line in request.Lines)
+        {
+            var existing = await _glRepository.GetAll()
+                .IgnoreQueryFilters([GlobalQueryFilterConstants.SoftDelete])
+                .FirstOrDefaultAsync(
+                    x => x.VType == VType && x.VoucherNo == voucherNo && x.VSeq == line.Seq,
+                    cancellationToken);
+
+            if (existing is null)
+            {
+                await _glRepository.AddAsync(new GlEntry
+                {
+                    VDate = request.Date,
+                    VTime = TimeOnly.FromDateTime(DateTime.Now),
+                    VoucherNo = voucherNo,
+                    VType = VType,
+                    VSeq = line.Seq,
+                    DrAccountId = line.DrAccount,
+                    Amount = line.Amount,
+                    CrAccountId = line.CrAccount,
+                    NarrationId = request.Narration,
+                    Remarks = line.Remarks,
+                    Clear = 0m
+                }, false);
+            }
+            else
+            {
+                existing.DeletedOn = null;
+                existing.DeletedBy = null;
+                existing.VDate = request.Date;
+                existing.VTime = TimeOnly.FromDateTime(DateTime.Now);
+                existing.DrAccountId = line.DrAccount;
+                existing.Amount = line.Amount;
+                existing.CrAccountId = line.CrAccount;
+                existing.NarrationId = request.Narration;
+                existing.Remarks = line.Remarks;
+                existing.Clear = 0m;
+
+                await _glRepository.UpdateAsync(existing, false);
+            }
+        }
+
+        await _glRepository.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task DeleteAsync(string voucherNo, CancellationToken cancellationToken)
+    {
+        var entries = await _glRepository.GetAll()
+            .Where(x => x.VType == VType && x.VoucherNo == voucherNo)
+            .ToListAsync(cancellationToken);
+
+        await _glRepository.DeleteRangeAsync(entries, true);
+    }
+
+    public async Task DeleteLineAsync(string voucherNo, int seq, CancellationToken cancellationToken)
+    {
+        var entry = await _glRepository.GetAll()
+            .FirstOrDefaultAsync(
+                x => x.VType == VType && x.VoucherNo == voucherNo && x.VSeq == seq,
+                cancellationToken);
+
+        if (entry is not null)
+            await _glRepository.DeleteAsync(entry, true);
+    }
+}

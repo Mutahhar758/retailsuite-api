@@ -1,0 +1,10 @@
+{
+  "MailSettings": {
+    "DisplayName": "Bizgrip Solutions",
+    "From": "info@bizgripsolutions.com",
+    "Host": "mail.bizgripsolutions.com",
+    "Password": "Bizgrip@555",
+    "Port": 587,
+    "UserName": "info"
+  }
+}

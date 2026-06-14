@@ -1,0 +1,7 @@
+{
+  "LoggerSettings": {
+    "AppName": "Retailer",
+    "WriteToFile": false,
+    "StructuredConsoleLogging": true
+  }
+}

@@ -1,0 +1,81 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <RootNamespace>Retailer.Host</RootNamespace>
+        <AssemblyName>Retailer.Host</AssemblyName>
+    </PropertyGroup>
+    <PropertyGroup>
+        <UserSecretsId>61441015-4cda-45fd-846a-827157b20799</UserSecretsId>
+    </PropertyGroup>
+    <ItemGroup>
+        <PackageReference Include="FluentValidation.AspNetCore" Version="11.3.1" />
+        <PackageReference Include="Microsoft.ApplicationInsights" Version="2.23.0" />
+        <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.23.0" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.5">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.2" />
+        <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.2" />
+        <PackageReference Include="NSwag.CodeGeneration.TypeScript" Version="14.6.3" />
+        <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
+        <PackageReference Include="Serilog.Sinks.ApplicationInsights" Version="4.0.0" />
+        <PackageReference Include="System.IO.Packaging" Version="10.0.2" />
+        <PackageReference Include="System.Linq.Dynamic.Core" Version="1.7.1" />
+    </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\..\Infrastructure\Infrastructure.csproj" />
+        <ProjectReference Include="..\..\Migrators\Migrators.PostgreSQL\Migrators.PostgreSQL.csproj" />
+        <ProjectReference Include="..\..\Migrators\Migrators.MSSQL\Migrators.MSSQL.csproj" />
+    </ItemGroup>
+
+    <Target Name="CopyMigratorAssemblies" AfterTargets="Build">
+      <Copy SourceFiles="..\..\Migrators\Migrators.PostgreSQL\bin\$(Configuration)\net10.0\Migrators.PostgreSQL.dll"
+            DestinationFolder="$(OutDir)"
+            SkipUnchangedFiles="true"
+            Condition="Exists('..\..\Migrators\Migrators.PostgreSQL\bin\$(Configuration)\net10.0\Migrators.PostgreSQL.dll')" />
+      <Copy SourceFiles="..\..\Migrators\Migrators.MSSQL\bin\$(Configuration)\net10.0\Migrators.MSSQL.dll"
+            DestinationFolder="$(OutDir)"
+            SkipUnchangedFiles="true"
+            Condition="Exists('..\..\Migrators\Migrators.MSSQL\bin\$(Configuration)\net10.0\Migrators.MSSQL.dll')" />
+    </Target>
+
+    <ItemGroup>
+        <Content Update="Configurations\*.json">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </Content>
+        <None Update="Files\full-stack-hero-logo.png">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+        <None Include="Email Templates\*.html">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+    </ItemGroup>
+    <ItemGroup>
+        <Compile Remove="Databases\**" />
+        <Content Remove="Databases\**" />
+        <Content Remove="Logs\*" />
+        <None Include="Logs\*" />
+    </ItemGroup>
+    <ItemGroup>
+        <None Include="Email Templates\*.cshtml">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+    </ItemGroup>
+    <ItemGroup>
+      <EmbeddedResource Remove="Databases\**" />
+      <None Remove="Databases\**" />
+    </ItemGroup>
+    <ItemGroup>
+      <Content Remove="Email Templates\otp-verification.cshtml" />
+    </ItemGroup>
+    <ItemGroup>
+      <PackageReference Update="Roslynator.Analyzers" Version="4.2.0">
+        <PrivateAssets>all</PrivateAssets>
+        <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      </PackageReference>
+    </ItemGroup>
+    <ItemGroup>
+      <Folder Include="Controllers\Common\" />
+    </ItemGroup>
+</Project>

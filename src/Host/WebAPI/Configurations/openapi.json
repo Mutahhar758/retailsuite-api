@@ -1,0 +1,10 @@
+{
+  "SwaggerSettings": {
+    "Enable": true,
+    "Title": ".NET 8 WebAPI - Clean Architecture",
+    "Version": "1.0.0",
+    "Description": "Clean Architecture Template for .NET 8 WebApi.",
+    "ContactName": "Koderlabs",
+    "ContactEmail": "contact@koderlabs.com"
+  }
+}

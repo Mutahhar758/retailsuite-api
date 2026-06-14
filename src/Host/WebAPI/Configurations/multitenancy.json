@@ -1,0 +1,6 @@
+{
+  "MultitenancySettings": {
+    "TenantResolutionStrategy": "header",
+    "DefaultConnectionString": "Host=localhost;Database=RetailerMain;Username=postgres;Password=postgres;Include Error Detail=true"
+  }
+}

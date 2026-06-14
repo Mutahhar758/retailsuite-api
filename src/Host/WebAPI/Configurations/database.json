@@ -1,0 +1,6 @@
+{
+  "DatabaseSettings": {
+    "DBProvider": "mssql",
+    "ConnectionString": "Server=server.bizgripsolutions.com;Database=MyRetailer;User Id=mutahhar;Password=mutahhar11;TrustServerCertificate=True;MultipleActiveResultSets=true"
+  }
+}

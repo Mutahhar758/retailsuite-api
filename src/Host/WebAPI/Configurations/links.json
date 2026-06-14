@@ -1,0 +1,8 @@
+{
+  "LinkSettings": {
+    "AzureStorageBaseUrl": "http://127.0.0.1:10000/",
+    "SetPassowrdPath": "/auth/set-password",
+    "StripeReturnPath": "/stripe/success",
+    "StripeRedirectPath": "/stripe"
+  }
+}

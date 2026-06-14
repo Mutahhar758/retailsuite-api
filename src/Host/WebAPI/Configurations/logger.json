@@ -1,0 +1,59 @@
+{
+  "LoggerSettings": {
+    "AppName": "Retailer",
+    "ElasticSearchUrl": "http://localhost:9200",
+    "WriteToFile": false,
+    "StructuredConsoleLogging": false
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Hangfire": "Information",
+      "Microsoft": "Warning",
+      "Microsoft.Hosting.Lifetime": "Information",
+      "Microsoft.EntityFrameworkCore": "Error",
+      "Microsoft.EntityFrameworkCore.Database.Command": "Critical"
+    }
+  },
+  "Serilog": {
+    "Using": [
+      "Serilog.Sinks.ApplicationInsights"
+    ],
+    "Enrich": [
+      "FromLogContext",
+      "WithMachineName",
+      "WithProcessId",
+      "WithThreadId"
+    ],
+    "MinimumLevel": {
+      "Default": "Information",
+      "Override": {
+        "Hangfire": "Information",
+        "Microsoft": "Warning",
+        "Microsoft.Hosting.Lifetime": "Information",
+        "System": "Information",
+        "Microsoft.EntityFrameworkCore": "Error",
+        "Microsoft.EntityFrameworkCore.Database.Command": "Fatal"
+      }
+    },
+    "Properties": {
+      "Application": "RFP Success"
+    },
+    "WriteTo": [
+      {
+        "Name": "ApplicationInsights",
+        "Args": {
+          //"instrumentationKey": "",
+          //"connectionString": "",
+          "telemetryConverter": "Serilog.Sinks.ApplicationInsights.TelemetryConverters.TraceTelemetryConverter, Serilog.Sinks.ApplicationInsights"
+        }
+      },
+      {
+        "Name": "Console",
+        "Args": {
+          "outputTemplate": "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}"
+        }
+      }
+    ]
+  }
+}
