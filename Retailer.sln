@@ -39,8 +39,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebAPI", "src\Host\WebAPI\W
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Migrators.MSSQL", "src\Migrators\Migrators.MSSQL\Migrators.MSSQL.csproj", "{4CE28F63-D7C1-98EE-AE8D-55C3F8CB9235}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ERP", "..\Desktop App\ERP\ERP.csproj", "{6AB3850D-115B-4BE3-833C-A6E30E18FD82}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -135,18 +133,6 @@ Global
 		{4CE28F63-D7C1-98EE-AE8D-55C3F8CB9235}.Release|x64.Build.0 = Release|Any CPU
 		{4CE28F63-D7C1-98EE-AE8D-55C3F8CB9235}.Release|x86.ActiveCfg = Release|Any CPU
 		{4CE28F63-D7C1-98EE-AE8D-55C3F8CB9235}.Release|x86.Build.0 = Release|Any CPU
-		{6AB3850D-115B-4BE3-833C-A6E30E18FD82}.Debug|Any CPU.ActiveCfg = Debug|x86
-		{6AB3850D-115B-4BE3-833C-A6E30E18FD82}.Debug|Any CPU.Build.0 = Debug|x86
-		{6AB3850D-115B-4BE3-833C-A6E30E18FD82}.Debug|x64.ActiveCfg = Debug|x86
-		{6AB3850D-115B-4BE3-833C-A6E30E18FD82}.Debug|x64.Build.0 = Debug|x86
-		{6AB3850D-115B-4BE3-833C-A6E30E18FD82}.Debug|x86.ActiveCfg = Debug|x86
-		{6AB3850D-115B-4BE3-833C-A6E30E18FD82}.Debug|x86.Build.0 = Debug|x86
-		{6AB3850D-115B-4BE3-833C-A6E30E18FD82}.Release|Any CPU.ActiveCfg = Release|x86
-		{6AB3850D-115B-4BE3-833C-A6E30E18FD82}.Release|Any CPU.Build.0 = Release|x86
-		{6AB3850D-115B-4BE3-833C-A6E30E18FD82}.Release|x64.ActiveCfg = Release|x86
-		{6AB3850D-115B-4BE3-833C-A6E30E18FD82}.Release|x64.Build.0 = Release|x86
-		{6AB3850D-115B-4BE3-833C-A6E30E18FD82}.Release|x86.ActiveCfg = Release|x86
-		{6AB3850D-115B-4BE3-833C-A6E30E18FD82}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
