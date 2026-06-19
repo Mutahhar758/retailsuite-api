@@ -1,0 +1,28 @@
+name: Deploy .NET API to IIS
+
+on:
+  push:
+    branches: [ "master" ]
+
+jobs:
+  build-and-deploy:
+    runs-on: self-hosted
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Publish API
+      run: dotnet publish ./API/src/Host/WebAPI/WebAPI.csproj -c Release -o ./publish
+
+    - name: Deploy to IIS
+      shell: powershell
+      run: |
+        # 1. Stop the App Pool to prevent file locking
+        Stop-WebAppPool -Name "Retailer"
+        # Give IIS time to gracefully shut down and release the file locks
+        Start-Sleep -Seconds 5
+        # 2. Copy files to the IIS directory
+        Copy-Item -Path "./publish/*" -Destination "D:\Websites\Retailer_API" -Recurse -Force
+        # 3. Start the App Pool back up
+        Start-WebAppPool -Name "Retailer"
