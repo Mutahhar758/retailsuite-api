@@ -17,6 +17,7 @@ internal class SaleSupplyService : ISaleSupplyService
     private readonly IRepository<ItemTransaction> _itemTransactionRepository;
     private readonly IRepository<DefaultAccount> _defaultAccountRepository;
     private readonly IRepository<ItemDetail> _itemRepository;
+    private readonly IRepository<SupplyOrderMaster> _supplyOrderMasterRepository;
 
     public SaleSupplyService(
         IRepository<SaleSupplyMaster> saleSupplyMasterRepository,
@@ -24,7 +25,8 @@ internal class SaleSupplyService : ISaleSupplyService
         IRepository<GlEntry> glRepository,
         IRepository<ItemTransaction> itemTransactionRepository,
         IRepository<DefaultAccount> defaultAccountRepository,
-        IRepository<ItemDetail> itemRepository)
+        IRepository<ItemDetail> itemRepository,
+        IRepository<SupplyOrderMaster> supplyOrderMasterRepository)
     {
         _saleSupplyMasterRepository = saleSupplyMasterRepository;
         _saleSupplyDetailRepository = saleSupplyDetailRepository;
@@ -32,6 +34,7 @@ internal class SaleSupplyService : ISaleSupplyService
         _itemTransactionRepository = itemTransactionRepository;
         _defaultAccountRepository = defaultAccountRepository;
         _itemRepository = itemRepository;
+        _supplyOrderMasterRepository = supplyOrderMasterRepository;
     }
 
     public async Task<List<SaleSupplyResponse>> GetListAsync(SaleSupplyListFilter filter, CancellationToken cancellationToken)
@@ -58,6 +61,11 @@ internal class SaleSupplyService : ISaleSupplyService
                 m => m.ItemId,
                 i => i.Id,
                 (m, i) => new { Master = m, Item = i.FirstOrDefault() })
+            .GroupJoin(
+                _supplyOrderMasterRepository.GetAll().AsNoTracking(),
+                x => x.Master.SupplyOrderMasterId,
+                s => s.Id,
+                (x, s) => new { x.Master, x.Item, SupplyOrder = s.FirstOrDefault() })
             .Select(x => new SaleSupplyResponse
             {
                 Date = x.Master.VDate,
@@ -66,7 +74,9 @@ internal class SaleSupplyService : ISaleSupplyService
                 CreatedBy = x.Master.CreatedBy,
                 CreatedOn = x.Master.CreatedOn,
                 LastModifiedBy = x.Master.LastModifiedBy,
-                LastModifiedOn = x.Master.LastModifiedOn
+                LastModifiedOn = x.Master.LastModifiedOn,
+                SupplyOrderMasterId = x.Master.SupplyOrderMasterId,
+                SupplyOrderTitle = x.SupplyOrder != null ? x.SupplyOrder.Title : null
             })
             .OrderByDescending(x => x.Date)
             .ThenByDescending(x => x.VoucherNo)

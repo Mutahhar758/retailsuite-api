@@ -9,4 +9,6 @@ public class SaleSupplyResponse
     public DateTime CreatedOn { get; set; }
     public string? LastModifiedBy { get; set; }
     public DateTime? LastModifiedOn { get; set; }
+    public int? SupplyOrderMasterId { get; set; }
+    public string? SupplyOrderTitle { get; set; }
 }
