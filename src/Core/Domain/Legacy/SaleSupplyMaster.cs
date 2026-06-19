@@ -17,7 +17,9 @@ public class SaleSupplyMaster : AuditableEntity, IAggregateRoot
     public string? Counter { get; set; }
 
     public string? ItemId { get; set; }
+    public int? SupplyOrderMasterId { get; set; }
     public ItemDetail? Item { get; set; }
     public Narration? Narration { get; set; }
+    public SupplyOrderMaster? SupplyOrderMaster { get; set; }
     public ICollection<SaleSupplyDetail> Details { get; set; } = new List<SaleSupplyDetail>();
 }

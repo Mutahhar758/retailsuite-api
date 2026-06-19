@@ -392,6 +392,11 @@ public class SaleSupplyMasterConfig : IEntityTypeConfiguration<SaleSupplyMaster>
             .WithMany(x => x.SaleSupplyMasters)
             .HasForeignKey(x => x.NarrationId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(x => x.SupplyOrderMaster)
+            .WithMany()
+            .HasForeignKey(x => x.SupplyOrderMasterId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }
 

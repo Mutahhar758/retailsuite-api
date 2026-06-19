@@ -90,6 +90,7 @@ internal class SaleSupplyService : ISaleSupplyService
                 Narration = m.Narration != null ? m.Narration.Title : m.NarrationId,
                 NarrationId = m.NarrationId,
                 Description = m.Descr,
+                SupplyOrderMasterId = m.SupplyOrderMasterId,
                 CustomerId = d.CustomerAccountId!,
                 Unit = d.UnitId,
                 Qty = d.Qty,
@@ -128,6 +129,7 @@ internal class SaleSupplyService : ISaleSupplyService
             ItemId = request.ItemId,
             Descr = request.Description,
             NarrationId = request.Narration,
+            SupplyOrderMasterId = request.SupplyOrderMasterId,
             Amount = grossAmount,
             Discount = discountAmount,
             NetAmount = netAmount,
@@ -176,6 +178,7 @@ internal class SaleSupplyService : ISaleSupplyService
         master.ItemId = request.ItemId;
         master.Descr = request.Description;
         master.NarrationId = request.Narration;
+        master.SupplyOrderMasterId = request.SupplyOrderMasterId;
         master.Amount = grossAmount;
         master.Discount = discountAmount;
         master.NetAmount = netAmount;
