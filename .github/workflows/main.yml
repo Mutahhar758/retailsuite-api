@@ -13,7 +13,7 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Publish API
-      run: dotnet publish ./API/src/Host/WebAPI/WebAPI.csproj -c Release -o ./publish
+      run: dotnet publish ./src/Host/WebAPI/WebAPI.csproj -c Release -o ./publish
 
     - name: Deploy to IIS
       shell: powershell
