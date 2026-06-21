@@ -18,6 +18,8 @@ public class HRInfoResponse
     public decimal Overtime { get; set; }
     public string? ExpenseAccount { get; set; }
     public string? PayableAccount { get; set; }
+    public string? MediaId { get; set; }
+    public string? MediaUrl { get; set; }
     public string? CreatedBy { get; set; }
     public DateTime? CreatedOn { get; set; }
     public string? LastModifiedBy { get; set; }

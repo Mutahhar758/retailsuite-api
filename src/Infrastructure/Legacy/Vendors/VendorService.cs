@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Retailer.Application.Common.Exceptions;
 using Retailer.Application.Common.Persistence;
+using Retailer.Application.Common.Interfaces;
 using Retailer.Application.Legacy.Vendors;
 using Retailer.Domain.Legacy;
 using Retailer.Shared.Common.Constants;
@@ -14,15 +15,18 @@ internal class VendorService : IVendorService
     private readonly IRepository<ChartOfAccount> _chartOfAccountRepository;
     private readonly IRepository<SupplierDetail> _vendorDetailRepository;
     private readonly IRepository<DefaultAccount> _defaultAccountRepository;
+    private readonly IMediaServiceClient _mediaServiceClient;
 
     public VendorService(
         IRepository<ChartOfAccount> chartOfAccountRepository,
         IRepository<SupplierDetail> vendorDetailRepository,
-        IRepository<DefaultAccount> defaultAccountRepository)
+        IRepository<DefaultAccount> defaultAccountRepository,
+        IMediaServiceClient mediaServiceClient)
     {
         _chartOfAccountRepository = chartOfAccountRepository;
         _vendorDetailRepository = vendorDetailRepository;
         _defaultAccountRepository = defaultAccountRepository;
+        _mediaServiceClient = mediaServiceClient;
     }
 
     public async Task<List<VendorResponse>> GetAsync(CancellationToken cancellationToken)
@@ -60,6 +64,7 @@ internal class VendorService : IVendorService
                 x.EmailAlert,
                 x.Active,
                 x.ShowInSales,
+                x.MediaId,
                 x.CreatedBy,
                 x.CreatedOn,
                 x.LastModifiedBy,
@@ -67,7 +72,7 @@ internal class VendorService : IVendorService
             })
             .ToDictionaryAsync(x => x.Id, cancellationToken);
 
-        return accounts.Select(x =>
+        var mappedVendors = accounts.Select(x =>
         {
             detailMap.TryGetValue(x.Id, out var detail);
             return new VendorResponse
@@ -87,12 +92,17 @@ internal class VendorService : IVendorService
                 EmailAlert = detail?.EmailAlert ?? false,
                 Active = detail?.Active ?? true,
                 ShowInSales = detail?.ShowInSales ?? false,
+                MediaId = detail?.MediaId,
                 CreatedBy = detail?.CreatedBy,
                 CreatedOn = detail?.CreatedOn,
                 LastModifiedBy = detail?.LastModifiedBy,
                 LastModifiedOn = detail?.LastModifiedOn
             };
         }).ToList();
+
+        await PopulateMediaUrlsAsync(mappedVendors, cancellationToken);
+
+        return mappedVendors;
     }
 
     public async Task UpsertAsync(string account, VendorUpsertRequest request, CancellationToken cancellationToken)
@@ -184,7 +194,8 @@ internal class VendorService : IVendorService
             SmsAlert = request.SmsAlert,
             EmailAlert = request.EmailAlert,
             Active = request.Active,
-            ShowInSales = request.ShowInSales
+            ShowInSales = request.ShowInSales,
+            MediaId = request.MediaId
         };
         await _vendorDetailRepository.AddAsync(vendorDetail);
 
@@ -229,6 +240,42 @@ internal class VendorService : IVendorService
         await _vendorDetailRepository.UpdateAsync(vendorDetail);
     }
 
+    public async Task<PresignedUploadUrlResponse?> GetPresignedUploadUrlAsync(string fileName, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(fileName))
+            throw new BadRequestException("File name is required.");
+
+        var cleanFileName = Path.GetFileName(fileName);
+        if (string.IsNullOrWhiteSpace(cleanFileName) || cleanFileName != fileName || fileName.Contains("..") || fileName.Contains('/') || fileName.Contains('\\'))
+        {
+            throw new BadRequestException("Invalid file name. Only plain file names without paths are allowed.");
+        }
+
+        return await _mediaServiceClient.GetUploadUrlAsync(cleanFileName, "vendor", cancellationToken);
+    }
+
+    private async Task PopulateMediaUrlsAsync(List<VendorResponse> items, CancellationToken cancellationToken)
+    {
+        var tasks = items
+            .Where(x => !string.IsNullOrEmpty(x.MediaId))
+            .Select(async item =>
+            {
+                try
+                {
+                    var sasResponse = await _mediaServiceClient.GetViewTokenAsync(item.MediaId!, 24, cancellationToken);
+                    if (sasResponse != null)
+                    {
+                        item.MediaUrl = sasResponse.ViewUrl;
+                    }
+                }
+                catch
+                {
+                    // Fail-safe: ignore media service exceptions to keep main application running
+                }
+            });
+        await Task.WhenAll(tasks);
+    }
+
     private async Task<string> GetVendorAccountPrefixAsync(CancellationToken cancellationToken)
     {
         var defaultAccount = await _defaultAccountRepository.GetAll()
@@ -259,6 +306,7 @@ internal class VendorService : IVendorService
         vendorDetail.EmailAlert = request.EmailAlert;
         vendorDetail.Active = request.Active;
         vendorDetail.ShowInSales = request.ShowInSales;
+        vendorDetail.MediaId = request.MediaId;
     }
 
     private static void ApplyRequest(SupplierDetail vendorDetail, VendorUpdateRequest request)
@@ -276,5 +324,6 @@ internal class VendorService : IVendorService
         vendorDetail.EmailAlert = request.EmailAlert;
         vendorDetail.Active = request.Active;
         vendorDetail.ShowInSales = request.ShowInSales;
+        vendorDetail.MediaId = request.MediaId;
     }
 }

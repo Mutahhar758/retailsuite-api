@@ -17,4 +17,5 @@ public class HRInfoUpsertRequest
     public decimal Overtime { get; set; }
     public string? ExpenseAccount { get; set; }
     public string? PayableAccount { get; set; }
+    public string? MediaId { get; set; }
 }

@@ -1,4 +1,5 @@
 using Retailer.Application.Legacy.CustomerDetails;
+using Retailer.Application.Common.Interfaces;
 using Retailer.Infrastructure.Common.Extensions;
 
 namespace Retailer.Host.Controllers.Legacy;
@@ -34,5 +35,13 @@ public class CustomersController : VersionNeutralApiController
     {
         await _customerService.UpdateAsync(account, request, cancellationToken);
         return "Customer updated.".ToInformationResponse("Customer updated.");
+    }
+
+    [HttpPost("presigned-upload-url")]
+    [OpenApiOperation("Generate pre-signed upload URL for customer image.", "")]
+    public async Task<HttpResponseDto<PresignedUploadUrlResponse?>> GetPresignedUploadUrlAsync([FromQuery] string fileName, CancellationToken cancellationToken)
+    {
+        var response = await _customerService.GetPresignedUploadUrlAsync(fileName, cancellationToken);
+        return response.ToInformationResponse();
     }
 }

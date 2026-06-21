@@ -16,4 +16,5 @@ public class VendorCreateRequest
     public bool EmailAlert { get; set; }
     public bool Active { get; set; } = true;
     public bool ShowInSales { get; set; }
+    public string? MediaId { get; set; }
 }

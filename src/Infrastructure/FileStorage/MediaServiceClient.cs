@@ -21,14 +21,14 @@ public class MediaServiceClient : IMediaServiceClient, ITransientService
         _currentTenant = currentTenant;
     }
 
-    public async Task<PresignedUploadUrlResponse?> GetUploadUrlAsync(string fileName, CancellationToken cancellationToken)
+    public async Task<PresignedUploadUrlResponse?> GetUploadUrlAsync(string fileName, string subFolder, CancellationToken cancellationToken)
     {
         if (string.IsNullOrEmpty(_settings.BaseUrl)) return null;
 
         try
         {
             var tenantId = _currentTenant.Id ?? "default";
-            var pathPrefixedFileName = $"RetailSuite/{tenantId}/{fileName.TrimStart('/')}";
+            var pathPrefixedFileName = $"RetailSuite/{tenantId}/{subFolder.Trim('/')}/{fileName.TrimStart('/')}";
 
             var request = new HttpRequestMessage(HttpMethod.Post, $"{_settings.BaseUrl.TrimEnd('/')}/api/Files/upload-url")
             {

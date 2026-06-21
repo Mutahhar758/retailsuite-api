@@ -1,4 +1,5 @@
 using Retailer.Application.Legacy.HumanResources;
+using Retailer.Application.Common.Interfaces;
 using Retailer.Infrastructure.Common.Extensions;
 
 namespace Retailer.Host.Controllers.Legacy;
@@ -53,5 +54,13 @@ public class HRInfoController : VersionNeutralApiController
     {
         await _hrInfoService.DeleteAsync(id, cancellationToken);
         return "HR Info deleted successfully.".ToInformationResponse("HR Info deleted successfully.");
+    }
+
+    [HttpPost("presigned-upload-url")]
+    [OpenApiOperation("Generate pre-signed upload URL for HR Info photo.", "")]
+    public async Task<HttpResponseDto<PresignedUploadUrlResponse?>> GetPresignedUploadUrlAsync([FromQuery] string fileName, CancellationToken cancellationToken)
+    {
+        var response = await _hrInfoService.GetPresignedUploadUrlAsync(fileName, cancellationToken);
+        return response.ToInformationResponse();
     }
 }

@@ -15,4 +15,5 @@ public class VendorUpsertRequest
     public bool EmailAlert { get; set; }
     public bool Active { get; set; }
     public bool ShowInSales { get; set; }
+    public string? MediaId { get; set; }
 }

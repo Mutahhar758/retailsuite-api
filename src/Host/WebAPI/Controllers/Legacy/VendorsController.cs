@@ -1,4 +1,5 @@
 using Retailer.Application.Legacy.Vendors;
+using Retailer.Application.Common.Interfaces;
 using Retailer.Infrastructure.Common.Extensions;
 
 namespace Retailer.Host.Controllers.Legacy;
@@ -34,5 +35,13 @@ public class VendorsController : VersionNeutralApiController
     {
         await _vendorService.UpdateAsync(account, request, cancellationToken);
         return "Vendor updated.".ToInformationResponse("Vendor updated.");
+    }
+
+    [HttpPost("presigned-upload-url")]
+    [OpenApiOperation("Generate pre-signed upload URL for vendor image.", "")]
+    public async Task<HttpResponseDto<PresignedUploadUrlResponse?>> GetPresignedUploadUrlAsync([FromQuery] string fileName, CancellationToken cancellationToken)
+    {
+        var response = await _vendorService.GetPresignedUploadUrlAsync(fileName, cancellationToken);
+        return response.ToInformationResponse();
     }
 }

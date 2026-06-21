@@ -17,6 +17,8 @@ public class VendorResponse
     public bool EmailAlert { get; set; }
     public bool Active { get; set; }
     public bool ShowInSales { get; set; }
+    public string? MediaId { get; set; }
+    public string? MediaUrl { get; set; }
     public string? CreatedBy { get; set; }
     public DateTime? CreatedOn { get; set; }
     public string? LastModifiedBy { get; set; }

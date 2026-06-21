@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Retailer.Infrastructure.Persistence.Context;
 
@@ -11,9 +12,11 @@ using Retailer.Infrastructure.Persistence.Context;
 namespace Migrators.MSSQL.Migrations.Application
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260621160635_AddMediaIdToCustomerAndSupplier")]
+    partial class AddMediaIdToCustomerAndSupplier
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -954,10 +957,6 @@ namespace Migrators.MSSQL.Migrations.Application
                     b.Property<string>("MaritialStatus")
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("maritial_status");
-
-                    b.Property<string>("MediaId")
-                        .HasColumnType("nvarchar(max)")
-                        .HasColumnName("media_id");
 
                     b.Property<string>("Name")
                         .IsRequired()

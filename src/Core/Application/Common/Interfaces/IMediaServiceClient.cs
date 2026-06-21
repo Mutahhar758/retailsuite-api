@@ -6,7 +6,7 @@ namespace Retailer.Application.Common.Interfaces;
 
 public interface IMediaServiceClient
 {
-    Task<PresignedUploadUrlResponse?> GetUploadUrlAsync(string fileName, CancellationToken cancellationToken);
+    Task<PresignedUploadUrlResponse?> GetUploadUrlAsync(string fileName, string subFolder, CancellationToken cancellationToken);
     Task<SasTokenResponse?> GetViewTokenAsync(string fileId, int expiryHours, CancellationToken cancellationToken);
 }
 

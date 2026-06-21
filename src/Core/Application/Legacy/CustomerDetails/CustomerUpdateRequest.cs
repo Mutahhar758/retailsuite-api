@@ -15,4 +15,5 @@ public class CustomerUpdateRequest
     public bool SmsAlert { get; set; }
     public bool EmailAlert { get; set; }
     public bool Active { get; set; }
+    public string? MediaId { get; set; }
 }

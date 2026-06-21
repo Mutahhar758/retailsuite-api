@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Retailer.Application.Common.Exceptions;
 using Retailer.Application.Common.Persistence;
+using Retailer.Application.Common.Interfaces;
 using Retailer.Application.Legacy.CustomerDetails;
 using Retailer.Domain.Legacy;
 using Retailer.Shared.Common.Constants;
@@ -14,15 +15,18 @@ internal class CustomerService : ICustomerService
     private readonly IRepository<ChartOfAccount> _chartOfAccountRepository;
     private readonly IRepository<CustomerDetail> _customerDetailRepository;
     private readonly IRepository<DefaultAccount> _defaultAccountRepository;
+    private readonly IMediaServiceClient _mediaServiceClient;
 
     public CustomerService(
         IRepository<ChartOfAccount> chartOfAccountRepository,
         IRepository<CustomerDetail> customerDetailRepository,
-        IRepository<DefaultAccount> defaultAccountRepository)
+        IRepository<DefaultAccount> defaultAccountRepository,
+        IMediaServiceClient mediaServiceClient)
     {
         _chartOfAccountRepository = chartOfAccountRepository;
         _customerDetailRepository = customerDetailRepository;
         _defaultAccountRepository = defaultAccountRepository;
+        _mediaServiceClient = mediaServiceClient;
     }
 
     public async Task<List<CustomerResponse>> GetAsync(CancellationToken cancellationToken)
@@ -59,6 +63,7 @@ internal class CustomerService : ICustomerService
                 x.SmsAlert,
                 x.EmailAlert,
                 x.Active,
+                x.MediaId,
                 x.CreatedBy,
                 x.CreatedOn,
                 x.LastModifiedBy,
@@ -66,7 +71,7 @@ internal class CustomerService : ICustomerService
             })
             .ToDictionaryAsync(x => x.Id, cancellationToken);
 
-        return accounts.Select(x =>
+        var mappedCustomers = accounts.Select(x =>
         {
             detailMap.TryGetValue(x.Id, out var detail);
             return new CustomerResponse
@@ -85,12 +90,17 @@ internal class CustomerService : ICustomerService
                 SmsAlert = detail?.SmsAlert ?? false,
                 EmailAlert = detail?.EmailAlert ?? false,
                 Active = detail?.Active ?? true,
+                MediaId = detail?.MediaId,
                 CreatedBy = detail?.CreatedBy,
                 CreatedOn = detail?.CreatedOn,
                 LastModifiedBy = detail?.LastModifiedBy,
                 LastModifiedOn = detail?.LastModifiedOn
             };
         }).ToList();
+
+        await PopulateMediaUrlsAsync(mappedCustomers, cancellationToken);
+
+        return mappedCustomers;
     }
 
     public async Task<string> CreateAsync(CustomerCreateRequest request, CancellationToken cancellationToken)
@@ -149,7 +159,8 @@ internal class CustomerService : ICustomerService
             Iban = request.Iban,
             SmsAlert = request.SmsAlert,
             EmailAlert = request.EmailAlert,
-            Active = request.Active
+            Active = request.Active,
+            MediaId = request.MediaId
         };
         await _customerDetailRepository.AddAsync(customerDetail);
 
@@ -194,6 +205,42 @@ internal class CustomerService : ICustomerService
         await _customerDetailRepository.UpdateAsync(customerDetail);
     }
 
+    public async Task<PresignedUploadUrlResponse?> GetPresignedUploadUrlAsync(string fileName, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(fileName))
+            throw new BadRequestException("File name is required.");
+
+        var cleanFileName = Path.GetFileName(fileName);
+        if (string.IsNullOrWhiteSpace(cleanFileName) || cleanFileName != fileName || fileName.Contains("..") || fileName.Contains('/') || fileName.Contains('\\'))
+        {
+            throw new BadRequestException("Invalid file name. Only plain file names without paths are allowed.");
+        }
+
+        return await _mediaServiceClient.GetUploadUrlAsync(cleanFileName, "customer", cancellationToken);
+    }
+
+    private async Task PopulateMediaUrlsAsync(List<CustomerResponse> items, CancellationToken cancellationToken)
+    {
+        var tasks = items
+            .Where(x => !string.IsNullOrEmpty(x.MediaId))
+            .Select(async item =>
+            {
+                try
+                {
+                    var sasResponse = await _mediaServiceClient.GetViewTokenAsync(item.MediaId!, 24, cancellationToken);
+                    if (sasResponse != null)
+                    {
+                        item.MediaUrl = sasResponse.ViewUrl;
+                    }
+                }
+                catch
+                {
+                    // Fail-safe: ignore media service exceptions to keep main application running
+                }
+            });
+        await Task.WhenAll(tasks);
+    }
+
     private async Task<string> GetCustomerAccountPrefixAsync(CancellationToken cancellationToken)
     {
         var defaultAccount = await _defaultAccountRepository.GetAll()
@@ -223,5 +270,6 @@ internal class CustomerService : ICustomerService
         customerDetail.SmsAlert = request.SmsAlert;
         customerDetail.EmailAlert = request.EmailAlert;
         customerDetail.Active = request.Active;
+        customerDetail.MediaId = request.MediaId;
     }
 }

@@ -1,3 +1,5 @@
+using Retailer.Application.Common.Interfaces;
+
 namespace Retailer.Application.Legacy.HumanResources;
 
 public interface IHRInfoService : ITransientService
@@ -7,4 +9,5 @@ public interface IHRInfoService : ITransientService
     Task CreateAsync(HRInfoUpsertRequest request, CancellationToken cancellationToken);
     Task UpdateAsync(string id, HRInfoUpsertRequest request, CancellationToken cancellationToken);
     Task DeleteAsync(string id, CancellationToken cancellationToken);
+    Task<PresignedUploadUrlResponse?> GetPresignedUploadUrlAsync(string fileName, CancellationToken cancellationToken);
 }

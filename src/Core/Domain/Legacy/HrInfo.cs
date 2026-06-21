@@ -25,4 +25,5 @@ public class HrInfo : AuditableEntity<string>, IAggregateRoot
     public string? PayableAccountId { get; set; }
     public ChartOfAccount? ExpenseAccountRef { get; set; }
     public ChartOfAccount? PayableAccountRef { get; set; }
+    public string? MediaId { get; set; }
 }
