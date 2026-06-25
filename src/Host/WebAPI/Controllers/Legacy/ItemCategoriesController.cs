@@ -1,5 +1,6 @@
 using Retailer.Application.Legacy.ItemCategories;
 using Retailer.Infrastructure.Common.Extensions;
+using Retailer.Application.Common.Interfaces;
 
 namespace Retailer.Host.Controllers.Legacy;
 
@@ -42,5 +43,13 @@ public class ItemCategoriesController : VersionNeutralApiController
     {
         await _itemCategoryService.DeleteAsync(code, cancellationToken);
         return "Item category deleted.".ToInformationResponse("Item category deleted.");
+    }
+
+    [HttpPost("presigned-upload-url")]
+    [OpenApiOperation("Generate pre-signed upload URL for product category image.", "")]
+    public async Task<HttpResponseDto<PresignedUploadUrlResponse?>> GetPresignedUploadUrlAsync([FromQuery] string fileName, CancellationToken cancellationToken)
+    {
+        var response = await _itemCategoryService.GetPresignedUploadUrlAsync(fileName, cancellationToken);
+        return response.ToInformationResponse();
     }
 }
