@@ -156,7 +156,7 @@ internal class SaleReturnService : ISaleReturnService
                 VNo = voucherNo,
                 Seq = line.Seq,
                 ItemId = line.ItemId,
-                UnitId = line.Unit,
+                UnitId = string.IsNullOrWhiteSpace(line.Unit) ? null : line.Unit,
                 Qty = line.Qty,
                 GrossRate = line.Rate,
                 Discount = line.Discount
@@ -211,7 +211,7 @@ internal class SaleReturnService : ISaleReturnService
                     VNo = voucherNo,
                     Seq = line.Seq,
                     ItemId = line.ItemId,
-                    UnitId = line.Unit,
+                    UnitId = string.IsNullOrWhiteSpace(line.Unit) ? null : line.Unit,
                     Qty = line.Qty,
                     GrossRate = line.Rate,
                     Discount = line.Discount
@@ -222,7 +222,7 @@ internal class SaleReturnService : ISaleReturnService
                 existing.DeletedOn = null;
                 existing.DeletedBy = null;
                 existing.ItemId = line.ItemId;
-                existing.UnitId = line.Unit;
+                existing.UnitId = string.IsNullOrWhiteSpace(line.Unit) ? null : line.Unit;
                 existing.Qty = line.Qty;
                 existing.GrossRate = line.Rate;
                 existing.Discount = line.Discount;
@@ -343,7 +343,7 @@ internal class SaleReturnService : ISaleReturnService
                     TranType = "in",
                     AccountId = accountId,
                     ItemId = line.ItemId,
-                    UnitId = line.Unit,
+                    UnitId = string.IsNullOrWhiteSpace(line.Unit) ? null : line.Unit,
                     QtyIn = line.Qty,
                     QtyOut = 0,
                     Rate = line.Rate,
@@ -360,7 +360,7 @@ internal class SaleReturnService : ISaleReturnService
                 tx.TranType = "in";
                 tx.AccountId = accountId;
                 tx.ItemId = line.ItemId;
-                tx.UnitId = line.Unit;
+                tx.UnitId = string.IsNullOrWhiteSpace(line.Unit) ? null : line.Unit;
                 tx.QtyIn = line.Qty;
                 tx.QtyOut = 0;
                 tx.Rate = line.Rate;

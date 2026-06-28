@@ -277,7 +277,7 @@ internal class StockAdjustmentService : IStockAdjustmentService
                     TranType = tranType,
                     AccountId = null,
                     ItemId = line.ItemId,
-                    UnitId = line.Unit,
+                    UnitId = string.IsNullOrWhiteSpace(line.Unit) ? null : line.Unit,
                     QtyIn = line.QtyIn,
                     QtyOut = line.QtyOut,
                     Rate = line.Rate,
@@ -294,7 +294,7 @@ internal class StockAdjustmentService : IStockAdjustmentService
                 tx.TranType = tranType;
                 tx.AccountId = null;
                 tx.ItemId = line.ItemId;
-                tx.UnitId = line.Unit;
+                tx.UnitId = string.IsNullOrWhiteSpace(line.Unit) ? null : line.Unit;
                 tx.QtyIn = line.QtyIn;
                 tx.QtyOut = line.QtyOut;
                 tx.Rate = line.Rate;

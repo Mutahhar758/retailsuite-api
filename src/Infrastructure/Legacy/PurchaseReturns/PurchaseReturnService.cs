@@ -145,7 +145,7 @@ internal class PurchaseReturnService : IPurchaseReturnService
                 VNo = voucherNo,
                 Seq = line.Seq,
                 ItemId = line.ItemId,
-                UnitId = line.Unit,
+                UnitId = string.IsNullOrWhiteSpace(line.Unit) ? null : line.Unit,
                 Qty = line.Qty,
                 Rate = line.Rate
             }, false);
@@ -193,7 +193,7 @@ internal class PurchaseReturnService : IPurchaseReturnService
                     VNo = voucherNo,
                     Seq = line.Seq,
                     ItemId = line.ItemId,
-                    UnitId = line.Unit,
+                    UnitId = string.IsNullOrWhiteSpace(line.Unit) ? null : line.Unit,
                     Qty = line.Qty,
                     Rate = line.Rate
                 }, false);
@@ -203,7 +203,7 @@ internal class PurchaseReturnService : IPurchaseReturnService
                 existing.DeletedOn = null;
                 existing.DeletedBy = null;
                 existing.ItemId = line.ItemId;
-                existing.UnitId = line.Unit;
+                existing.UnitId = string.IsNullOrWhiteSpace(line.Unit) ? null : line.Unit;
                 existing.Qty = line.Qty;
                 existing.Rate = line.Rate;
 
@@ -307,7 +307,7 @@ internal class PurchaseReturnService : IPurchaseReturnService
                     TranType = "out",
                     AccountId = accountId,
                     ItemId = line.ItemId,
-                    UnitId = line.Unit,
+                    UnitId = string.IsNullOrWhiteSpace(line.Unit) ? null : line.Unit,
                     QtyIn = 0,
                     QtyOut = line.Qty,
                     Rate = line.Rate,
@@ -324,7 +324,7 @@ internal class PurchaseReturnService : IPurchaseReturnService
                 tx.TranType = "out";
                 tx.AccountId = accountId;
                 tx.ItemId = line.ItemId;
-                tx.UnitId = line.Unit;
+                tx.UnitId = string.IsNullOrWhiteSpace(line.Unit) ? null : line.Unit;
                 tx.QtyIn = 0;
                 tx.QtyOut = line.Qty;
                 tx.Rate = line.Rate;

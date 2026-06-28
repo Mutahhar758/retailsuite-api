@@ -146,7 +146,7 @@ internal class PurchaseService : IPurchaseService
                 VNo = voucherNo,
                 Seq = line.Seq,
                 ItemId = line.ItemId,
-                UnitId = line.Unit,
+                UnitId = string.IsNullOrWhiteSpace(line.Unit) ? null : line.Unit,
                 Qty = line.Qty,
                 Rate = line.Rate,
                 AddLess = line.AddLess
@@ -194,7 +194,7 @@ internal class PurchaseService : IPurchaseService
                     VNo = voucherNo,
                     Seq = line.Seq,
                     ItemId = line.ItemId,
-                    UnitId = line.Unit,
+                    UnitId = string.IsNullOrWhiteSpace(line.Unit) ? null : line.Unit,
                     Qty = line.Qty,
                     Rate = line.Rate,
                     AddLess = line.AddLess
@@ -205,7 +205,7 @@ internal class PurchaseService : IPurchaseService
                 existing.DeletedOn = null;
                 existing.DeletedBy = null;
                 existing.ItemId = line.ItemId;
-                existing.UnitId = line.Unit;
+                existing.UnitId = string.IsNullOrWhiteSpace(line.Unit) ? null : line.Unit;
                 existing.Qty = line.Qty;
                 existing.Rate = line.Rate;
                 existing.AddLess = line.AddLess;
@@ -311,7 +311,7 @@ internal class PurchaseService : IPurchaseService
                     TranType = "in",
                     AccountId = accountId,
                     ItemId = line.ItemId,
-                    UnitId = line.Unit,
+                    UnitId = string.IsNullOrWhiteSpace(line.Unit) ? null : line.Unit,
                     QtyIn = line.Qty,
                     QtyOut = 0,
                     Rate = line.Rate,
@@ -328,7 +328,7 @@ internal class PurchaseService : IPurchaseService
                 tx.TranType = "in";
                 tx.AccountId = accountId;
                 tx.ItemId = line.ItemId;
-                tx.UnitId = line.Unit;
+                tx.UnitId = string.IsNullOrWhiteSpace(line.Unit) ? null : line.Unit;
                 tx.QtyIn = line.Qty;
                 tx.QtyOut = 0;
                 tx.Rate = line.Rate;
