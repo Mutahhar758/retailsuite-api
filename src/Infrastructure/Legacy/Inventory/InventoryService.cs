@@ -33,6 +33,7 @@ internal class InventoryService : IInventoryService
             query = query.Where(x => x.ItemCategoryId == itemCategoryCode);
 
         var items = await query
+            .Include(x => x.ItemCategory)
             .OrderBy(x => x.ItemCategoryId)
             .ThenBy(x => x.Title)
             .ToListAsync(cancellationToken);
@@ -42,6 +43,7 @@ internal class InventoryService : IInventoryService
             Id = x.Id,
             Barcode = x.Barcode,
             ItemCategoryCode = x.ItemCategoryId,
+            ItemCategoryTitle = x.ItemCategory?.Title,
             Title = x.Title,
             ItemKey = x.ItemKey,
             PriRate = x.PriRate,
@@ -65,7 +67,10 @@ internal class InventoryService : IInventoryService
 
     public async Task<InventoryItemResponse?> GetItemAsync(string id, CancellationToken cancellationToken)
     {
-        var item = await _itemRepository.GetByIdAsync(id, cancellationToken);
+        var item = await _itemRepository.GetAll()
+            .AsNoTracking()
+            .Include(x => x.ItemCategory)
+            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (item is null) return null;
 
         var response = new InventoryItemResponse
@@ -73,6 +78,7 @@ internal class InventoryService : IInventoryService
             Id = item.Id,
             Barcode = item.Barcode,
             ItemCategoryCode = item.ItemCategoryId,
+            ItemCategoryTitle = item.ItemCategory?.Title,
             Title = item.Title,
             ItemKey = item.ItemKey,
             PriRate = item.PriRate,
