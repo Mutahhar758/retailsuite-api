@@ -67,6 +67,15 @@ public class UsersController : VersionNeutralApiController
         return HttpResponseExtension.InformationResponse(msg);
     }
 
+    [HttpPut("{id}")]
+    [OpenApiOperation("Updates an existing user.", "")]
+    public async Task<HttpResponseDto<string>> UpdateAsync(string id, UpdateUserRequest request)
+    {
+        request.Id = id;
+        await _userService.UpdateAsync(request);
+        return HttpResponseExtension.InformationResponse("User updated successfully.");
+    }
+
     [HttpPost("self-register")]
     [AllowAnonymous]
     [OpenApiOperation("Anonymous user creates a user.", "")]
