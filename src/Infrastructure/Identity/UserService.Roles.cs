@@ -14,7 +14,7 @@ internal partial class UserService
     {
         var userRoles = new List<UserRoleDto>();
 
-        var user = await _userManager.FindByIdAsync(userId);
+        var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
         if (user is null) throw new NotFoundException(_localizer[MessageConstants.RecordNotFound, _localizer[EntityConstants.User]]);
         var roles = await _roleManager.Roles.AsNoTracking().ToListAsync(cancellationToken);
         if (roles is null) throw new NotFoundException(_localizer[MessageConstants.RecordNotFound, _localizer[EntityConstants.Role]]);

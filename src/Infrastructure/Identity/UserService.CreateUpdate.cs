@@ -172,7 +172,7 @@ internal partial class UserService
     {
         userId ??= _currentUser.GetUserId();
 
-        var user = await _userManager.FindByIdAsync(userId);
+        var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Id == userId);
 
         _ = user ?? throw new NotFoundException(_localizer[MessageConstants.RecordNotFound, _localizer[EntityConstants.User]]);
 
@@ -211,7 +211,8 @@ internal partial class UserService
 
     public async Task ToggleBiometricsAsync(SetBiometricsRequest request)
     {
-        var user = await _userManager.FindByIdAsync(_currentUser.GetUserId().ToString()) ?? throw new NotFoundException(_localizer["User not found"]);
+        string currentUserId = _currentUser.GetUserId().ToString();
+        var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Id == currentUserId) ?? throw new NotFoundException(_localizer["User not found"]);
 
         user.BiometricPublicKey = request.PublicKey;
 

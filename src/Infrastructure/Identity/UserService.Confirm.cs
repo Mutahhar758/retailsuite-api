@@ -44,7 +44,7 @@ internal partial class UserService
 
     public async Task<string> ConfirmPhoneNumberAsync(string userId, string code)
     {
-        var user = await _userManager.FindByIdAsync(userId);
+        var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Id == userId);
 
         _ = user ?? throw new InternalServerException(_localizer[MessageConstants.ErrorOccurredWhileConfirming, _localizer[EntityConstants.Phone]]);
         if (string.IsNullOrEmpty(user.PhoneNumber)) throw new InternalServerException(_localizer[MessageConstants.ErrorOccurredWhileConfirming, _localizer[EntityConstants.Phone]]);

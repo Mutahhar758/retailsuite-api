@@ -1,4 +1,4 @@
-﻿using Retailer.Application.Common.Caching;
+using Retailer.Application.Common.Caching;
 using Retailer.Application.Common.Exceptions;
 using Retailer.Shared.Authorization;
 using Retailer.Shared.Localization;
@@ -12,7 +12,7 @@ internal partial class UserService
     {
         userId ??= _currentUser.GetUserId();
 
-        var user = await _userManager.FindByIdAsync(userId);
+        var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
 
         _ = user ?? throw new UnauthorizedException(MessageConstants.AuthFailed);
 
