@@ -72,7 +72,7 @@ public class UsersController : VersionNeutralApiController
     public async Task<HttpResponseDto<string>> UpdateAsync(string id, UpdateUserRequest request)
     {
         request.Id = id;
-        await _userService.UpdateAsync(request);
+        await _userService.UpdateAsync(request, id);
         return HttpResponseExtension.InformationResponse("User updated successfully.");
     }
 
