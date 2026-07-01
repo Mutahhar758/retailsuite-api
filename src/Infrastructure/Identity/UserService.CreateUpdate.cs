@@ -1,4 +1,4 @@
-﻿using Retailer.Application.Common.Exceptions;
+using Retailer.Application.Common.Exceptions;
 using Retailer.Application.Common.Mailing;
 using Retailer.Application.Identity.Users;
 using Retailer.Domain.Common.Enums;
@@ -32,11 +32,23 @@ internal partial class UserService
         var user = await _userManager.Users.Where(u => u.ObjectId == objectId).FirstOrDefaultAsync()
             ?? await CreateOrUpdateFromPrincipalAsync(principal);
 
-        if (principal.FindFirstValue(ClaimTypes.Role) is string role &&
-            await _roleManager.RoleExistsAsync(role) &&
-            !await _userManager.IsInRoleAsync(user, role))
+        if (principal.FindFirstValue(ClaimTypes.Role) is string roleName &&
+            await _roleManager.RoleExistsAsync(roleName))
         {
-            await _userManager.AddToRoleAsync(user, role);
+            var role = await _roleManager.FindByNameAsync(roleName);
+            if (role != null)
+            {
+                bool isInRole = await _db.UserRoles.AnyAsync(ur => ur.UserId == user.Id && ur.RoleId == role.Id);
+                if (!isInRole)
+                {
+                    await _db.UserRoles.AddAsync(new IdentityUserRole<string>
+                    {
+                        UserId = user.Id,
+                        RoleId = role.Id
+                    });
+                    await _db.SaveChangesAsync();
+                }
+            }
         }
 
         return user.Id;
@@ -116,7 +128,16 @@ internal partial class UserService
             throw new BadRequestException(_localizer[MessageConstants.ValidationErrorsOccurred] + string.Join('\n', result.GetErrors(_localizer)));
         }
 
-        await _userManager.AddToRoleAsync(user, AppRoles.Basic);
+        var basicRole = await _roleManager.FindByNameAsync(AppRoles.Basic);
+        if (basicRole != null)
+        {
+            await _db.UserRoles.AddAsync(new IdentityUserRole<string>
+            {
+                UserId = user.Id,
+                RoleId = basicRole.Id
+            });
+            await _db.SaveChangesAsync();
+        }
 
         var messages = new List<string> { _localizer[MessageConstants.UserRegistered, user.Email] };
 

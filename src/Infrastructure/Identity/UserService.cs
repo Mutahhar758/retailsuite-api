@@ -132,7 +132,8 @@ internal partial class UserService : IUserService
 
         _ = user ?? throw new NotFoundException(_localizer[MessageConstants.RecordNotFound, _localizer[EntityConstants.User]]);
 
-        bool isAdmin = await _userManager.IsInRoleAsync(user, AppRoles.Admin);
+        var adminRole = await _roleManager.FindByNameAsync(AppRoles.Admin);
+        bool isAdmin = adminRole != null && await _db.UserRoles.AnyAsync(ur => ur.UserId == user.Id && ur.RoleId == adminRole.Id, cancellationToken);
         if (isAdmin)
         {
             throw new ConflictException(_localizer[MessageConstants.AdminStatusNotUpdatable]);

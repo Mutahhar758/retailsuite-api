@@ -1,9 +1,10 @@
-﻿using Retailer.Application.Common.Exceptions;
+using Retailer.Application.Common.Exceptions;
 using Retailer.Application.Identity.Users;
 using Retailer.Domain.Identity;
 using Retailer.Shared.Authorization;
 using Retailer.Shared.Localization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
 
 namespace Retailer.Infrastructure.Identity;
 
@@ -17,6 +18,12 @@ internal partial class UserService
         if (user is null) throw new NotFoundException(_localizer[MessageConstants.RecordNotFound, _localizer[EntityConstants.User]]);
         var roles = await _roleManager.Roles.AsNoTracking().ToListAsync(cancellationToken);
         if (roles is null) throw new NotFoundException(_localizer[MessageConstants.RecordNotFound, _localizer[EntityConstants.Role]]);
+
+        var userRoleIds = await _db.UserRoles
+            .Where(ur => ur.UserId == userId)
+            .Select(ur => ur.RoleId)
+            .ToListAsync(cancellationToken);
+
         foreach (var role in roles)
         {
             userRoles.Add(new UserRoleDto
@@ -24,7 +31,7 @@ internal partial class UserService
                 RoleId = role.Id,
                 RoleName = role.Name,
                 Description = role.Description,
-                Enabled = await _userManager.IsInRoleAsync(user, role.Name!)
+                Enabled = userRoleIds.Contains(role.Id)
             });
         }
 
@@ -39,12 +46,14 @@ internal partial class UserService
 
         _ = user ?? throw new NotFoundException(_localizer[MessageConstants.RecordNotFound, _localizer[EntityConstants.User]]);
 
+        var adminRole = await _roleManager.FindByNameAsync(AppRoles.Admin);
+        bool userWasAdmin = adminRole != null && await _db.UserRoles.AnyAsync(ur => ur.UserId == userId && ur.RoleId == adminRole.Id, cancellationToken);
+
         // Check if the user is an admin for which the admin role is getting disabled
-        if (await _userManager.IsInRoleAsync(user, AppRoles.Admin)
-            && request.UserRoles.Any(a => !a.Enabled && a.RoleName == AppRoles.Admin))
+        if (userWasAdmin && request.UserRoles.Any(a => !a.Enabled && a.RoleName == AppRoles.Admin))
         {
             // Get count of users in Admin Role
-            int adminCount = (await _userManager.GetUsersInRoleAsync(AppRoles.Admin)).Count;
+            int adminCount = adminRole != null ? await _db.UserRoles.CountAsync(ur => ur.RoleId == adminRole.Id, cancellationToken) : 0;
 
             if (adminCount <= 1)
             {
@@ -55,21 +64,34 @@ internal partial class UserService
         foreach (var userRole in request.UserRoles)
         {
             // Check if Role Exists
-            if (await _roleManager.FindByNameAsync(userRole.RoleName!) is not null)
+            var role = await _roleManager.FindByNameAsync(userRole.RoleName!);
+            if (role is not null)
             {
+                var existingUserRole = await _db.UserRoles
+                    .FirstOrDefaultAsync(ur => ur.UserId == userId && ur.RoleId == role.Id, cancellationToken);
+
                 if (userRole.Enabled)
                 {
-                    if (!await _userManager.IsInRoleAsync(user, userRole.RoleName!))
+                    if (existingUserRole == null)
                     {
-                        await _userManager.AddToRoleAsync(user, userRole.RoleName!);
+                        await _db.UserRoles.AddAsync(new IdentityUserRole<string>
+                        {
+                            UserId = userId,
+                            RoleId = role.Id
+                        }, cancellationToken);
                     }
                 }
                 else
                 {
-                    await _userManager.RemoveFromRoleAsync(user, userRole.RoleName!);
+                    if (existingUserRole != null)
+                    {
+                        _db.UserRoles.Remove(existingUserRole);
+                    }
                 }
             }
         }
+
+        await _db.SaveChangesAsync(cancellationToken);
 
         return _localizer[MessageConstants.RecordUpdated, _localizer[EntityConstants.UserRoles]];
     }
