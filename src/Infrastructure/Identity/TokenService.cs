@@ -66,7 +66,12 @@ internal class TokenService : ITokenService
             throw new UnauthorizedException(_localizer[MessageConstants.AuthFailed]);
         }
 
-        var response = (user.Status != UserStatus.Active) ? new TokenResponseDto { Status = user.Status } : await GenerateTokensAndUpdateUserAsync(user, request.DeviceId, request.FcmToken, request.AppVersion, request.DeviceName);
+        if (user.Status == UserStatus.Blocked)
+        {
+            throw new UnauthorizedException(_localizer["Your account has been deactivated. Please contact administration."]);
+        }
+
+        var response = await GenerateTokensAndUpdateUserAsync(user, request.DeviceId, request.FcmToken, request.AppVersion, request.DeviceName);
 
         return response;
     }
@@ -76,7 +81,7 @@ internal class TokenService : ITokenService
         var userPrincipal = GetPrincipalFromExpiredToken(request.Token);
         string? userEmail = userPrincipal.GetEmail();
         var user = await _userManager.FindByEmailAsync(userEmail!);
-        if (user is null)
+        if (user is null || user.Status == UserStatus.Blocked)
         {
             throw new UnauthorizedException(_localizer[MessageConstants.AuthFailed]);
         }
