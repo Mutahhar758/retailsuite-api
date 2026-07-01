@@ -117,7 +117,7 @@ internal partial class UserService
             Email = request.Email,
             FirstName = request.FirstName,
             LastName = request.LastName,
-            UserName = request.Email,
+            UserName = string.IsNullOrWhiteSpace(request.UserName) ? request.Email : request.UserName,
             PhoneNumber = request.PhoneNumber,
             Status = UserStatus.Unconfirmed
         };
@@ -190,6 +190,8 @@ internal partial class UserService
         user.FirstName = request.FirstName ?? user.FirstName;
         user.LastName = request.LastName ?? user.LastName;
         user.PhoneNumber = request.PhoneNumber ?? user.PhoneNumber;
+        user.UserName = request.UserName ?? user.UserName;
+        user.Email = request.Email ?? user.Email;
 
         string? phoneNumber = await _userManager.GetPhoneNumberAsync(user);
         if (request.PhoneNumber != phoneNumber && request.PhoneNumber != null)
