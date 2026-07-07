@@ -17,4 +17,6 @@ public interface IRoleService : ITransientService
     Task<string> UpdatePermissionsAsync(UpdateRolePermissionsRequest request, CancellationToken cancellationToken);
 
     Task<string> DeleteAsync(string id);
+
+    Task<List<PermissionDto>> GetAllPermissionsAsync(CancellationToken cancellationToken);
 }

@@ -165,4 +165,18 @@ internal class RoleService : IRoleService
 
         return _localizer[MessageConstants.RecordDeleted, _localizer[EntityConstants.Role]];
     }
+
+    public Task<List<PermissionDto>> GetAllPermissionsAsync(CancellationToken cancellationToken)
+    {
+        var allPermissions = AppPermissions.Admin.Select(p => new PermissionDto
+        {
+            Name = p.Name,
+            Description = p.Description,
+            Action = p.Action,
+            Resource = p.Resource,
+            IsBasic = p.IsBasic
+        }).ToList();
+
+        return Task.FromResult(allPermissions);
+    }
 }
