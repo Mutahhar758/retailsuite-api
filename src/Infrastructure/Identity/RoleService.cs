@@ -127,12 +127,18 @@ internal class RoleService : IRoleService
         }
 
         // Add all permissions that were not previously selected
+        int maxId = await _db.RoleClaims.AnyAsync(cancellationToken)
+            ? await _db.RoleClaims.MaxAsync(c => c.Id, cancellationToken)
+            : 0;
+
         foreach (string permission in request.Permissions.Where(c => !currentClaims.Any(p => p.Value == c)))
         {
             if (!string.IsNullOrEmpty(permission))
             {
+                maxId++;
                 _db.RoleClaims.Add(new ApplicationRoleClaim
                 {
+                    Id = maxId,
                     RoleId = role.Id,
                     ClaimType = AppClaims.Permission,
                     ClaimValue = permission,

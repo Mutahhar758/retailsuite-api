@@ -1,4 +1,4 @@
-﻿using Finbuckle.MultiTenant.EntityFrameworkCore.Extensions;
+using Finbuckle.MultiTenant.EntityFrameworkCore.Extensions;
 using Retailer.Infrastructure.Persistence.Context;
 using Retailer.Shared.Authorization;
 using Retailer.Domain.Identity;
@@ -61,13 +61,20 @@ internal class ApplicationDbSeeder
     private async Task AssignPermissionsToRoleAsync(ApplicationDbContext dbContext, IReadOnlyList<AppPermission> permissions, ApplicationRole role)
     {
         var currentClaims = await _roleManager.GetClaimsAsync(role);
+
+        int maxId = await dbContext.RoleClaims.AnyAsync()
+            ? await dbContext.RoleClaims.MaxAsync(c => c.Id)
+            : 0;
+
         foreach (var permission in permissions)
         {
             if (!currentClaims.Any(c => c.Type == AppClaims.Permission && c.Value == permission.Name))
             {
+                maxId++;
                 _logger.LogInformation("Seeding {role} Permission '{permission}'.", role.Name, permission.Name);
                 dbContext.RoleClaims.Add(new ApplicationRoleClaim
                 {
+                    Id = maxId,
                     RoleId = role.Id,
                     ClaimType = AppClaims.Permission,
                     ClaimValue = permission.Name,
