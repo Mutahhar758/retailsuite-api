@@ -11,9 +11,6 @@ public static class AppAction
     public const string Delete = nameof(Delete);
     public const string Export = nameof(Export);
     public const string Print = nameof(Print);
-    public const string Approve = nameof(Approve);
-    public const string Post = nameof(Post);
-    public const string Process = nameof(Process);
 }
 
 public static class AppResource
@@ -153,7 +150,6 @@ public static class AppPermissions
         new("Update SupplyOrders", AppAction.Update, AppResource.SupplyOrders),
         new("Delete SupplyOrders", AppAction.Delete, AppResource.SupplyOrders),
         new("Export SupplyOrders", AppAction.Export, AppResource.SupplyOrders),
-        new("Approve SupplyOrders", AppAction.Approve, AppResource.SupplyOrders),
 
         // OpeningBalances
         new("View OpeningBalances", AppAction.View, AppResource.OpeningBalances),
@@ -166,7 +162,6 @@ public static class AppPermissions
         new("Update PaymentVouchers", AppAction.Update, AppResource.PaymentVouchers),
         new("Delete PaymentVouchers", AppAction.Delete, AppResource.PaymentVouchers),
         new("Export PaymentVouchers", AppAction.Export, AppResource.PaymentVouchers),
-        new("Post PaymentVouchers", AppAction.Post, AppResource.PaymentVouchers),
 
         // ReceiptVouchers
         new("View ReceiptVouchers", AppAction.View, AppResource.ReceiptVouchers),
@@ -175,7 +170,6 @@ public static class AppPermissions
         new("Update ReceiptVouchers", AppAction.Update, AppResource.ReceiptVouchers),
         new("Delete ReceiptVouchers", AppAction.Delete, AppResource.ReceiptVouchers),
         new("Export ReceiptVouchers", AppAction.Export, AppResource.ReceiptVouchers),
-        new("Post ReceiptVouchers", AppAction.Post, AppResource.ReceiptVouchers),
 
         // JournalVouchers
         new("View JournalVouchers", AppAction.View, AppResource.JournalVouchers),
@@ -184,7 +178,6 @@ public static class AppPermissions
         new("Update JournalVouchers", AppAction.Update, AppResource.JournalVouchers),
         new("Delete JournalVouchers", AppAction.Delete, AppResource.JournalVouchers),
         new("Export JournalVouchers", AppAction.Export, AppResource.JournalVouchers),
-        new("Post JournalVouchers", AppAction.Post, AppResource.JournalVouchers),
 
         // Purchases
         new("View Purchases", AppAction.View, AppResource.Purchases),
@@ -258,12 +251,49 @@ public static class AppPermissions
         new("Create Payrolls", AppAction.Create, AppResource.Payrolls),
         new("Update Payrolls", AppAction.Update, AppResource.Payrolls),
         new("Delete Payrolls", AppAction.Delete, AppResource.Payrolls),
-        new("Export Payrolls", AppAction.Export, AppResource.Payrolls),
-        new("Process Payrolls", AppAction.Process, AppResource.Payrolls)
+        new("Export Payrolls", AppAction.Export, AppResource.Payrolls)
     };
 
     public static IReadOnlyList<AppPermission> Admin { get; } = new ReadOnlyCollection<AppPermission>(_all);
     public static IReadOnlyList<AppPermission> Basic { get; } = new ReadOnlyCollection<AppPermission>(_all.Where(p => p.IsBasic).ToArray());
+
+    public static IReadOnlyList<AppPermission> Cashier { get; } = new ReadOnlyCollection<AppPermission>(_all.Where(p =>
+        p.Resource == AppResource.Dashboard ||
+        p.Resource == AppResource.Sales ||
+        p.Resource == AppResource.POSSales ||
+        p.Resource == AppResource.Customers
+    ).ToArray());
+
+    public static IReadOnlyList<AppPermission> InventoryManager { get; } = new ReadOnlyCollection<AppPermission>(_all.Where(p =>
+        p.Resource == AppResource.Dashboard ||
+        p.Resource == AppResource.InventoryItems ||
+        p.Resource == AppResource.ItemCategories ||
+        p.Resource == AppResource.Units ||
+        p.Resource == AppResource.Purchases ||
+        p.Resource == AppResource.PurchaseReturns ||
+        p.Resource == AppResource.StockAdjustments ||
+        p.Resource == AppResource.Vendors
+    ).ToArray());
+
+    public static IReadOnlyList<AppPermission> Accountant { get; } = new ReadOnlyCollection<AppPermission>(_all.Where(p =>
+        p.Resource == AppResource.Dashboard ||
+        p.Resource == AppResource.ChartOfAccounts ||
+        p.Resource == AppResource.DetailAccounts ||
+        p.Resource == AppResource.Customers ||
+        p.Resource == AppResource.Vendors ||
+        p.Resource == AppResource.PaymentVouchers ||
+        p.Resource == AppResource.ReceiptVouchers ||
+        p.Resource == AppResource.JournalVouchers ||
+        p.Resource == AppResource.BankReconciliations ||
+        p.Resource == AppResource.OpeningBalances ||
+        p.Resource == AppResource.Reports
+    ).ToArray());
+
+    public static IReadOnlyList<AppPermission> PayrollManager { get; } = new ReadOnlyCollection<AppPermission>(_all.Where(p =>
+        p.Resource == AppResource.Dashboard ||
+        p.Resource == AppResource.HRInfo ||
+        p.Resource == AppResource.Payrolls
+    ).ToArray());
 }
 
 public record AppPermission(string Description, string Action, string Resource, bool IsBasic = false)

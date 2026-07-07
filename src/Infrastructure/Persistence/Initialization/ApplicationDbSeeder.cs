@@ -55,6 +55,22 @@ internal class ApplicationDbSeeder
             {
                 await AssignPermissionsToRoleAsync(dbContext, AppPermissions.Admin, role);
             }
+            else if (roleName == AppRoles.Cashier)
+            {
+                await AssignPermissionsToRoleAsync(dbContext, AppPermissions.Cashier, role);
+            }
+            else if (roleName == AppRoles.InventoryManager)
+            {
+                await AssignPermissionsToRoleAsync(dbContext, AppPermissions.InventoryManager, role);
+            }
+            else if (roleName == AppRoles.Accountant)
+            {
+                await AssignPermissionsToRoleAsync(dbContext, AppPermissions.Accountant, role);
+            }
+            else if (roleName == AppRoles.PayrollManager)
+            {
+                await AssignPermissionsToRoleAsync(dbContext, AppPermissions.PayrollManager, role);
+            }
         }
     }
 
