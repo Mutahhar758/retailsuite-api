@@ -157,6 +157,11 @@ public class ItemTransactionConfig : IEntityTypeConfiguration<ItemTransaction>
             .WithMany(x => x.ItemTransactions)
             .HasForeignKey(x => x.UnitId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(x => x.SecUnit)
+            .WithMany()
+            .HasForeignKey(x => x.SecUnitId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }
 
@@ -230,6 +235,11 @@ public class PurchaseDetailConfig : IEntityTypeConfiguration<PurchaseDetail>
             .WithMany(x => x.PurchaseDetails)
             .HasForeignKey(x => x.UnitId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(x => x.SecUnit)
+            .WithMany()
+            .HasForeignKey(x => x.SecUnitId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }
 
@@ -276,6 +286,11 @@ public class PurchaseRetDetailConfig : IEntityTypeConfiguration<PurchaseRetDetai
         builder.HasOne(x => x.Unit)
             .WithMany(x => x.PurchaseRetDetails)
             .HasForeignKey(x => x.UnitId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(x => x.SecUnit)
+            .WithMany()
+            .HasForeignKey(x => x.SecUnitId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }
@@ -324,6 +339,11 @@ public class SaleConfig : IEntityTypeConfiguration<Sale>
             .WithMany(x => x.Sales)
             .HasForeignKey(x => x.UnitId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(x => x.SecUnit)
+            .WithMany()
+            .HasForeignKey(x => x.SecUnitId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }
 
@@ -370,6 +390,11 @@ public class SaleRetDetailConfig : IEntityTypeConfiguration<SaleRetDetail>
         builder.HasOne(x => x.Unit)
             .WithMany(x => x.SaleRetDetails)
             .HasForeignKey(x => x.UnitId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(x => x.SecUnit)
+            .WithMany()
+            .HasForeignKey(x => x.SecUnitId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }
@@ -423,6 +448,11 @@ public class SaleSupplyDetailConfig : IEntityTypeConfiguration<SaleSupplyDetail>
             .WithMany(x => x.SaleSupplyDetails)
             .HasForeignKey(x => x.UnitId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(x => x.SecUnit)
+            .WithMany()
+            .HasForeignKey(x => x.SecUnitId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }
 
@@ -464,6 +494,11 @@ public class StockAdjDetailConfig : IEntityTypeConfiguration<StockAdjDetail>
         builder.HasOne(x => x.Item)
             .WithMany()
             .HasForeignKey(x => x.ItemId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(x => x.SecUnit)
+            .WithMany()
+            .HasForeignKey(x => x.SecUnitId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

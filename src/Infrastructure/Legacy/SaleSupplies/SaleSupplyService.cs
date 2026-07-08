@@ -77,7 +77,7 @@ internal class SaleSupplyService : ISaleSupplyService
             join m in _saleSupplyMasterRepository.GetAll().AsNoTracking()
                 on new { d.VType, d.VNo } equals new { m.VType, VNo = m.VNo }
             where d.VType == VType && d.VNo == voucherNo
-            orderby d.Seq
+             orderby d.Seq
             select new SaleSupplyLineResponse
             {
                 Seq = d.Seq,
@@ -94,7 +94,11 @@ internal class SaleSupplyService : ISaleSupplyService
                 Rate = d.GrossRate ?? 0,
                 Discount = d.Discount ?? 0,
                 AddLess = d.AddLess ?? 0,
-                Amount = (d.Qty * ((d.GrossRate ?? 0) - (d.Discount ?? 0))) + (d.AddLess ?? 0),
+                Amount = (d.Qty * ((d.GrossRate ?? 0) - (d.Discount ?? 0))) + (d.AddLess ?? 0) + ((d.SecQty ?? 0) * (d.SecRate ?? 0)),
+                SecUnit = d.SecUnitId,
+                SecQty = d.SecQty,
+                SecRate = d.SecRate,
+                QtyInPack = d.QtyInPack,
                 CreatedBy = m.CreatedBy,
                 CreatedOn = m.CreatedOn,
                 LastModifiedBy = m.LastModifiedBy,
@@ -113,9 +117,9 @@ internal class SaleSupplyService : ISaleSupplyService
         var nextNum = maxVoucherNo == null ? 1L : long.Parse(maxVoucherNo) + 1;
         var voucherNo = nextNum.ToString("D5");
 
-        var grossAmount = request.Lines.Sum(x => x.Qty * x.Rate);
+        var grossAmount = request.Lines.Sum(x => (x.Qty * x.Rate) + ((x.SecQty ?? 0) * (x.SecRate ?? 0)));
         var discountAmount = request.Lines.Sum(x => x.Qty * x.Discount);
-        var netAmount = request.Lines.Sum(x => (x.Qty * (x.Rate - x.Discount)) + x.AddLess);
+        var netAmount = request.Lines.Sum(x => (x.Qty * (x.Rate - x.Discount)) + x.AddLess + ((x.SecQty ?? 0) * (x.SecRate ?? 0)));
 
         var master = new SaleSupplyMaster
         {
@@ -147,7 +151,11 @@ internal class SaleSupplyService : ISaleSupplyService
                 Qty = line.Qty,
                 GrossRate = line.Rate,
                 Discount = line.Discount,
-                AddLess = line.AddLess
+                AddLess = line.AddLess,
+                SecUnitId = string.IsNullOrWhiteSpace(line.SecUnit) ? null : line.SecUnit,
+                SecQty = line.SecQty,
+                SecRate = line.SecRate,
+                QtyInPack = line.QtyInPack
             }, false);
         }
 
@@ -166,9 +174,9 @@ internal class SaleSupplyService : ISaleSupplyService
         if (master is null)
             throw new NotFoundException($"Sale supply voucher '{voucherNo}' not found.");
 
-        var grossAmount = request.Lines.Sum(x => x.Qty * x.Rate);
+        var grossAmount = request.Lines.Sum(x => (x.Qty * x.Rate) + ((x.SecQty ?? 0) * (x.SecRate ?? 0)));
         var discountAmount = request.Lines.Sum(x => x.Qty * x.Discount);
-        var netAmount = request.Lines.Sum(x => (x.Qty * (x.Rate - x.Discount)) + x.AddLess);
+        var netAmount = request.Lines.Sum(x => (x.Qty * (x.Rate - x.Discount)) + x.AddLess + ((x.SecQty ?? 0) * (x.SecRate ?? 0)));
 
         master.VDate = request.Date;
         master.VTime = TimeOnly.FromDateTime(DateTime.Now);
@@ -202,7 +210,11 @@ internal class SaleSupplyService : ISaleSupplyService
                     Qty = line.Qty,
                     GrossRate = line.Rate,
                     Discount = line.Discount,
-                    AddLess = line.AddLess
+                    AddLess = line.AddLess,
+                    SecUnitId = string.IsNullOrWhiteSpace(line.SecUnit) ? null : line.SecUnit,
+                    SecQty = line.SecQty,
+                    SecRate = line.SecRate,
+                    QtyInPack = line.QtyInPack
                 }, false);
             }
             else
@@ -215,6 +227,10 @@ internal class SaleSupplyService : ISaleSupplyService
                 existing.GrossRate = line.Rate;
                 existing.Discount = line.Discount;
                 existing.AddLess = line.AddLess;
+                existing.SecUnitId = string.IsNullOrWhiteSpace(line.SecUnit) ? null : line.SecUnit;
+                existing.SecQty = line.SecQty;
+                existing.SecRate = line.SecRate;
+                existing.QtyInPack = line.QtyInPack;
 
                 await _saleSupplyDetailRepository.UpdateAsync(existing, false);
             }
@@ -269,9 +285,9 @@ internal class SaleSupplyService : ISaleSupplyService
             .GroupBy(x => 1)
             .Select(g => new
             {
-                Amount = g.Sum(x => (decimal?)x.Qty * (x.GrossRate ?? 0)) ?? 0,
+                Amount = g.Sum(x => (decimal?)((x.Qty * (x.GrossRate ?? 0)) + ((x.SecQty ?? 0) * (x.SecRate ?? 0)))) ?? 0,
                 Discount = g.Sum(x => (decimal?)x.Qty * (x.Discount ?? 0)) ?? 0,
-                NetAmount = g.Sum(x => (decimal?)((x.Qty * ((x.GrossRate ?? 0) - (x.Discount ?? 0))) + (x.AddLess ?? 0))) ?? 0
+                NetAmount = g.Sum(x => (decimal?)((x.Qty * ((x.GrossRate ?? 0) - (x.Discount ?? 0))) + (x.AddLess ?? 0) + ((x.SecQty ?? 0) * (x.SecRate ?? 0)))) ?? 0
             })
             .FirstOrDefaultAsync(cancellationToken);
 
@@ -314,7 +330,7 @@ internal class SaleSupplyService : ISaleSupplyService
 
         foreach (var line in lines)
         {
-            var amount = (line.Qty * (line.Rate - line.Discount)) + line.AddLess;
+            var amount = (line.Qty * (line.Rate - line.Discount)) + line.AddLess + ((line.SecQty ?? 0) * (line.SecRate ?? 0));
             var gl = await _glRepository.GetAll()
                 .IgnoreQueryFilters([GlobalQueryFilterConstants.SoftDelete])
                 .FirstOrDefaultAsync(
@@ -381,7 +397,7 @@ internal class SaleSupplyService : ISaleSupplyService
     {
         foreach (var line in lines)
         {
-            var amount = (line.Qty * (line.Rate - line.Discount)) + line.AddLess;
+            var amount = (line.Qty * (line.Rate - line.Discount)) + line.AddLess + ((line.SecQty ?? 0) * (line.SecRate ?? 0));
             var tx = await _itemTransactionRepository.GetAll()
                 .IgnoreQueryFilters([GlobalQueryFilterConstants.SoftDelete])
                 .FirstOrDefaultAsync(x => x.VType == VType && x.VNo == voucherNo && x.Seq == line.Seq, cancellationToken);
@@ -403,7 +419,11 @@ internal class SaleSupplyService : ISaleSupplyService
                     QtyOut = line.Qty,
                     Rate = line.Rate,
                     Amount = amount,
-                    Counter = counter
+                    Counter = counter,
+                    SecUnitId = string.IsNullOrWhiteSpace(line.SecUnit) ? null : line.SecUnit,
+                    SecQtyIn = 0,
+                    SecQtyOut = line.SecQty,
+                    SecRate = line.SecRate
                 }, false);
             }
             else
@@ -421,6 +441,10 @@ internal class SaleSupplyService : ISaleSupplyService
                 tx.Rate = line.Rate;
                 tx.Amount = amount;
                 tx.Counter = counter;
+                tx.SecUnitId = string.IsNullOrWhiteSpace(line.SecUnit) ? null : line.SecUnit;
+                tx.SecQtyIn = 0;
+                tx.SecQtyOut = line.SecQty;
+                tx.SecRate = line.SecRate;
 
                 await _itemTransactionRepository.UpdateAsync(tx, false);
             }

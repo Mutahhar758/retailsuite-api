@@ -104,7 +104,10 @@ internal class PurchaseService : IPurchaseService
                 Qty = d.Qty,
                 Rate = d.Rate,
                 AddLess = d.AddLess,
-                Amount = (d.Qty * d.Rate) + d.AddLess,
+                Amount = (d.Qty * d.Rate) + d.AddLess + ((d.SecQty ?? 0) * (d.SecRate ?? 0)),
+                SecUnit = d.SecUnitId,
+                SecQty = d.SecQty,
+                SecRate = d.SecRate,
                 CreatedBy = m.CreatedBy,
                 CreatedOn = m.CreatedOn,
                 LastModifiedBy = m.LastModifiedBy,
@@ -132,7 +135,7 @@ internal class PurchaseService : IPurchaseService
             AccountId = request.Account,
             Descr = request.Description,
             NarrationId = request.Narration,
-            Amount = request.Lines.Sum(x => (x.Qty * x.Rate) + x.AddLess),
+            Amount = request.Lines.Sum(x => (x.Qty * x.Rate) + x.AddLess + ((x.SecQty ?? 0) * (x.SecRate ?? 0))),
             Counter = "001"
         };
 
@@ -149,13 +152,16 @@ internal class PurchaseService : IPurchaseService
                 UnitId = string.IsNullOrWhiteSpace(line.Unit) ? null : line.Unit,
                 Qty = line.Qty,
                 Rate = line.Rate,
-                AddLess = line.AddLess
+                AddLess = line.AddLess,
+                SecUnitId = string.IsNullOrWhiteSpace(line.SecUnit) ? null : line.SecUnit,
+                SecQty = line.SecQty,
+                SecRate = line.SecRate
             }, false);
         }
 
         await UpsertItemTransactionsAsync(voucherNo, request.Date, request.Account, request.Lines, "001", cancellationToken);
         await UpsertGlEntryAsync(voucherNo, request.Date, request.Account, request.Narration, request.Description,
-            request.Lines.Sum(x => (x.Qty * x.Rate) + x.AddLess), cancellationToken);
+            request.Lines.Sum(x => (x.Qty * x.Rate) + x.AddLess + ((x.SecQty ?? 0) * (x.SecRate ?? 0))), cancellationToken);
 
         await _purchaseMasterRepository.SaveChangesAsync(cancellationToken);
         return voucherNo;
@@ -174,7 +180,7 @@ internal class PurchaseService : IPurchaseService
         master.AccountId = request.Account;
         master.Descr = request.Description;
         master.NarrationId = request.Narration;
-        master.Amount = request.Lines.Sum(x => (x.Qty * x.Rate) + x.AddLess);
+        master.Amount = request.Lines.Sum(x => (x.Qty * x.Rate) + x.AddLess + ((x.SecQty ?? 0) * (x.SecRate ?? 0)));
 
         await _purchaseMasterRepository.UpdateAsync(master, false);
 
@@ -197,7 +203,10 @@ internal class PurchaseService : IPurchaseService
                     UnitId = string.IsNullOrWhiteSpace(line.Unit) ? null : line.Unit,
                     Qty = line.Qty,
                     Rate = line.Rate,
-                    AddLess = line.AddLess
+                    AddLess = line.AddLess,
+                    SecUnitId = string.IsNullOrWhiteSpace(line.SecUnit) ? null : line.SecUnit,
+                    SecQty = line.SecQty,
+                    SecRate = line.SecRate
                 }, false);
             }
             else
@@ -209,6 +218,9 @@ internal class PurchaseService : IPurchaseService
                 existing.Qty = line.Qty;
                 existing.Rate = line.Rate;
                 existing.AddLess = line.AddLess;
+                existing.SecUnitId = string.IsNullOrWhiteSpace(line.SecUnit) ? null : line.SecUnit;
+                existing.SecQty = line.SecQty;
+                existing.SecRate = line.SecRate;
 
                 await _purchaseDetailRepository.UpdateAsync(existing, false);
             }
@@ -216,7 +228,7 @@ internal class PurchaseService : IPurchaseService
 
         await UpsertItemTransactionsAsync(voucherNo, request.Date, request.Account, request.Lines, master.Counter, cancellationToken);
         await UpsertGlEntryAsync(voucherNo, request.Date, request.Account, request.Narration, request.Description,
-            request.Lines.Sum(x => (x.Qty * x.Rate) + x.AddLess), cancellationToken);
+            request.Lines.Sum(x => (x.Qty * x.Rate) + x.AddLess + ((x.SecQty ?? 0) * (x.SecRate ?? 0))), cancellationToken);
 
         await _purchaseMasterRepository.SaveChangesAsync(cancellationToken);
     }
@@ -261,7 +273,7 @@ internal class PurchaseService : IPurchaseService
 
         var amount = await _purchaseDetailRepository.GetAll()
             .Where(x => x.VType == VType && x.VNo == voucherNo)
-            .SumAsync(x => (decimal?)((x.Qty * x.Rate) + x.AddLess), cancellationToken) ?? 0;
+            .SumAsync(x => (decimal?)((x.Qty * x.Rate) + x.AddLess + ((x.SecQty ?? 0) * (x.SecRate ?? 0))), cancellationToken) ?? 0;
 
         var master = await _purchaseMasterRepository.GetAll()
             .FirstOrDefaultAsync(x => x.VType == VType && x.VNo == voucherNo, cancellationToken);
@@ -294,7 +306,7 @@ internal class PurchaseService : IPurchaseService
     {
         foreach (var line in lines)
         {
-            var amount = line.Qty * line.Rate;
+            var amount = (line.Qty * line.Rate) + ((line.SecQty ?? 0) * (line.SecRate ?? 0));
             var tx = await _itemTransactionRepository.GetAll()
                 .IgnoreQueryFilters([GlobalQueryFilterConstants.SoftDelete])
                 .FirstOrDefaultAsync(x => x.VType == VType && x.VNo == voucherNo && x.Seq == line.Seq, cancellationToken);
@@ -316,7 +328,11 @@ internal class PurchaseService : IPurchaseService
                     QtyOut = 0,
                     Rate = line.Rate,
                     Amount = amount,
-                    Counter = counter
+                    Counter = counter,
+                    SecUnitId = string.IsNullOrWhiteSpace(line.SecUnit) ? null : line.SecUnit,
+                    SecQtyIn = line.SecQty,
+                    SecQtyOut = 0,
+                    SecRate = line.SecRate
                 }, false);
             }
             else
@@ -334,6 +350,10 @@ internal class PurchaseService : IPurchaseService
                 tx.Rate = line.Rate;
                 tx.Amount = amount;
                 tx.Counter = counter;
+                tx.SecUnitId = string.IsNullOrWhiteSpace(line.SecUnit) ? null : line.SecUnit;
+                tx.SecQtyIn = line.SecQty;
+                tx.SecQtyOut = 0;
+                tx.SecRate = line.SecRate;
 
                 await _itemTransactionRepository.UpdateAsync(tx, false);
             }

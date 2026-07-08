@@ -13,10 +13,15 @@ public class SaleSupplyDetail : AuditableEntity, IAggregateRoot
     public decimal? GrossRate { get; set; }
     public decimal? Discount { get; set; }
     public decimal? AddLess { get; set; }
+    public string? SecUnitId { get; set; }
+    public decimal? SecQty { get; set; }
+    public decimal? SecRate { get; set; }
+    public decimal? QtyInPack { get; set; }
 
     public int? SaleSupplyMasterId { get; set; }
     public string? CustomerAccountId { get; set; }
     public SaleSupplyMaster? SaleSupplyMaster { get; set; }
     public ChartOfAccount? CustomerAccount { get; set; }
     public Unit? Unit { get; set; }
+    public Unit? SecUnit { get; set; }
 }

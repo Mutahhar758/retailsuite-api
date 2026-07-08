@@ -9,6 +9,8 @@ public class TenantDto
     public string? AdminEmail { get; set; }
     public string? LicenseKey { get; set; }
     public bool IsActive { get; set; }
+    public bool HasSupplyFeature { get; set; }
+    public bool HasSecondaryQty { get; set; }
     public DateTime ValidFrom { get; set; }
     public DateTime? ValidUntil { get; set; }
 }

@@ -6,4 +6,6 @@ public interface ICurrentTenant
     string? Name { get; }
     string? ConnectionString { get; }
     bool IsValid { get; }
+    bool HasSupplyFeature { get; }
+    bool HasSecondaryQty { get; }
 }

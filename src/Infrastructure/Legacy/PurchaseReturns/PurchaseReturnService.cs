@@ -102,7 +102,10 @@ internal class PurchaseReturnService : IPurchaseReturnService
                 Unit = d.UnitId,
                 Qty = d.Qty,
                 Rate = d.Rate,
-                Amount = d.Qty * d.Rate,
+                Amount = (d.Qty * d.Rate) + ((d.SecQty ?? 0) * (d.SecRate ?? 0)),
+                SecUnit = d.SecUnitId,
+                SecQty = d.SecQty,
+                SecRate = d.SecRate,
                 CreatedBy = m.CreatedBy,
                 CreatedOn = m.CreatedOn,
                 LastModifiedBy = m.LastModifiedBy,
@@ -121,7 +124,7 @@ internal class PurchaseReturnService : IPurchaseReturnService
         var nextNum = maxVoucherNo == null ? 1L : long.Parse(maxVoucherNo) + 1;
         var voucherNo = nextNum.ToString("D5");
 
-        var amount = request.Lines.Sum(x => x.Qty * x.Rate);
+        var amount = request.Lines.Sum(x => (x.Qty * x.Rate) + ((x.SecQty ?? 0) * (x.SecRate ?? 0)));
         var master = new PurchaseRetMaster
         {
             VDate = request.Date,
@@ -147,7 +150,10 @@ internal class PurchaseReturnService : IPurchaseReturnService
                 ItemId = line.ItemId,
                 UnitId = string.IsNullOrWhiteSpace(line.Unit) ? null : line.Unit,
                 Qty = line.Qty,
-                Rate = line.Rate
+                Rate = line.Rate,
+                SecUnitId = string.IsNullOrWhiteSpace(line.SecUnit) ? null : line.SecUnit,
+                SecQty = line.SecQty,
+                SecRate = line.SecRate
             }, false);
         }
 
@@ -166,7 +172,7 @@ internal class PurchaseReturnService : IPurchaseReturnService
         if (master is null)
             throw new NotFoundException($"Purchase return voucher '{voucherNo}' not found.");
 
-        var amount = request.Lines.Sum(x => x.Qty * x.Rate);
+        var amount = request.Lines.Sum(x => (x.Qty * x.Rate) + ((x.SecQty ?? 0) * (x.SecRate ?? 0)));
 
         master.VDate = request.Date;
         master.VTime = TimeOnly.FromDateTime(DateTime.Now);
@@ -195,7 +201,10 @@ internal class PurchaseReturnService : IPurchaseReturnService
                     ItemId = line.ItemId,
                     UnitId = string.IsNullOrWhiteSpace(line.Unit) ? null : line.Unit,
                     Qty = line.Qty,
-                    Rate = line.Rate
+                    Rate = line.Rate,
+                    SecUnitId = string.IsNullOrWhiteSpace(line.SecUnit) ? null : line.SecUnit,
+                    SecQty = line.SecQty,
+                    SecRate = line.SecRate
                 }, false);
             }
             else
@@ -206,6 +215,9 @@ internal class PurchaseReturnService : IPurchaseReturnService
                 existing.UnitId = string.IsNullOrWhiteSpace(line.Unit) ? null : line.Unit;
                 existing.Qty = line.Qty;
                 existing.Rate = line.Rate;
+                existing.SecUnitId = string.IsNullOrWhiteSpace(line.SecUnit) ? null : line.SecUnit;
+                existing.SecQty = line.SecQty;
+                existing.SecRate = line.SecRate;
 
                 await _purchaseRetDetailRepository.UpdateAsync(existing, false);
             }
@@ -257,7 +269,7 @@ internal class PurchaseReturnService : IPurchaseReturnService
 
         var amount = await _purchaseRetDetailRepository.GetAll()
             .Where(x => x.VType == VType && x.VNo == voucherNo)
-            .SumAsync(x => (decimal?)(x.Qty * x.Rate), cancellationToken) ?? 0;
+            .SumAsync(x => (decimal?)((x.Qty * x.Rate) + ((x.SecQty ?? 0) * (x.SecRate ?? 0))), cancellationToken) ?? 0;
 
         var master = await _purchaseRetMasterRepository.GetAll()
             .FirstOrDefaultAsync(x => x.VType == VType && x.VNo == voucherNo, cancellationToken);
@@ -290,7 +302,7 @@ internal class PurchaseReturnService : IPurchaseReturnService
     {
         foreach (var line in lines)
         {
-            var amount = line.Qty * line.Rate;
+            var amount = (line.Qty * line.Rate) + ((line.SecQty ?? 0) * (line.SecRate ?? 0));
             var tx = await _itemTransactionRepository.GetAll()
                 .IgnoreQueryFilters([GlobalQueryFilterConstants.SoftDelete])
                 .FirstOrDefaultAsync(x => x.VType == VType && x.VNo == voucherNo && x.Seq == line.Seq, cancellationToken);
@@ -312,7 +324,11 @@ internal class PurchaseReturnService : IPurchaseReturnService
                     QtyOut = line.Qty,
                     Rate = line.Rate,
                     Amount = amount,
-                    Counter = counter
+                    Counter = counter,
+                    SecUnitId = string.IsNullOrWhiteSpace(line.SecUnit) ? null : line.SecUnit,
+                    SecQtyIn = 0,
+                    SecQtyOut = line.SecQty,
+                    SecRate = line.SecRate
                 }, false);
             }
             else
@@ -330,6 +346,10 @@ internal class PurchaseReturnService : IPurchaseReturnService
                 tx.Rate = line.Rate;
                 tx.Amount = amount;
                 tx.Counter = counter;
+                tx.SecUnitId = string.IsNullOrWhiteSpace(line.SecUnit) ? null : line.SecUnit;
+                tx.SecQtyIn = 0;
+                tx.SecQtyOut = line.SecQty;
+                tx.SecRate = line.SecRate;
 
                 await _itemTransactionRepository.UpdateAsync(tx, false);
             }

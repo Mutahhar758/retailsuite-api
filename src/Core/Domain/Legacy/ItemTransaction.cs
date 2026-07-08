@@ -19,8 +19,13 @@ public class ItemTransaction : AuditableEntity, IAggregateRoot
     public decimal Rate { get; set; }
     public decimal Amount { get; set; }
     public string? Counter { get; set; }
+    public string? SecUnitId { get; set; }
+    public decimal? SecQtyIn { get; set; }
+    public decimal? SecQtyOut { get; set; }
+    public decimal? SecRate { get; set; }
 
     public ChartOfAccount? Account { get; set; }
     public ItemDetail? Item { get; set; }
     public Unit? Unit { get; set; }
+    public Unit? SecUnit { get; set; }
 }

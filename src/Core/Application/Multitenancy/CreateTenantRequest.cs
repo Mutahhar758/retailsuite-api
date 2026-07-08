@@ -9,6 +9,8 @@ public class CreateTenantRequest
     public string Name { get; set; } = default!;
     public string DbProvider { get; set; } = default!;
     public string? AdminEmail { get; set; }
+    public bool HasSupplyFeature { get; set; } = true;
+    public bool HasSecondaryQty { get; set; } = false;
     public DateTime? ValidFrom { get; set; }
     public DateTime? ValidUntil { get; set; }
 }

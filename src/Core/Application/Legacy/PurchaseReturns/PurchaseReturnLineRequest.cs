@@ -7,4 +7,7 @@ public class PurchaseReturnLineRequest
     public string? Unit { get; set; }
     public decimal Qty { get; set; }
     public decimal Rate { get; set; }
+    public string? SecUnit { get; set; }
+    public decimal? SecQty { get; set; }
+    public decimal? SecRate { get; set; }
 }

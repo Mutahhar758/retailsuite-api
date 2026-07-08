@@ -17,6 +17,10 @@ public class CurrentTenant : ICurrentTenant
 
     public string? ConnectionString => _multiTenantContextAccessor.MultiTenantContext?.TenantInfo?.ConnectionString;
 
+    public bool HasSupplyFeature => _multiTenantContextAccessor.MultiTenantContext?.TenantInfo?.HasSupplyFeature ?? false;
+
+    public bool HasSecondaryQty => _multiTenantContextAccessor.MultiTenantContext?.TenantInfo?.HasSecondaryQty ?? false;
+
     public bool IsValid =>
         _multiTenantContextAccessor.MultiTenantContext?.TenantInfo is { } tenant
         && tenant.IsActive

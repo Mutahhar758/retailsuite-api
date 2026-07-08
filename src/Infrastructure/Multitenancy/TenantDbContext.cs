@@ -27,6 +27,8 @@ public class TenantDbContext : EFCoreStoreDbContext<Domain.Multitenancy.TenantIn
             entity.Property(t => t.DbProvider).HasMaxLength(64);
             entity.Property(t => t.AdminEmail).HasMaxLength(256);
             entity.Property(t => t.LicenseKey).HasMaxLength(256);
+            entity.Property(t => t.HasSupplyFeature).HasDefaultValue(true);
+            entity.Property(t => t.HasSecondaryQty).HasDefaultValue(false);
         });
     }
 }

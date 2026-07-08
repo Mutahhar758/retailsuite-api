@@ -8,4 +8,7 @@ public class PurchaseLineRequest
     public decimal Qty { get; set; }
     public decimal Rate { get; set; }
     public decimal AddLess { get; set; }
+    public string? SecUnit { get; set; }
+    public decimal? SecQty { get; set; }
+    public decimal? SecRate { get; set; }
 }

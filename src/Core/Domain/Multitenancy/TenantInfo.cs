@@ -19,6 +19,8 @@ public class TenantInfo : ITenantInfo
     public string? LicenseKey { get; set; }
 
     public bool IsActive { get; set; } = true;
+    public bool HasSupplyFeature { get; set; } = true;
+    public bool HasSecondaryQty { get; set; } = false;
 
     public DateTime ValidFrom { get; set; } = DateTime.UtcNow;
 

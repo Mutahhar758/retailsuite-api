@@ -84,7 +84,7 @@ internal class StockAdjustmentService : IStockAdjustmentService
                 on d.ItemId equals i.Id into itemJoin
             from i in itemJoin.DefaultIfEmpty()
             where d.VType == VType && d.VNo == voucherNo
-            orderby d.Seq
+             orderby d.Seq
             select new StockAdjustmentLineResponse
             {
                 Seq = d.Seq,
@@ -96,11 +96,16 @@ internal class StockAdjustmentService : IStockAdjustmentService
                 ItemCategoryCode = d.CategoryId!,
                 ItemId = d.ItemId!,
                 ItemKey = i != null ? i.ItemKey : null,
-                Unit = i != null ? (i.DefaultUnitId ?? i.PrimaryUnitId) : null,
+                Unit = d.SecUnitId,
                 QtyIn = d.QtyIn,
                 QtyOut = d.QtyOut,
                 Rate = d.Rate,
-                Amount = (d.QtyIn - d.QtyOut) * d.Rate,
+                Amount = ((d.QtyIn - d.QtyOut) * d.Rate) + (((d.SecQtyIn ?? 0) - (d.SecQtyOut ?? 0)) * (d.SecRate ?? 0)),
+                SecUnit = d.SecUnitId,
+                SecQtyIn = d.SecQtyIn,
+                SecQtyOut = d.SecQtyOut,
+                SecRate = d.SecRate,
+                QtyInPack = d.QtyInPack,
                 CreatedBy = m.CreatedBy,
                 CreatedOn = m.CreatedOn,
                 LastModifiedBy = m.LastModifiedBy,
@@ -143,7 +148,12 @@ internal class StockAdjustmentService : IStockAdjustmentService
                 ItemId = line.ItemId,
                 QtyIn = line.QtyIn,
                 QtyOut = line.QtyOut,
-                Rate = line.Rate
+                Rate = line.Rate,
+                SecUnitId = string.IsNullOrWhiteSpace(line.SecUnit) ? null : line.SecUnit,
+                SecQtyIn = line.SecQtyIn,
+                SecQtyOut = line.SecQtyOut,
+                SecRate = line.SecRate,
+                QtyInPack = line.QtyInPack
             }, false);
         }
 
@@ -186,7 +196,12 @@ internal class StockAdjustmentService : IStockAdjustmentService
                     ItemId = line.ItemId,
                     QtyIn = line.QtyIn,
                     QtyOut = line.QtyOut,
-                    Rate = line.Rate
+                    Rate = line.Rate,
+                    SecUnitId = string.IsNullOrWhiteSpace(line.SecUnit) ? null : line.SecUnit,
+                    SecQtyIn = line.SecQtyIn,
+                    SecQtyOut = line.SecQtyOut,
+                    SecRate = line.SecRate,
+                    QtyInPack = line.QtyInPack
                 }, false);
             }
             else
@@ -198,6 +213,11 @@ internal class StockAdjustmentService : IStockAdjustmentService
                 existing.QtyIn = line.QtyIn;
                 existing.QtyOut = line.QtyOut;
                 existing.Rate = line.Rate;
+                existing.SecUnitId = string.IsNullOrWhiteSpace(line.SecUnit) ? null : line.SecUnit;
+                existing.SecQtyIn = line.SecQtyIn;
+                existing.SecQtyOut = line.SecQtyOut;
+                existing.SecRate = line.SecRate;
+                existing.QtyInPack = line.QtyInPack;
 
                 await _stockAdjDetailRepository.UpdateAsync(existing, false);
             }
@@ -259,8 +279,8 @@ internal class StockAdjustmentService : IStockAdjustmentService
         foreach (var line in lines)
         {
             var netQty = line.QtyIn - line.QtyOut;
-            var amount = netQty * line.Rate;
-            var tranType = netQty >= 0 ? "in" : "out";
+            var amount = (netQty * line.Rate) + (((line.SecQtyIn ?? 0) - (line.SecQtyOut ?? 0)) * (line.SecRate ?? 0));
+            var tranType = (netQty + ((line.SecQtyIn ?? 0) - (line.SecQtyOut ?? 0))) >= 0 ? "in" : "out";
             var tx = await _itemTransactionRepository.GetAll()
                 .IgnoreQueryFilters([GlobalQueryFilterConstants.SoftDelete])
                 .FirstOrDefaultAsync(x => x.VType == VType && x.VNo == voucherNo && x.Seq == line.Seq, cancellationToken);
@@ -282,7 +302,11 @@ internal class StockAdjustmentService : IStockAdjustmentService
                     QtyOut = line.QtyOut,
                     Rate = line.Rate,
                     Amount = amount,
-                    Counter = counter
+                    Counter = counter,
+                    SecUnitId = string.IsNullOrWhiteSpace(line.SecUnit) ? null : line.SecUnit,
+                    SecQtyIn = line.SecQtyIn,
+                    SecQtyOut = line.SecQtyOut,
+                    SecRate = line.SecRate
                 }, false);
             }
             else
@@ -300,6 +324,10 @@ internal class StockAdjustmentService : IStockAdjustmentService
                 tx.Rate = line.Rate;
                 tx.Amount = amount;
                 tx.Counter = counter;
+                tx.SecUnitId = string.IsNullOrWhiteSpace(line.SecUnit) ? null : line.SecUnit;
+                tx.SecQtyIn = line.SecQtyIn;
+                tx.SecQtyOut = line.SecQtyOut;
+                tx.SecRate = line.SecRate;
 
                 await _itemTransactionRepository.UpdateAsync(tx, false);
             }

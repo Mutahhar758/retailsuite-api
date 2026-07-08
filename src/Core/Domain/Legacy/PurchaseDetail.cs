@@ -13,10 +13,14 @@ public class PurchaseDetail : AuditableEntity, IAggregateRoot
     public decimal Qty { get; set; }
     public decimal Rate { get; set; }
     public decimal AddLess { get; set; }
+    public string? SecUnitId { get; set; }
+    public decimal? SecQty { get; set; }
+    public decimal? SecRate { get; set; }
 
     public int? PurchaseMasterId { get; set; }
     public string? ItemId { get; set; }
     public PurchaseMaster? PurchaseMaster { get; set; }
     public ItemDetail? Item { get; set; }
     public Unit? Unit { get; set; }
+    public Unit? SecUnit { get; set; }
 }

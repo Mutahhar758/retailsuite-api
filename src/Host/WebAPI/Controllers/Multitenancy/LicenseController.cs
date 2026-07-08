@@ -1,4 +1,5 @@
 using Retailer.Application.Multitenancy;
+using Retailer.Application.Common.Interfaces;
 using Retailer.Infrastructure.Common.Extensions;
 using Retailer.Shared.Authorization;
 using Microsoft.AspNetCore.Authorization;
@@ -23,5 +24,17 @@ public class LicenseController : BaseApiController
     {
         var tenantId = await _tenantService.GetTenantIdByLicenseKeyAsync(licenseKey, cancellationToken);
         return Ok(tenantId.ToInformationResponse());
+    }
+
+    [HttpGet("features")]
+    [AllowAnonymous]
+    [OpenApiOperation("Get current tenant features.", "")]
+    public IActionResult GetFeatures([FromServices] ICurrentTenant currentTenant)
+    {
+        return Ok(new
+        {
+            HasSupplyFeature = currentTenant.HasSupplyFeature,
+            HasSecondaryQty = currentTenant.HasSecondaryQty
+        }.ToInformationResponse());
     }
 }

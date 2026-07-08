@@ -104,7 +104,10 @@ internal class SaleService : ISaleService
                 Qty = d.Qty,
                 Rate = d.GrossRate ?? 0,
                 Discount = d.Discount ?? 0,
-                Amount = d.Qty * ((d.GrossRate ?? 0) - (d.Discount ?? 0)),
+                Amount = (d.Qty * ((d.GrossRate ?? 0) - (d.Discount ?? 0))) + ((d.SecQty ?? 0) * (d.SecRate ?? 0)),
+                SecUnit = d.SecUnitId,
+                SecQty = d.SecQty,
+                SecRate = d.SecRate,
                 CashReceipt = m.CashReceipt,
                 CashBack = m.CashBack ?? 0,
                 CreatedBy = m.CreatedBy,
@@ -125,9 +128,9 @@ internal class SaleService : ISaleService
         var nextNum = maxVoucherNo == null ? 1L : long.Parse(maxVoucherNo) + 1;
         var voucherNo = nextNum.ToString("D5");
 
-        var grossAmount = request.Lines.Sum(x => x.Qty * x.Rate);
+        var grossAmount = request.Lines.Sum(x => (x.Qty * x.Rate) + ((x.SecQty ?? 0) * (x.SecRate ?? 0)));
         var discountAmount = request.Lines.Sum(x => x.Qty * x.Discount);
-        var netAmount = request.Lines.Sum(x => x.Qty * (x.Rate - x.Discount));
+        var netAmount = request.Lines.Sum(x => (x.Qty * (x.Rate - x.Discount)) + ((x.SecQty ?? 0) * (x.SecRate ?? 0)));
 
         var master = new SaleMaster
         {
@@ -159,7 +162,10 @@ internal class SaleService : ISaleService
                 UnitId = string.IsNullOrWhiteSpace(line.Unit) ? null : line.Unit,
                 Qty = line.Qty,
                 GrossRate = line.Rate,
-                Discount = line.Discount
+                Discount = line.Discount,
+                SecUnitId = string.IsNullOrWhiteSpace(line.SecUnit) ? null : line.SecUnit,
+                SecQty = line.SecQty,
+                SecRate = line.SecRate
             }, false);
         }
 
@@ -178,9 +184,9 @@ internal class SaleService : ISaleService
         if (master is null)
             throw new NotFoundException($"Sale voucher '{voucherNo}' not found.");
 
-        var grossAmount = request.Lines.Sum(x => x.Qty * x.Rate);
+        var grossAmount = request.Lines.Sum(x => (x.Qty * x.Rate) + ((x.SecQty ?? 0) * (x.SecRate ?? 0)));
         var discountAmount = request.Lines.Sum(x => x.Qty * x.Discount);
-        var netAmount = request.Lines.Sum(x => x.Qty * (x.Rate - x.Discount));
+        var netAmount = request.Lines.Sum(x => (x.Qty * (x.Rate - x.Discount)) + ((x.SecQty ?? 0) * (x.SecRate ?? 0)));
 
         master.VDate = request.Date;
         master.VTime = TimeOnly.FromDateTime(DateTime.Now);
@@ -214,7 +220,10 @@ internal class SaleService : ISaleService
                     UnitId = string.IsNullOrWhiteSpace(line.Unit) ? null : line.Unit,
                     Qty = line.Qty,
                     GrossRate = line.Rate,
-                    Discount = line.Discount
+                    Discount = line.Discount,
+                    SecUnitId = string.IsNullOrWhiteSpace(line.SecUnit) ? null : line.SecUnit,
+                    SecQty = line.SecQty,
+                    SecRate = line.SecRate
                 }, false);
             }
             else
@@ -226,6 +235,9 @@ internal class SaleService : ISaleService
                 existing.Qty = line.Qty;
                 existing.GrossRate = line.Rate;
                 existing.Discount = line.Discount;
+                existing.SecUnitId = string.IsNullOrWhiteSpace(line.SecUnit) ? null : line.SecUnit;
+                existing.SecQty = line.SecQty;
+                existing.SecRate = line.SecRate;
 
                 await _saleRepository.UpdateAsync(existing, false);
             }
@@ -422,7 +434,7 @@ internal class SaleService : ISaleService
     {
         foreach (var line in lines)
         {
-            var amount = line.Qty * (line.Rate - line.Discount);
+            var amount = (line.Qty * (line.Rate - line.Discount)) + ((line.SecQty ?? 0) * (line.SecRate ?? 0));
             var tx = await _itemTransactionRepository.GetAll()
                 .IgnoreQueryFilters([GlobalQueryFilterConstants.SoftDelete])
                 .FirstOrDefaultAsync(x => x.VType == VType && x.VNo == voucherNo && x.Seq == line.Seq, cancellationToken);
@@ -444,7 +456,11 @@ internal class SaleService : ISaleService
                     QtyOut = line.Qty,
                     Rate = line.Rate,
                     Amount = amount,
-                    Counter = counter
+                    Counter = counter,
+                    SecUnitId = string.IsNullOrWhiteSpace(line.SecUnit) ? null : line.SecUnit,
+                    SecQtyIn = 0,
+                    SecQtyOut = line.SecQty,
+                    SecRate = line.SecRate
                 }, false);
             }
             else
@@ -462,6 +478,10 @@ internal class SaleService : ISaleService
                 tx.Rate = line.Rate;
                 tx.Amount = amount;
                 tx.Counter = counter;
+                tx.SecUnitId = string.IsNullOrWhiteSpace(line.SecUnit) ? null : line.SecUnit;
+                tx.SecQtyIn = 0;
+                tx.SecQtyOut = line.SecQty;
+                tx.SecRate = line.SecRate;
 
                 await _itemTransactionRepository.UpdateAsync(tx, false);
             }
