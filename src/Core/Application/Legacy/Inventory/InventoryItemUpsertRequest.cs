@@ -21,6 +21,7 @@ public class InventoryItemUpsertRequest
     public decimal? OpnRate { get; set; }
     public ItemType? ItemType { get; set; }
     public string? MediaId { get; set; }
+    public string? QuickQtyPresets { get; set; }
 }
 
 

@@ -23,6 +23,7 @@ public class InventoryItemResponse
     public ItemType? ItemType { get; set; }
     public string? MediaId { get; set; }
     public string? MediaUrl { get; set; }
+    public string? QuickQtyPresets { get; set; }
 }
 
 

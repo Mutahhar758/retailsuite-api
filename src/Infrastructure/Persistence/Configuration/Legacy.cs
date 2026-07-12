@@ -112,6 +112,9 @@ public class ItemDetailConfig : IEntityTypeConfiguration<ItemDetail>
             .HasConversion<string>()
             .HasMaxLength(50);
 
+        builder.Property(x => x.QuickQtyPresets)
+            .HasMaxLength(250);
+
         builder.HasOne(x => x.ItemCategory)
             .WithMany()
             .HasForeignKey(x => x.ItemCategoryId)

@@ -57,7 +57,8 @@ internal class InventoryService : IInventoryService
             OpnStock = x.OpnStock,
             OpnRate = x.OpnRate,
             ItemType = x.ItemType,
-            MediaId = x.MediaId
+            MediaId = x.MediaId,
+            QuickQtyPresets = x.QuickQtyPresets
         }).ToList();
 
         await PopulateMediaUrlsAsync(mappedItems, cancellationToken);
@@ -92,7 +93,8 @@ internal class InventoryService : IInventoryService
             OpnStock = item.OpnStock,
             OpnRate = item.OpnRate,
             ItemType = item.ItemType,
-            MediaId = item.MediaId
+            MediaId = item.MediaId,
+            QuickQtyPresets = item.QuickQtyPresets
         };
 
         if (!string.IsNullOrEmpty(response.MediaId))
@@ -143,7 +145,8 @@ internal class InventoryService : IInventoryService
                 LowStockAlert = isNewService ? null : request.LowStockAlert,
                 OpnStock = isNewService ? 0 : request.OpnStock,
                 OpnRate = isNewService ? 0 : request.OpnRate,
-                MediaId = request.MediaId
+                MediaId = request.MediaId,
+                QuickQtyPresets = request.QuickQtyPresets
             };
 
             await _itemRepository.AddAsync(item);
@@ -180,6 +183,7 @@ internal class InventoryService : IInventoryService
         existing.OpnStock = isExistingService ? 0 : request.OpnStock;
         existing.OpnRate = isExistingService ? 0 : request.OpnRate;
         existing.MediaId = request.MediaId;
+        existing.QuickQtyPresets = request.QuickQtyPresets;
 
         await _itemRepository.UpdateAsync(existing);
 
