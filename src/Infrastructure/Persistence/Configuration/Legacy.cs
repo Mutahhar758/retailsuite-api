@@ -113,7 +113,7 @@ public class ItemDetailConfig : IEntityTypeConfiguration<ItemDetail>
             .HasMaxLength(50);
 
         builder.Property(x => x.QuickQtyPresets)
-            .HasMaxLength(250);
+            .HasMaxLength(1000);
 
         builder.HasOne(x => x.ItemCategory)
             .WithMany()
