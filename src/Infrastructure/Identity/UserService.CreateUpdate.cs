@@ -128,15 +128,37 @@ internal partial class UserService
             throw new BadRequestException(_localizer[MessageConstants.ValidationErrorsOccurred] + string.Join('\n', result.GetErrors(_localizer)));
         }
 
-        var basicRole = await _roleManager.FindByNameAsync(AppRoles.Basic);
-        if (basicRole != null)
+        if (request.UserRoles?.Any() == true)
         {
-            await _db.UserRoles.AddAsync(new IdentityUserRole<string>
+            foreach (var userRole in request.UserRoles)
             {
-                UserId = user.Id,
-                RoleId = basicRole.Id
-            });
+                if (userRole.Enabled)
+                {
+                    var role = await _roleManager.FindByNameAsync(userRole.RoleName!);
+                    if (role is not null)
+                    {
+                        await _db.UserRoles.AddAsync(new IdentityUserRole<string>
+                        {
+                            UserId = user.Id,
+                            RoleId = role.Id
+                        });
+                    }
+                }
+            }
             await _db.SaveChangesAsync();
+        }
+        else
+        {
+            var basicRole = await _roleManager.FindByNameAsync(AppRoles.Basic);
+            if (basicRole != null)
+            {
+                await _db.UserRoles.AddAsync(new IdentityUserRole<string>
+                {
+                    UserId = user.Id,
+                    RoleId = basicRole.Id
+                });
+                await _db.SaveChangesAsync();
+            }
         }
 
         var messages = new List<string> { _localizer[MessageConstants.UserRegistered, user.Email] };

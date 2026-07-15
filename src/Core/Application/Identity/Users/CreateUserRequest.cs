@@ -8,4 +8,5 @@ public class CreateUserRequest
     public string Password { get; set; } = default!;
     public string? PhoneNumber { get; set; }
     public string? UserName { get; set; }
+    public List<UserRoleDto> UserRoles { get; set; } = new();
 }
