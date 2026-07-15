@@ -18,7 +18,7 @@ namespace Migrators.MSSQL.Migrations.Application
                 nullable: false,
                 defaultValue: false);
 
-            migrationBuilder.Sql("UPDATE identity.users SET is_owner = 1;");
+            migrationBuilder.Sql("UPDATE [identity].[users] SET [is_owner] = 1;");
         }
 
         /// <inheritdoc />
