@@ -1,5 +1,7 @@
 using Retailer.Application.Legacy.JournalVouchers;
 using Retailer.Infrastructure.Common.Extensions;
+using Retailer.Infrastructure.Auth.Permissions;
+using Retailer.Shared.Authorization;
 
 namespace Retailer.Host.Controllers.Legacy;
 
@@ -13,6 +15,7 @@ public class JournalVouchersController : VersionNeutralApiController
     }
 
     [HttpGet]
+    [MustHavePermission(AppAction.View, AppResource.JournalVouchers)]
     [OpenApiOperation("Get journal voucher list.", "")]
     public async Task<HttpResponseDto<List<JournalVoucherResponse>>> GetListAsync(
         [FromQuery] JournalVoucherListFilter filter,
@@ -31,6 +34,7 @@ public class JournalVouchersController : VersionNeutralApiController
     }
 
     [HttpGet("{voucherNo}")]
+    [MustHavePermission(AppAction.View, AppResource.JournalVouchers)]
     [OpenApiOperation("Get journal voucher detail.", "")]
     public async Task<HttpResponseDto<List<JournalVoucherLineResponse>>> GetDetailAsync(
         string voucherNo,
@@ -42,6 +46,7 @@ public class JournalVouchersController : VersionNeutralApiController
     }
 
     [HttpPost]
+    [MustHavePermission(AppAction.Create, AppResource.JournalVouchers)]
     [OpenApiOperation("Create a new journal voucher.", "")]
     public async Task<HttpResponseDto<string>> CreateAsync(
         JournalVoucherCreateRequest request,
@@ -52,6 +57,7 @@ public class JournalVouchersController : VersionNeutralApiController
     }
 
     [HttpPut("{voucherNo}")]
+    [MustHavePermission(AppAction.Update, AppResource.JournalVouchers)]
     [OpenApiOperation("Update an existing journal voucher.", "")]
     public async Task<HttpResponseDto<string>> UpdateAsync(
         string voucherNo,
@@ -63,6 +69,7 @@ public class JournalVouchersController : VersionNeutralApiController
     }
 
     [HttpDelete("{voucherNo}")]
+    [MustHavePermission(AppAction.Delete, AppResource.JournalVouchers)]
     [OpenApiOperation("Delete a journal voucher.", "")]
     public async Task<HttpResponseDto<string>> DeleteAsync(
         string voucherNo,
@@ -73,6 +80,7 @@ public class JournalVouchersController : VersionNeutralApiController
     }
 
     [HttpDelete("{voucherNo}/lines/{seq}")]
+    [MustHavePermission(AppAction.Delete, AppResource.JournalVouchers)]
     [OpenApiOperation("Delete a single line from a journal voucher.", "")]
     public async Task<HttpResponseDto<string>> DeleteLineAsync(
         string voucherNo,

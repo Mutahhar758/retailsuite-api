@@ -13,5 +13,6 @@ public class ApplicationUser : IdentityUser
     public string? ObjectId { get; set; }
     public UserStatus Status { get; set; }
     public string? BiometricPublicKey { get; set; }
+    public bool IsOwner { get; set; }
     public virtual List<UserSession>? UserSessions { get; set; }
 }

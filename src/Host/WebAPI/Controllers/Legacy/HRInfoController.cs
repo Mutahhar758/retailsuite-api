@@ -1,6 +1,8 @@
 using Retailer.Application.Legacy.HumanResources;
 using Retailer.Application.Common.Interfaces;
 using Retailer.Infrastructure.Common.Extensions;
+using Retailer.Infrastructure.Auth.Permissions;
+using Retailer.Shared.Authorization;
 
 namespace Retailer.Host.Controllers.Legacy;
 
@@ -14,6 +16,7 @@ public class HRInfoController : VersionNeutralApiController
     }
 
     [HttpGet]
+    [MustHavePermission(AppAction.View, AppResource.HRInfo)]
     [OpenApiOperation("Get all HR information records.", "")]
     public async Task<HttpResponseDto<List<HRInfoResponse>>> GetAsync(CancellationToken cancellationToken)
     {
@@ -22,6 +25,7 @@ public class HRInfoController : VersionNeutralApiController
     }
 
     [HttpGet("{id}")]
+    [MustHavePermission(AppAction.View, AppResource.HRInfo)]
     [OpenApiOperation("Get HR information by ID.", "")]
     public async Task<HttpResponseDto<HRInfoResponse>> GetByIdAsync(string id, CancellationToken cancellationToken)
     {
@@ -33,6 +37,7 @@ public class HRInfoController : VersionNeutralApiController
     }
 
     [HttpPost]
+    [MustHavePermission(AppAction.Create, AppResource.HRInfo)]
     [OpenApiOperation("Create HR information.", "")]
     public async Task<HttpResponseDto<string>> CreateAsync(HRInfoUpsertRequest request, CancellationToken cancellationToken)
     {
@@ -41,6 +46,7 @@ public class HRInfoController : VersionNeutralApiController
     }
 
     [HttpPut("{id}")]
+    [MustHavePermission(AppAction.Update, AppResource.HRInfo)]
     [OpenApiOperation("Update HR information.", "")]
     public async Task<HttpResponseDto<string>> UpdateAsync(string id, HRInfoUpsertRequest request, CancellationToken cancellationToken)
     {
@@ -49,6 +55,7 @@ public class HRInfoController : VersionNeutralApiController
     }
 
     [HttpDelete("{id}")]
+    [MustHavePermission(AppAction.Delete, AppResource.HRInfo)]
     [OpenApiOperation("Delete HR information.", "")]
     public async Task<HttpResponseDto<string>> DeleteAsync(string id, CancellationToken cancellationToken)
     {
@@ -57,6 +64,7 @@ public class HRInfoController : VersionNeutralApiController
     }
 
     [HttpPost("presigned-upload-url")]
+    [MustHavePermission(new[] { AppAction.Create, AppAction.Update }, AppResource.HRInfo)]
     [OpenApiOperation("Generate pre-signed upload URL for HR Info photo.", "")]
     public async Task<HttpResponseDto<PresignedUploadUrlResponse?>> GetPresignedUploadUrlAsync([FromQuery] string fileName, CancellationToken cancellationToken)
     {

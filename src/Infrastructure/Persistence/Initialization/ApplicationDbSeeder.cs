@@ -126,7 +126,8 @@ internal class ApplicationDbSeeder
                 PhoneNumberConfirmed = true,
                 NormalizedEmail = email.ToUpperInvariant(),
                 NormalizedUserName = InitialDataSeedConstants.AdminUserName.ToUpperInvariant(),
-                Status = UserStatus.Active
+                Status = UserStatus.Active,
+                IsOwner = true
             };
 
             _logger.LogInformation("Seeding Default Admin User.");

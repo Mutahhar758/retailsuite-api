@@ -16,6 +16,11 @@ internal partial class UserService
 
         _ = user ?? throw new UnauthorizedException(MessageConstants.AuthFailed);
 
+        if (user.IsOwner)
+        {
+            return new List<string>();
+        }
+
         var userRoles = await _userManager.GetRolesAsync(user);
         var permissions = new List<string>();
         foreach (var role in await _roleManager.Roles

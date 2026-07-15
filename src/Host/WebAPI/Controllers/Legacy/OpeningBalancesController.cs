@@ -1,5 +1,7 @@
 using Retailer.Application.Legacy.OpeningBalances;
 using Retailer.Infrastructure.Common.Extensions;
+using Retailer.Infrastructure.Auth.Permissions;
+using Retailer.Shared.Authorization;
 
 namespace Retailer.Host.Controllers.Legacy;
 
@@ -13,6 +15,7 @@ public class OpeningBalancesController : VersionNeutralApiController
     }
 
     [HttpGet]
+    [MustHavePermission(AppAction.View, AppResource.OpeningBalances)]
     [OpenApiOperation("Get opening balances.", "")]
     public async Task<HttpResponseDto<List<OpeningBalanceResponse>>> GetAsync(
         [FromQuery] string? parentAccountId,
@@ -23,6 +26,7 @@ public class OpeningBalancesController : VersionNeutralApiController
     }
 
     [HttpPut]
+    [MustHavePermission(AppAction.Update, AppResource.OpeningBalances)]
     [OpenApiOperation("Upsert an opening balance.", "")]
     public async Task<HttpResponseDto<string>> UpsertAsync(
         OpeningBalanceUpsertRequest request,

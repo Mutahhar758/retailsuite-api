@@ -1,5 +1,7 @@
 using Retailer.Application.Legacy.ChartOfAccounts;
 using Retailer.Infrastructure.Common.Extensions;
+using Retailer.Infrastructure.Auth.Permissions;
+using Retailer.Shared.Authorization;
 
 namespace Retailer.Host.Controllers.Legacy;
 
@@ -13,6 +15,7 @@ public class ChartOfAccountsController : VersionNeutralApiController
     }
 
     [HttpGet]
+    [MustHavePermission(AppAction.View, AppResource.ChartOfAccounts)]
     [OpenApiOperation("Get active chart of accounts.", "")]
     public async Task<HttpResponseDto<List<ChartOfAccountResponse>>> GetAsync(CancellationToken cancellationToken)
     {
@@ -21,6 +24,7 @@ public class ChartOfAccountsController : VersionNeutralApiController
     }
 
     [HttpPost]
+    [MustHavePermission(AppAction.Create, AppResource.ChartOfAccounts)]
     [OpenApiOperation("Create a chart of account.", "")]
     public async Task<HttpResponseDto<string>> CreateAsync(ChartOfAccountCreateRequest request, CancellationToken cancellationToken)
     {
@@ -29,6 +33,7 @@ public class ChartOfAccountsController : VersionNeutralApiController
     }
 
     [HttpPut("{account}")]
+    [MustHavePermission(AppAction.Update, AppResource.ChartOfAccounts)]
     [OpenApiOperation("Update a chart of account.", "")]
     public async Task<HttpResponseDto<string>> UpdateAsync(string account, ChartOfAccountUpdateRequest request, CancellationToken cancellationToken)
     {
@@ -37,6 +42,7 @@ public class ChartOfAccountsController : VersionNeutralApiController
     }
 
     [HttpDelete("{account}")]
+    [MustHavePermission(AppAction.Delete, AppResource.ChartOfAccounts)]
     [OpenApiOperation("Delete a chart of account.", "")]
     public async Task<HttpResponseDto<string>> DeleteAsync(string account, CancellationToken cancellationToken)
     {

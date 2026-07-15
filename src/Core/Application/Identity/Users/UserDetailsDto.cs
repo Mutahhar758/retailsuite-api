@@ -25,4 +25,6 @@ public class UserDetailsDto
     public UserStatus Status { get; set; }
 
     public bool IsBiometricEnabled { get; set; }
+
+    public bool IsOwner { get; set; }
 }

@@ -1,6 +1,8 @@
 using Retailer.Application.Legacy.CustomerDetails;
 using Retailer.Application.Common.Interfaces;
 using Retailer.Infrastructure.Common.Extensions;
+using Retailer.Infrastructure.Auth.Permissions;
+using Retailer.Shared.Authorization;
 
 namespace Retailer.Host.Controllers.Legacy;
 
@@ -14,6 +16,7 @@ public class CustomersController : VersionNeutralApiController
     }
 
     [HttpGet]
+    [MustHavePermission(AppAction.View, AppResource.Customers)]
     [OpenApiOperation("Get customers.", "")]
     public async Task<HttpResponseDto<List<CustomerResponse>>> GetAsync(CancellationToken cancellationToken)
     {
@@ -22,6 +25,7 @@ public class CustomersController : VersionNeutralApiController
     }
 
     [HttpPost]
+    [MustHavePermission(AppAction.Create, AppResource.Customers)]
     [OpenApiOperation("Create customer and chart of account.", "")]
     public async Task<HttpResponseDto<string>> CreateAsync(CustomerCreateRequest request, CancellationToken cancellationToken)
     {
@@ -30,6 +34,7 @@ public class CustomersController : VersionNeutralApiController
     }
 
     [HttpPut("{account}")]
+    [MustHavePermission(AppAction.Update, AppResource.Customers)]
     [OpenApiOperation("Update customer details.", "")]
     public async Task<HttpResponseDto<string>> UpdateAsync(string account, CustomerUpdateRequest request, CancellationToken cancellationToken)
     {
@@ -38,6 +43,7 @@ public class CustomersController : VersionNeutralApiController
     }
 
     [HttpPost("presigned-upload-url")]
+    [MustHavePermission(new[] { AppAction.Create, AppAction.Update }, AppResource.Customers)]
     [OpenApiOperation("Generate pre-signed upload URL for customer image.", "")]
     public async Task<HttpResponseDto<PresignedUploadUrlResponse?>> GetPresignedUploadUrlAsync([FromQuery] string fileName, CancellationToken cancellationToken)
     {

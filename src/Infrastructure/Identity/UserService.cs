@@ -119,7 +119,8 @@ internal partial class UserService : IUserService
                  EmailConfirmed = s.EmailConfirmed,
                  IsBiometricEnabled = s.BiometricPublicKey != null ? true : false,
                  ImageUrl = s.ImageUrl,
-                 UserName = s.UserName
+                 UserName = s.UserName,
+                 IsOwner = s.IsOwner
             })
             .FirstOrDefaultAsync(cancellationToken) ?? throw new NotFoundException(_localizer[MessageConstants.RecordNotFound, _localizer[EntityConstants.User]]);
 

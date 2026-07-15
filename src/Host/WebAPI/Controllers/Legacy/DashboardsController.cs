@@ -1,5 +1,7 @@
 using Retailer.Application.Legacy.Dashboards;
 using Retailer.Infrastructure.Common.Extensions;
+using Retailer.Infrastructure.Auth.Permissions;
+using Retailer.Shared.Authorization;
 
 namespace Retailer.Host.Controllers.Legacy;
 
@@ -13,6 +15,7 @@ public class DashboardsController : VersionNeutralApiController
     }
 
     [HttpGet("stats")]
+    [MustHavePermission(AppAction.View, AppResource.Dashboard)]
     [OpenApiOperation("Get dashboard summary statistics.", "")]
     public async Task<HttpResponseDto<DashboardStatsDto>> GetStatsAsync(CancellationToken cancellationToken)
     {
@@ -21,6 +24,7 @@ public class DashboardsController : VersionNeutralApiController
     }
 
     [HttpGet("sales-trend")]
+    [MustHavePermission(AppAction.View, AppResource.Dashboard)]
     [OpenApiOperation("Get sales trend data for the last 7 months.", "")]
     public async Task<HttpResponseDto<List<SalesTrendDto>>> GetSalesTrendAsync(CancellationToken cancellationToken)
     {
@@ -29,6 +33,7 @@ public class DashboardsController : VersionNeutralApiController
     }
 
     [HttpGet("cash-flow-trend")]
+    [MustHavePermission(AppAction.View, AppResource.Dashboard)]
     [OpenApiOperation("Get cash flow trend data (In vs Out) for the last 7 months.", "")]
     public async Task<HttpResponseDto<List<CashFlowTrendDto>>> GetCashFlowTrendAsync(CancellationToken cancellationToken)
     {
@@ -37,6 +42,7 @@ public class DashboardsController : VersionNeutralApiController
     }
 
     [HttpGet("expenses-by-category")]
+    [MustHavePermission(AppAction.View, AppResource.Dashboard)]
     [OpenApiOperation("Get breakdown of expenses by category for the current month.", "")]
     public async Task<HttpResponseDto<List<ExpenseCategoryDto>>> GetExpensesByCategoryAsync(CancellationToken cancellationToken)
     {
@@ -45,6 +51,7 @@ public class DashboardsController : VersionNeutralApiController
     }
 
     [HttpGet("recent-expenses")]
+    [MustHavePermission(AppAction.View, AppResource.Dashboard)]
     [OpenApiOperation("Get the most recent expense entries.", "")]
     public async Task<HttpResponseDto<List<RecentExpenseDto>>> GetRecentExpensesAsync(CancellationToken cancellationToken)
     {
@@ -53,6 +60,7 @@ public class DashboardsController : VersionNeutralApiController
     }
 
     [HttpGet("stock-status")]
+    [MustHavePermission(AppAction.View, AppResource.Dashboard)]
     [OpenApiOperation("Get top stock items by value and their status.", "")]
     public async Task<HttpResponseDto<List<StockStatusDto>>> GetStockStatusAsync(CancellationToken cancellationToken)
     {
@@ -61,6 +69,7 @@ public class DashboardsController : VersionNeutralApiController
     }
 
     [HttpGet("recent-payments")]
+    [MustHavePermission(AppAction.View, AppResource.Dashboard)]
     [OpenApiOperation("Get the most recent receipt and payment transactions.", "")]
     public async Task<HttpResponseDto<List<RecentPaymentDto>>> GetRecentPaymentsAsync(CancellationToken cancellationToken)
     {

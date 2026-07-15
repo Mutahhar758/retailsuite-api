@@ -1,5 +1,7 @@
 using Retailer.Application.Legacy.SaleReturns;
 using Retailer.Infrastructure.Common.Extensions;
+using Retailer.Infrastructure.Auth.Permissions;
+using Retailer.Shared.Authorization;
 
 namespace Retailer.Host.Controllers.Legacy;
 
@@ -13,6 +15,7 @@ public class SaleReturnsController : VersionNeutralApiController
     }
 
     [HttpGet]
+    [MustHavePermission(AppAction.View, AppResource.SaleReturns)]
     [OpenApiOperation("Get sale return voucher list.", "")]
     public async Task<HttpResponseDto<List<SaleReturnResponse>>> GetListAsync(
         [FromQuery] SaleReturnListFilter filter,
@@ -23,6 +26,7 @@ public class SaleReturnsController : VersionNeutralApiController
     }
 
     [HttpGet("{voucherNo}")]
+    [MustHavePermission(AppAction.View, AppResource.SaleReturns)]
     [OpenApiOperation("Get sale return voucher detail.", "")]
     public async Task<HttpResponseDto<List<SaleReturnLineResponse>>> GetDetailAsync(
         string voucherNo,
@@ -33,6 +37,7 @@ public class SaleReturnsController : VersionNeutralApiController
     }
 
     [HttpPost]
+    [MustHavePermission(AppAction.Create, AppResource.SaleReturns)]
     [OpenApiOperation("Create a new sale return voucher.", "")]
     public async Task<HttpResponseDto<string>> CreateAsync(SaleReturnCreateRequest request, CancellationToken cancellationToken)
     {
@@ -41,6 +46,7 @@ public class SaleReturnsController : VersionNeutralApiController
     }
 
     [HttpPut("{voucherNo}")]
+    [MustHavePermission(AppAction.Update, AppResource.SaleReturns)]
     [OpenApiOperation("Update an existing sale return voucher.", "")]
     public async Task<HttpResponseDto<string>> UpdateAsync(
         string voucherNo,
@@ -52,6 +58,7 @@ public class SaleReturnsController : VersionNeutralApiController
     }
 
     [HttpDelete("{voucherNo}")]
+    [MustHavePermission(AppAction.Delete, AppResource.SaleReturns)]
     [OpenApiOperation("Delete a sale return voucher.", "")]
     public async Task<HttpResponseDto<string>> DeleteAsync(string voucherNo, CancellationToken cancellationToken)
     {
@@ -60,6 +67,7 @@ public class SaleReturnsController : VersionNeutralApiController
     }
 
     [HttpDelete("{voucherNo}/lines/{seq}")]
+    [MustHavePermission(AppAction.Delete, AppResource.SaleReturns)]
     [OpenApiOperation("Delete a single line from a sale return voucher.", "")]
     public async Task<HttpResponseDto<string>> DeleteLineAsync(string voucherNo, int seq, CancellationToken cancellationToken)
     {

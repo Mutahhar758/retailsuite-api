@@ -1,5 +1,7 @@
 using Retailer.Application.Legacy.Narrations;
 using Retailer.Infrastructure.Common.Extensions;
+using Retailer.Infrastructure.Auth.Permissions;
+using Retailer.Shared.Authorization;
 
 namespace Retailer.Host.Controllers.Legacy;
 
@@ -13,6 +15,7 @@ public class NarrationsController : VersionNeutralApiController
     }
 
     [HttpGet]
+    [MustHavePermission(AppAction.View, AppResource.Narrations)]
     [OpenApiOperation("Get active narrations.", "")]
     public async Task<HttpResponseDto<List<NarrationResponse>>> GetAsync(CancellationToken cancellationToken)
     {
@@ -21,6 +24,7 @@ public class NarrationsController : VersionNeutralApiController
     }
 
     [HttpPost]
+    [MustHavePermission(AppAction.Create, AppResource.Narrations)]
     [OpenApiOperation("Create a narration.", "")]
     public async Task<HttpResponseDto<string>> CreateAsync(NarrationCreateRequest request, CancellationToken cancellationToken)
     {
@@ -29,6 +33,7 @@ public class NarrationsController : VersionNeutralApiController
     }
 
     [HttpPut("{code}")]
+    [MustHavePermission(AppAction.Update, AppResource.Narrations)]
     [OpenApiOperation("Update a narration.", "")]
     public async Task<HttpResponseDto<string>> UpdateAsync(string code, NarrationUpdateRequest request, CancellationToken cancellationToken)
     {
@@ -37,6 +42,7 @@ public class NarrationsController : VersionNeutralApiController
     }
 
     [HttpDelete("{code}")]
+    [MustHavePermission(AppAction.Delete, AppResource.Narrations)]
     [OpenApiOperation("Delete a narration.", "")]
     public async Task<HttpResponseDto<string>> DeleteAsync(string code, CancellationToken cancellationToken)
     {

@@ -32,6 +32,9 @@ public static class ClaimsPrincipalExtensions
         DateTimeOffset.FromUnixTimeSeconds(Convert.ToInt64(
             principal.FindFirstValue(AppClaims.Expiration)));
 
+    public static bool IsOwner(this ClaimsPrincipal principal)
+        => principal?.FindFirst(AppClaims.IsOwner)?.Value == "true";
+
     private static string? FindFirstValue(this ClaimsPrincipal principal, string claimType) =>
         principal is null
             ? throw new ArgumentNullException(nameof(principal))

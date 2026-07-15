@@ -15,6 +15,8 @@ using System.Text.RegularExpressions;
 using NJsonSchema.CodeGeneration.TypeScript;
 using System.Threading.Tasks;
 using Retailer.Infrastructure.Auth.InternalServiceAuthorization;
+using Retailer.Infrastructure.Auth.Permissions;
+using Retailer.Shared.Authorization;
 
 namespace Retailer.Host.Controllers.Identity;
 
@@ -30,6 +32,7 @@ public class UsersController : VersionNeutralApiController
     }
 
     [HttpPost("list")]
+    [MustHavePermission(AppAction.Search, AppResource.Users)]
     [OpenApiOperation("Get list of all users.", "")]
     public async Task<HttpResponseDto<PaginationResponse<UserDetailsDto>>> GetListAsync(UserListFilter filter, CancellationToken cancellationToken)
     {
@@ -37,6 +40,7 @@ public class UsersController : VersionNeutralApiController
     }
 
     [HttpGet("{id}")]
+    [MustHavePermission(AppAction.View, AppResource.Users)]
     [OpenApiOperation("Get a user's details.", "")]
     public async Task<HttpResponseDto<UserDetailsDto>> GetByIdAsync(string id, CancellationToken cancellationToken)
     {
@@ -44,6 +48,7 @@ public class UsersController : VersionNeutralApiController
     }
 
     [HttpGet("{id}/roles")]
+    [MustHavePermission(AppAction.View, AppResource.Users)]
     [OpenApiOperation("Get a user's roles.", "")]
     public async Task<HttpResponseDto<List<UserRoleDto>>> GetRolesAsync(string id, CancellationToken cancellationToken)
     {
@@ -51,6 +56,7 @@ public class UsersController : VersionNeutralApiController
     }
 
     [HttpPost("{id}/roles")]
+    [MustHavePermission(AppAction.Update, AppResource.Users)]
     [ApiConventionMethod(typeof(ApiConventions), nameof(ApiConventions.Register))]
     [OpenApiOperation("Update a user's assigned roles.", "")]
     public async Task<HttpResponseDto<string>> AssignRolesAsync(string id, UserRolesRequest request, CancellationToken cancellationToken)
@@ -60,6 +66,7 @@ public class UsersController : VersionNeutralApiController
     }
 
     [HttpPost]
+    [MustHavePermission(AppAction.Create, AppResource.Users)]
     [OpenApiOperation("Creates a new user.", "")]
     public async Task<HttpResponseDto<string>> CreateAsync(CreateUserRequest request)
     {
@@ -68,6 +75,7 @@ public class UsersController : VersionNeutralApiController
     }
 
     [HttpPut("{id}")]
+    [MustHavePermission(AppAction.Update, AppResource.Users)]
     [OpenApiOperation("Updates an existing user.", "")]
     public async Task<HttpResponseDto<string>> UpdateAsync(string id, UpdateUserRequest request)
     {
@@ -87,6 +95,7 @@ public class UsersController : VersionNeutralApiController
     }
 
     [HttpPost("{id}/toggle-status")]
+    [MustHavePermission(AppAction.Update, AppResource.Users)]
     [ApiConventionMethod(typeof(ApiConventions), nameof(ApiConventions.Register))]
     [OpenApiOperation("Toggle a user's active status.", "")]
     public async Task ToggleStatusAsync(string id, ToggleUserStatusRequest request, CancellationToken cancellationToken)

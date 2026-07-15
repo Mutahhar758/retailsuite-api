@@ -1,5 +1,7 @@
 using Retailer.Application.Legacy.PurchaseReturns;
 using Retailer.Infrastructure.Common.Extensions;
+using Retailer.Infrastructure.Auth.Permissions;
+using Retailer.Shared.Authorization;
 
 namespace Retailer.Host.Controllers.Legacy;
 
@@ -13,6 +15,7 @@ public class PurchaseReturnsController : VersionNeutralApiController
     }
 
     [HttpGet]
+    [MustHavePermission(AppAction.View, AppResource.PurchaseReturns)]
     [OpenApiOperation("Get purchase return voucher list.", "")]
     public async Task<HttpResponseDto<List<PurchaseReturnResponse>>> GetListAsync(
         [FromQuery] PurchaseReturnListFilter filter,
@@ -23,6 +26,7 @@ public class PurchaseReturnsController : VersionNeutralApiController
     }
 
     [HttpGet("{voucherNo}")]
+    [MustHavePermission(AppAction.View, AppResource.PurchaseReturns)]
     [OpenApiOperation("Get purchase return voucher detail.", "")]
     public async Task<HttpResponseDto<List<PurchaseReturnLineResponse>>> GetDetailAsync(
         string voucherNo,
@@ -33,6 +37,7 @@ public class PurchaseReturnsController : VersionNeutralApiController
     }
 
     [HttpPost]
+    [MustHavePermission(AppAction.Create, AppResource.PurchaseReturns)]
     [OpenApiOperation("Create a new purchase return voucher.", "")]
     public async Task<HttpResponseDto<string>> CreateAsync(PurchaseReturnCreateRequest request, CancellationToken cancellationToken)
     {
@@ -41,6 +46,7 @@ public class PurchaseReturnsController : VersionNeutralApiController
     }
 
     [HttpPut("{voucherNo}")]
+    [MustHavePermission(AppAction.Update, AppResource.PurchaseReturns)]
     [OpenApiOperation("Update an existing purchase return voucher.", "")]
     public async Task<HttpResponseDto<string>> UpdateAsync(
         string voucherNo,
@@ -52,6 +58,7 @@ public class PurchaseReturnsController : VersionNeutralApiController
     }
 
     [HttpDelete("{voucherNo}")]
+    [MustHavePermission(AppAction.Delete, AppResource.PurchaseReturns)]
     [OpenApiOperation("Delete a purchase return voucher.", "")]
     public async Task<HttpResponseDto<string>> DeleteAsync(string voucherNo, CancellationToken cancellationToken)
     {
@@ -60,6 +67,7 @@ public class PurchaseReturnsController : VersionNeutralApiController
     }
 
     [HttpDelete("{voucherNo}/lines/{seq}")]
+    [MustHavePermission(AppAction.Delete, AppResource.PurchaseReturns)]
     [OpenApiOperation("Delete a single line from a purchase return voucher.", "")]
     public async Task<HttpResponseDto<string>> DeleteLineAsync(string voucherNo, int seq, CancellationToken cancellationToken)
     {

@@ -1,4 +1,4 @@
-﻿namespace Retailer.Shared.Authorization;
+namespace Retailer.Shared.Authorization;
 
 public static class AppClaims
 {
@@ -8,4 +8,5 @@ public static class AppClaims
     public const string ImageUrl = "image_url";
     public const string IpAddress = "ipAddress";
     public const string Expiration = "exp";
+    public const string IsOwner = "isOwner";
 }

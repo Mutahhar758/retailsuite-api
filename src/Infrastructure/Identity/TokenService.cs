@@ -130,6 +130,11 @@ internal class TokenService : ITokenService
         var roles = await _userManager.GetRolesAsync(user);
         claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
 
+        if (user.IsOwner)
+        {
+            claims.Add(new(AppClaims.IsOwner, "true"));
+        }
+
         var tenantIdentifier = _multiTenantContextAccessor.MultiTenantContext?.TenantInfo?.Identifier;
         if (!string.IsNullOrWhiteSpace(tenantIdentifier))
         {

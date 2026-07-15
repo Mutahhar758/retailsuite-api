@@ -1,5 +1,7 @@
 using Retailer.Application.Legacy.Receipts;
 using Retailer.Infrastructure.Common.Extensions;
+using Retailer.Infrastructure.Auth.Permissions;
+using Retailer.Shared.Authorization;
 
 namespace Retailer.Host.Controllers.Legacy;
 
@@ -13,6 +15,7 @@ public class ReceiptsController : VersionNeutralApiController
     }
 
     [HttpGet]
+    [MustHavePermission(AppAction.View, AppResource.ReceiptVouchers)]
     [OpenApiOperation("Get receipt voucher list.", "")]
     public async Task<HttpResponseDto<List<ReceiptResponse>>> GetListAsync(
         [FromQuery] ReceiptListFilter filter,
@@ -31,6 +34,7 @@ public class ReceiptsController : VersionNeutralApiController
     }
 
     [HttpGet("{voucherNo}")]
+    [MustHavePermission(AppAction.View, AppResource.ReceiptVouchers)]
     [OpenApiOperation("Get receipt voucher detail.", "")]
     public async Task<HttpResponseDto<List<ReceiptLineResponse>>> GetDetailAsync(
         string voucherNo,
@@ -42,6 +46,7 @@ public class ReceiptsController : VersionNeutralApiController
     }
 
     [HttpPost]
+    [MustHavePermission(AppAction.Create, AppResource.ReceiptVouchers)]
     [OpenApiOperation("Create a new receipt voucher.", "")]
     public async Task<HttpResponseDto<string>> CreateAsync(
         ReceiptCreateRequest request,
@@ -52,6 +57,7 @@ public class ReceiptsController : VersionNeutralApiController
     }
 
     [HttpPut("{voucherNo}")]
+    [MustHavePermission(AppAction.Update, AppResource.ReceiptVouchers)]
     [OpenApiOperation("Update an existing receipt voucher.", "")]
     public async Task<HttpResponseDto<string>> UpdateAsync(
         string voucherNo,
@@ -63,6 +69,7 @@ public class ReceiptsController : VersionNeutralApiController
     }
 
     [HttpDelete("{voucherNo}")]
+    [MustHavePermission(AppAction.Delete, AppResource.ReceiptVouchers)]
     [OpenApiOperation("Delete a receipt voucher.", "")]
     public async Task<HttpResponseDto<string>> DeleteAsync(
         string voucherNo,
@@ -73,6 +80,7 @@ public class ReceiptsController : VersionNeutralApiController
     }
 
     [HttpDelete("{voucherNo}/lines/{seq}")]
+    [MustHavePermission(AppAction.Delete, AppResource.ReceiptVouchers)]
     [OpenApiOperation("Delete a single line from a receipt voucher.", "")]
     public async Task<HttpResponseDto<string>> DeleteLineAsync(
         string voucherNo,

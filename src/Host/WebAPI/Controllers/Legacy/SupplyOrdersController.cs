@@ -1,5 +1,7 @@
 using Retailer.Application.Legacy.SupplyOrders;
 using Retailer.Infrastructure.Common.Extensions;
+using Retailer.Infrastructure.Auth.Permissions;
+using Retailer.Shared.Authorization;
 
 namespace Retailer.Host.Controllers.Legacy;
 
@@ -13,6 +15,7 @@ public class SupplyOrdersController : VersionNeutralApiController
     }
 
     [HttpGet]
+    [MustHavePermission(AppAction.View, AppResource.SupplyOrders)]
     [OpenApiOperation("Get supply orders.", "")]
     public async Task<HttpResponseDto<List<SupplyOrderResponse>>> GetAsync(CancellationToken cancellationToken)
     {
@@ -21,6 +24,7 @@ public class SupplyOrdersController : VersionNeutralApiController
     }
 
     [HttpGet("{id:int}")]
+    [MustHavePermission(AppAction.View, AppResource.SupplyOrders)]
     [OpenApiOperation("Get supply order by id.", "")]
     public async Task<HttpResponseDto<SupplyOrderResponse?>> GetByIdAsync(int id, CancellationToken cancellationToken)
     {
@@ -29,6 +33,7 @@ public class SupplyOrdersController : VersionNeutralApiController
     }
 
     [HttpPost]
+    [MustHavePermission(AppAction.Create, AppResource.SupplyOrders)]
     [OpenApiOperation("Create supply order.", "")]
     public async Task<HttpResponseDto<SupplyOrderResponse>> CreateAsync(SupplyOrderUpsertRequest request, CancellationToken cancellationToken)
     {
@@ -40,6 +45,7 @@ public class SupplyOrdersController : VersionNeutralApiController
     }
 
     [HttpPut("{id:int}")]
+    [MustHavePermission(AppAction.Update, AppResource.SupplyOrders)]
     [OpenApiOperation("Update supply order.", "")]
     public async Task<HttpResponseDto<SupplyOrderResponse>> UpdateAsync(int id, SupplyOrderUpsertRequest request, CancellationToken cancellationToken)
     {
@@ -51,6 +57,7 @@ public class SupplyOrdersController : VersionNeutralApiController
     }
 
     [HttpDelete("{id:int}")]
+    [MustHavePermission(AppAction.Delete, AppResource.SupplyOrders)]
     [OpenApiOperation("Delete supply order.", "")]
     public async Task<HttpResponseDto<string>> DeleteAsync(int id, CancellationToken cancellationToken)
     {

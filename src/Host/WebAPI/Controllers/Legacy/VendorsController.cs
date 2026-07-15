@@ -1,6 +1,8 @@
 using Retailer.Application.Legacy.Vendors;
 using Retailer.Application.Common.Interfaces;
 using Retailer.Infrastructure.Common.Extensions;
+using Retailer.Infrastructure.Auth.Permissions;
+using Retailer.Shared.Authorization;
 
 namespace Retailer.Host.Controllers.Legacy;
 
@@ -14,6 +16,7 @@ public class VendorsController : VersionNeutralApiController
     }
 
     [HttpGet]
+    [MustHavePermission(AppAction.View, AppResource.Vendors)]
     [OpenApiOperation("Get vendors.", "")]
     public async Task<HttpResponseDto<List<VendorResponse>>> GetAsync(CancellationToken cancellationToken)
     {
@@ -22,6 +25,7 @@ public class VendorsController : VersionNeutralApiController
     }
 
     [HttpPost]
+    [MustHavePermission(AppAction.Create, AppResource.Vendors)]
     [OpenApiOperation("Create vendor and chart of account.", "")]
     public async Task<HttpResponseDto<string>> CreateAsync(VendorCreateRequest request, CancellationToken cancellationToken)
     {
@@ -30,6 +34,7 @@ public class VendorsController : VersionNeutralApiController
     }
 
     [HttpPut("{account}")]
+    [MustHavePermission(AppAction.Update, AppResource.Vendors)]
     [OpenApiOperation("Update vendor details.", "")]
     public async Task<HttpResponseDto<string>> UpdateAsync(string account, VendorUpdateRequest request, CancellationToken cancellationToken)
     {
@@ -38,6 +43,7 @@ public class VendorsController : VersionNeutralApiController
     }
 
     [HttpPost("presigned-upload-url")]
+    [MustHavePermission(new[] { AppAction.Create, AppAction.Update }, AppResource.Vendors)]
     [OpenApiOperation("Generate pre-signed upload URL for vendor image.", "")]
     public async Task<HttpResponseDto<PresignedUploadUrlResponse?>> GetPresignedUploadUrlAsync([FromQuery] string fileName, CancellationToken cancellationToken)
     {

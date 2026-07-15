@@ -1,5 +1,7 @@
 using Retailer.Application.Legacy.BankReconciliations;
 using Retailer.Infrastructure.Common.Extensions;
+using Retailer.Infrastructure.Auth.Permissions;
+using Retailer.Shared.Authorization;
 
 namespace Retailer.Host.Controllers.Legacy;
 
@@ -13,6 +15,7 @@ public class BankReconciliationsController : VersionNeutralApiController
     }
 
     [HttpGet]
+    [MustHavePermission(AppAction.View, AppResource.BankReconciliations)]
     [OpenApiOperation("Get bank reconciliation lines and balances.", "")]
     public async Task<HttpResponseDto<BankReconciliationSnapshotResponse>> GetSnapshotAsync(
         [FromQuery] BankReconciliationFilter filter,
@@ -23,6 +26,7 @@ public class BankReconciliationsController : VersionNeutralApiController
     }
 
     [HttpPut]
+    [MustHavePermission(AppAction.Update, AppResource.BankReconciliations)]
     [OpenApiOperation("Save bank reconciliation clear state.", "")]
     public async Task<HttpResponseDto<string>> SaveAsync(
         BankReconciliationSaveRequest request,

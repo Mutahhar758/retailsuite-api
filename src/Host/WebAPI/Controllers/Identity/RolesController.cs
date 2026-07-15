@@ -1,6 +1,8 @@
 using Retailer.Application.Identity.Roles;
 using Retailer.Infrastructure.Common.Extensions;
 using Microsoft.AspNetCore.Mvc;
+using Retailer.Infrastructure.Auth.Permissions;
+using Retailer.Shared.Authorization;
 
 namespace Retailer.Host.Controllers.Identity;
 
@@ -14,6 +16,7 @@ public class RolesController : VersionNeutralApiController
     }
 
     [HttpGet("list")]
+    [MustHavePermission(AppAction.View, AppResource.Roles)]
     [OpenApiOperation("Get list of all roles.", "")]
     public async Task<HttpResponseDto<List<RoleDto>>> GetListAsync(CancellationToken cancellationToken)
     {
@@ -21,6 +24,7 @@ public class RolesController : VersionNeutralApiController
     }
 
     [HttpGet("{id}")]
+    [MustHavePermission(AppAction.View, AppResource.Roles)]
     [OpenApiOperation("Get role details by id.", "")]
     public async Task<HttpResponseDto<RoleDto>> GetByIdAsync(string id)
     {
@@ -28,6 +32,7 @@ public class RolesController : VersionNeutralApiController
     }
 
     [HttpGet("{id}/permissions")]
+    [MustHavePermission(AppAction.View, AppResource.Roles)]
     [OpenApiOperation("Get role with permissions.", "")]
     public async Task<HttpResponseDto<RoleDto>> GetByIdWithPermissionsAsync(string id, CancellationToken cancellationToken)
     {
@@ -35,6 +40,7 @@ public class RolesController : VersionNeutralApiController
     }
 
     [HttpPost]
+    [MustHavePermission(AppAction.Create, AppResource.Roles)]
     [OpenApiOperation("Create or update a role.", "")]
     public async Task<HttpResponseDto<string>> CreateOrUpdateAsync(CreateOrUpdateRoleRequest request)
     {
@@ -43,6 +49,7 @@ public class RolesController : VersionNeutralApiController
     }
 
     [HttpPut("permissions")]
+    [MustHavePermission(AppAction.Update, AppResource.Roles)]
     [OpenApiOperation("Update role permissions.", "")]
     public async Task<HttpResponseDto<string>> UpdatePermissionsAsync(UpdateRolePermissionsRequest request, CancellationToken cancellationToken)
     {
@@ -51,6 +58,7 @@ public class RolesController : VersionNeutralApiController
     }
 
     [HttpDelete("{id}")]
+    [MustHavePermission(AppAction.Delete, AppResource.Roles)]
     [OpenApiOperation("Delete a role.", "")]
     public async Task<HttpResponseDto<string>> DeleteAsync(string id)
     {
@@ -59,6 +67,7 @@ public class RolesController : VersionNeutralApiController
     }
 
     [HttpGet("permissions")]
+    [MustHavePermission(AppAction.View, AppResource.Roles)]
     [OpenApiOperation("Get all system permissions.", "")]
     public async Task<HttpResponseDto<List<PermissionDto>>> GetAllPermissionsAsync(CancellationToken cancellationToken)
     {
