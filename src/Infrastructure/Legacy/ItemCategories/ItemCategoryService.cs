@@ -38,6 +38,19 @@ internal class ItemCategoryService : IItemCategoryService
         return itemCategories;
     }
 
+    public async Task<List<ItemCategoryLookupResponse>> GetLookupAsync(CancellationToken cancellationToken)
+    {
+        return await _repository.GetAll()
+            .AsNoTracking()
+            .OrderBy(x => x.Id)
+            .Select(x => new ItemCategoryLookupResponse
+            {
+                Code = x.Id,
+                Title = x.Title
+            })
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task CreateAsync(ItemCategoryCreateRequest request, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.Title))

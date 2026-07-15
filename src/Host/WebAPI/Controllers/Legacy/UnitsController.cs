@@ -23,6 +23,14 @@ public class UnitsController : VersionNeutralApiController
         return units.ToInformationResponse();
     }
 
+    [HttpGet("lookup")]
+    [OpenApiOperation("Get active units lookup.", "")]
+    public async Task<HttpResponseDto<List<UnitLookupResponse>>> GetLookupAsync(CancellationToken cancellationToken)
+    {
+        var units = await _unitService.GetActiveAsync(cancellationToken);
+        return units.ToInformationResponse();
+    }
+
     [HttpPost]
     [MustHavePermission(AppAction.Create, AppResource.Units)]
     [OpenApiOperation("Create unit.", "")]

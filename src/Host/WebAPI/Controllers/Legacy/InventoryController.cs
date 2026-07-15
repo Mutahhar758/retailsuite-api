@@ -33,6 +33,14 @@ public class InventoryController : VersionNeutralApiController
         return items.ToInformationResponse();
     }
 
+    [HttpGet("items/lookup")]
+    [OpenApiOperation("Get inventory items lookup.", "")]
+    public async Task<HttpResponseDto<List<InventoryItemLookupResponse>>> GetItemsLookupAsync([FromQuery] string? itemCategoryCode, CancellationToken cancellationToken)
+    {
+        var items = await _inventoryService.GetItemsLookupAsync(itemCategoryCode, cancellationToken);
+        return items.ToInformationResponse();
+    }
+
     [HttpGet("items/{id}")]
     [MustHavePermission(AppAction.View, AppResource.InventoryItems)]
     [OpenApiOperation("Get inventory item by id.", "")]

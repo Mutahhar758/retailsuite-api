@@ -25,6 +25,34 @@ internal class InventoryService : IInventoryService
         _mediaServiceClient = mediaServiceClient;
     }
 
+    public async Task<List<InventoryItemLookupResponse>> GetItemsLookupAsync(string? itemCategoryCode, CancellationToken cancellationToken)
+    {
+        var query = _itemRepository.GetAll().AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(itemCategoryCode))
+            query = query.Where(x => x.ItemCategoryId == itemCategoryCode);
+
+        var items = await query
+            .OrderBy(x => x.ItemCategoryId)
+            .ThenBy(x => x.Title)
+            .Select(x => new InventoryItemLookupResponse
+            {
+                Id = x.Id,
+                Barcode = x.Barcode,
+                ItemCategoryCode = x.ItemCategoryId,
+                Title = x.Title,
+                ItemKey = x.ItemKey,
+                PriRate = x.PriRate,
+                SecRate = x.SecRate,
+                PrimaryUnit = x.PrimaryUnitId,
+                SecondaryUnit = x.SecondaryUnitId,
+                DefaultUnit = x.DefaultUnitId
+            })
+            .ToListAsync(cancellationToken);
+
+        return items;
+    }
+
     public async Task<List<InventoryItemResponse>> GetItemsAsync(string? itemCategoryCode, CancellationToken cancellationToken)
     {
         var query = _itemRepository.GetAll().AsNoTracking();

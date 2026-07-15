@@ -24,6 +24,14 @@ public class ItemCategoriesController : VersionNeutralApiController
         return itemCategories.ToInformationResponse();
     }
 
+    [HttpGet("lookup")]
+    [OpenApiOperation("Get active item categories lookup.", "")]
+    public async Task<HttpResponseDto<List<ItemCategoryLookupResponse>>> GetLookupAsync(CancellationToken cancellationToken)
+    {
+        var itemCategories = await _itemCategoryService.GetLookupAsync(cancellationToken);
+        return itemCategories.ToInformationResponse();
+    }
+
     [HttpPost]
     [MustHavePermission(AppAction.Create, AppResource.ItemCategories)]
     [OpenApiOperation("Create an item category.", "")]

@@ -23,6 +23,14 @@ public class NarrationsController : VersionNeutralApiController
         return narrations.ToInformationResponse();
     }
 
+    [HttpGet("lookup")]
+    [OpenApiOperation("Get active narrations lookup.", "")]
+    public async Task<HttpResponseDto<List<NarrationLookupResponse>>> GetLookupAsync(CancellationToken cancellationToken)
+    {
+        var narrations = await _narrationService.GetLookupAsync(cancellationToken);
+        return narrations.ToInformationResponse();
+    }
+
     [HttpPost]
     [MustHavePermission(AppAction.Create, AppResource.Narrations)]
     [OpenApiOperation("Create a narration.", "")]

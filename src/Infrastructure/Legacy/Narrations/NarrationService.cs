@@ -30,6 +30,19 @@ internal class NarrationService : INarrationService
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<List<NarrationLookupResponse>> GetLookupAsync(CancellationToken cancellationToken)
+    {
+        return await _repository.GetAll()
+            .AsNoTracking()
+            .OrderBy(x => x.Id)
+            .Select(x => new NarrationLookupResponse
+            {
+                Code = x.Id,
+                Title = x.Title
+            })
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task CreateAsync(NarrationCreateRequest request, CancellationToken cancellationToken)
     {
         var maxCode = await _repository.GetAll()
