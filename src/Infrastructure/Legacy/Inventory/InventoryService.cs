@@ -46,9 +46,13 @@ internal class InventoryService : IInventoryService
                 SecRate = x.SecRate,
                 PrimaryUnit = x.PrimaryUnitId,
                 SecondaryUnit = x.SecondaryUnitId,
-                DefaultUnit = x.DefaultUnitId
+                DefaultUnit = x.DefaultUnitId,
+                MediaId = x.MediaId,
+                QuickQtyPresets = x.QuickQtyPresets
             })
             .ToListAsync(cancellationToken);
+
+        await PopulateMediaUrlsAsync(items, cancellationToken);
 
         return items;
     }
@@ -330,6 +334,28 @@ internal class InventoryService : IInventoryService
     }
 
     private async Task PopulateMediaUrlsAsync(List<InventoryItemResponse> items, CancellationToken cancellationToken)
+    {
+        var tasks = items
+            .Where(x => !string.IsNullOrEmpty(x.MediaId))
+            .Select(async item =>
+            {
+                try
+                {
+                    var sasResponse = await _mediaServiceClient.GetViewTokenAsync(item.MediaId!, 24, cancellationToken);
+                    if (sasResponse != null)
+                    {
+                        item.MediaUrl = sasResponse.ViewUrl;
+                    }
+                }
+                catch
+                {
+                    // Fail-safe: ignore media service exceptions to keep main application running
+                }
+            });
+        await Task.WhenAll(tasks);
+    }
+
+    private async Task PopulateMediaUrlsAsync(List<InventoryItemLookupResponse> items, CancellationToken cancellationToken)
     {
         var tasks = items
             .Where(x => !string.IsNullOrEmpty(x.MediaId))

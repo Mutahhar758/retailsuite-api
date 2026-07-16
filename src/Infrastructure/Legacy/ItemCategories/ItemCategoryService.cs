@@ -40,15 +40,19 @@ internal class ItemCategoryService : IItemCategoryService
 
     public async Task<List<ItemCategoryLookupResponse>> GetLookupAsync(CancellationToken cancellationToken)
     {
-        return await _repository.GetAll()
+        var itemCategories = await _repository.GetAll()
             .AsNoTracking()
             .OrderBy(x => x.Id)
             .Select(x => new ItemCategoryLookupResponse
             {
                 Code = x.Id,
-                Title = x.Title
+                Title = x.Title,
+                MediaId = x.MediaId
             })
             .ToListAsync(cancellationToken);
+
+        await PopulateMediaUrlsAsync(itemCategories, cancellationToken);
+        return itemCategories;
     }
 
     public async Task CreateAsync(ItemCategoryCreateRequest request, CancellationToken cancellationToken)
@@ -116,6 +120,28 @@ internal class ItemCategoryService : IItemCategoryService
     }
 
     private async Task PopulateMediaUrlsAsync(List<ItemCategoryResponse> items, CancellationToken cancellationToken)
+    {
+        var tasks = items
+            .Where(x => !string.IsNullOrEmpty(x.MediaId))
+            .Select(async item =>
+            {
+                try
+                {
+                    var sasResponse = await _mediaServiceClient.GetViewTokenAsync(item.MediaId!, 24, cancellationToken);
+                    if (sasResponse != null)
+                    {
+                        item.MediaUrl = sasResponse.ViewUrl;
+                    }
+                }
+                catch
+                {
+                    // Fail-safe: ignore media service exceptions to keep main application running
+                }
+            });
+        await Task.WhenAll(tasks);
+    }
+
+    private async Task PopulateMediaUrlsAsync(List<ItemCategoryLookupResponse> items, CancellationToken cancellationToken)
     {
         var tasks = items
             .Where(x => !string.IsNullOrEmpty(x.MediaId))
