@@ -21,6 +21,8 @@ public class CurrentTenant : ICurrentTenant
 
     public bool HasSecondaryQty => _multiTenantContextAccessor.MultiTenantContext?.TenantInfo?.HasSecondaryQty ?? false;
 
+    public bool HasKotFeature => _multiTenantContextAccessor.MultiTenantContext?.TenantInfo?.HasKotFeature ?? false;
+
     public bool IsValid =>
         _multiTenantContextAccessor.MultiTenantContext?.TenantInfo is { } tenant
         && tenant.IsActive

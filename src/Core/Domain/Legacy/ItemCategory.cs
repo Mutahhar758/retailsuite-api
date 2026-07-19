@@ -9,4 +9,7 @@ public class ItemCategory : AuditableEntity<string>, IAggregateRoot
     public string? ItemType { get; set; }
     public bool Active { get; set; }
     public string? MediaId { get; set; }
+
+    public string? PrepStationId { get; set; }
+    public PrepStation? PrepStation { get; set; }
 }

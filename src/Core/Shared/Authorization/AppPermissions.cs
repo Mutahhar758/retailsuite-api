@@ -43,6 +43,9 @@ public static class AppResource
     public const string StockAdjustments = nameof(StockAdjustments);
     public const string BankReconciliations = nameof(BankReconciliations);
     public const string Payrolls = nameof(Payrolls);
+    public const string KotOrders = nameof(KotOrders);
+    public const string DiningTables = nameof(DiningTables);
+    public const string PrepStations = nameof(PrepStations);
 }
 
 public static class AppPermissions
@@ -251,7 +254,25 @@ public static class AppPermissions
         new("Create Payrolls", AppAction.Create, AppResource.Payrolls),
         new("Update Payrolls", AppAction.Update, AppResource.Payrolls),
         new("Delete Payrolls", AppAction.Delete, AppResource.Payrolls),
-        new("Export Payrolls", AppAction.Export, AppResource.Payrolls)
+        new("Export Payrolls", AppAction.Export, AppResource.Payrolls),
+
+        // KotOrders
+        new("View KotOrders", AppAction.View, AppResource.KotOrders),
+        new("Create KotOrders", AppAction.Create, AppResource.KotOrders),
+        new("Update KotOrders", AppAction.Update, AppResource.KotOrders),
+        new("Delete KotOrders", AppAction.Delete, AppResource.KotOrders),
+
+        // DiningTables
+        new("View DiningTables", AppAction.View, AppResource.DiningTables),
+        new("Create DiningTables", AppAction.Create, AppResource.DiningTables),
+        new("Update DiningTables", AppAction.Update, AppResource.DiningTables),
+        new("Delete DiningTables", AppAction.Delete, AppResource.DiningTables),
+
+        // PrepStations
+        new("View PrepStations", AppAction.View, AppResource.PrepStations),
+        new("Create PrepStations", AppAction.Create, AppResource.PrepStations),
+        new("Update PrepStations", AppAction.Update, AppResource.PrepStations),
+        new("Delete PrepStations", AppAction.Delete, AppResource.PrepStations)
     };
 
     public static IReadOnlyList<AppPermission> Admin { get; } = new ReadOnlyCollection<AppPermission>(_all);
@@ -261,7 +282,9 @@ public static class AppPermissions
         p.Resource == AppResource.Dashboard ||
         p.Resource == AppResource.Sales ||
         p.Resource == AppResource.POSSales ||
-        p.Resource == AppResource.Customers
+        p.Resource == AppResource.Customers ||
+        p.Resource == AppResource.KotOrders ||
+        p.Resource == AppResource.DiningTables
     ).ToArray());
 
     public static IReadOnlyList<AppPermission> InventoryManager { get; } = new ReadOnlyCollection<AppPermission>(_all.Where(p =>

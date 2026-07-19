@@ -98,6 +98,11 @@ public class ItemCategoryConfig : IEntityTypeConfiguration<ItemCategory>
     {
         builder.IsMultiTenant();
         builder.Property(x => x.Id).ValueGeneratedNever();
+
+        builder.HasOne(x => x.PrepStation)
+            .WithMany()
+            .HasForeignKey(x => x.PrepStationId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }
 
@@ -569,6 +574,59 @@ public class UnitConfig : IEntityTypeConfiguration<Unit>
     {
         builder.IsMultiTenant();
         builder.Property(x => x.Id).ValueGeneratedNever();
+    }
+}
+
+public class PrepStationConfig : IEntityTypeConfiguration<PrepStation>
+{
+    public void Configure(EntityTypeBuilder<PrepStation> builder)
+    {
+        builder.IsMultiTenant();
+        builder.Property(x => x.Id).ValueGeneratedNever();
+    }
+}
+
+public class DiningTableConfig : IEntityTypeConfiguration<DiningTable>
+{
+    public void Configure(EntityTypeBuilder<DiningTable> builder)
+    {
+        builder.IsMultiTenant();
+        builder.Property(x => x.Id).ValueGeneratedOnAdd();
+    }
+}
+
+public class KotOrderConfig : IEntityTypeConfiguration<KotOrder>
+{
+    public void Configure(EntityTypeBuilder<KotOrder> builder)
+    {
+        var mtBuilder = builder.IsMultiTenant();
+        builder.Property(x => x.Id).ValueGeneratedOnAdd();
+        mtBuilder.AdjustUniqueIndexes();
+
+        builder.HasOne(x => x.Table)
+            .WithMany()
+            .HasForeignKey(x => x.TableId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+public class KotOrderItemConfig : IEntityTypeConfiguration<KotOrderItem>
+{
+    public void Configure(EntityTypeBuilder<KotOrderItem> builder)
+    {
+        var mtBuilder = builder.IsMultiTenant();
+        builder.Property(x => x.Id).ValueGeneratedOnAdd();
+        mtBuilder.AdjustUniqueIndexes();
+
+        builder.HasOne(x => x.KotOrder)
+            .WithMany(x => x.Details)
+            .HasForeignKey(x => x.KotOrderId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne(x => x.Item)
+            .WithMany()
+            .HasForeignKey(x => x.ItemId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }
 

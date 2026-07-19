@@ -11,6 +11,7 @@ public class TenantDto
     public bool IsActive { get; set; }
     public bool HasSupplyFeature { get; set; }
     public bool HasSecondaryQty { get; set; }
+    public bool HasKotFeature { get; set; }
     public DateTime ValidFrom { get; set; }
     public DateTime? ValidUntil { get; set; }
 }

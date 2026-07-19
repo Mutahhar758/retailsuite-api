@@ -69,6 +69,7 @@ internal class TenantService : ITenantService
             IsActive = true,
             HasSupplyFeature = request.HasSupplyFeature,
             HasSecondaryQty = request.HasSecondaryQty,
+            HasKotFeature = request.HasKotFeature,
             ValidFrom = request.ValidFrom ?? DateTime.UtcNow,
             ValidUntil = request.ValidUntil,
             LicenseKey = Guid.NewGuid().ToString("N").ToUpper()
@@ -98,6 +99,7 @@ internal class TenantService : ITenantService
         tenant.ConnectionString = connectionString;
         tenant.HasSupplyFeature = request.HasSupplyFeature;
         tenant.HasSecondaryQty = request.HasSecondaryQty;
+        tenant.HasKotFeature = request.HasKotFeature;
 
         await _tenantDbContext.SaveChangesAsync(cancellationToken);
     }

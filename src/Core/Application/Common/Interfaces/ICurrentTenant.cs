@@ -8,4 +8,5 @@ public interface ICurrentTenant
     bool IsValid { get; }
     bool HasSupplyFeature { get; }
     bool HasSecondaryQty { get; }
+    bool HasKotFeature { get; }
 }

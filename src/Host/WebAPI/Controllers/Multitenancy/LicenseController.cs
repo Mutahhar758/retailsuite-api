@@ -34,7 +34,8 @@ public class LicenseController : BaseApiController
         return Ok(new
         {
             HasSupplyFeature = currentTenant.HasSupplyFeature,
-            HasSecondaryQty = currentTenant.HasSecondaryQty
+            HasSecondaryQty = currentTenant.HasSecondaryQty,
+            HasKotFeature = currentTenant.HasKotFeature
         }.ToInformationResponse());
     }
 }
