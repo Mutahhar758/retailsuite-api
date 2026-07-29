@@ -30,6 +30,7 @@ public class TenantDbContext : EFCoreStoreDbContext<Domain.Multitenancy.TenantIn
             entity.Property(t => t.HasSupplyFeature).HasDefaultValue(true);
             entity.Property(t => t.HasSecondaryQty).HasDefaultValue(false);
             entity.Property(t => t.HasKotFeature).HasDefaultValue(false);
+            entity.Property(t => t.HasVariablePackFeature).HasDefaultValue(false);
         });
     }
 }

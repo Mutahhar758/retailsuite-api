@@ -483,6 +483,12 @@ internal class ReportService : IReportService
             .Select(x => x.QtyIn - x.QtyOut)
             .SumAsync(cancellationToken);
 
+        var openingSecStock = await _itemTransactionRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => x.ItemId == filter.FkItem && (x.VType == "Op" || x.VDate < filter.FromDate))
+            .Select(x => (x.SecQtyIn ?? 0) - (x.SecQtyOut ?? 0))
+            .SumAsync(cancellationToken);
+
         var movement = await _itemTransactionRepository.GetAll()
             .AsNoTracking()
             .Where(x => x.ItemId == filter.FkItem
@@ -496,7 +502,10 @@ internal class ReportService : IReportService
                 Particular = x.Account != null ? x.Account.Title : string.Empty,
                 QtyIn = x.QtyIn,
                 QtyOut = x.QtyOut,
-                Rate = x.Rate
+                Rate = x.Rate,
+                SecUnit = x.SecUnit != null ? x.SecUnit.Title : x.SecUnitId,
+                SecQtyIn = x.SecQtyIn ?? 0,
+                SecQtyOut = x.SecQtyOut ?? 0
             })
             .OrderBy(x => x.Vdate)
             .ThenBy(x => x.Vno)
@@ -511,7 +520,9 @@ internal class ReportService : IReportService
                 Particular = "Openning Stock",
                 QtyIn = openingStock >= 0 ? openingStock : 0m,
                 QtyOut = openingStock < 0 ? -openingStock : 0m,
-                Rate = null
+                Rate = null,
+                SecQtyIn = openingSecStock >= 0 ? openingSecStock : 0m,
+                SecQtyOut = openingSecStock < 0 ? -openingSecStock : 0m
             }
         };
 
@@ -534,17 +545,20 @@ internal class ReportService : IReportService
                 x.ItemId,
                 Item = x.Item != null ? x.Item.Title : string.Empty,
                 Unit = x.Item != null ? (x.Item.DefaultUnit != null ? x.Item.DefaultUnit.Title : x.Item.DefaultUnitId) : string.Empty,
+                SecUnit = x.Item != null ? (x.Item.SecondaryUnit != null ? x.Item.SecondaryUnit.Title : x.Item.SecondaryUnitId) : string.Empty,
                 x.VDate,
                 x.VType,
                 x.TranType,
                 x.QtyIn,
                 x.QtyOut,
+                SecQtyIn = x.SecQtyIn ?? 0,
+                SecQtyOut = x.SecQtyOut ?? 0,
                 x.Rate
             })
             .ToListAsync(cancellationToken);
 
         var data = rows
-            .GroupBy(x => new { x.ItemId, x.Item, x.Unit })
+            .GroupBy(x => new { x.ItemId, x.Item, x.Unit, x.SecUnit })
             .Select(g =>
             {
                 var priQty = g.Where(x => x.VDate < filter.FromDate || x.VType == "Op").Sum(x => x.QtyIn - x.QtyOut);
@@ -557,6 +571,11 @@ internal class ReportService : IReportService
                     .Sum(x => (x.QtyIn - x.QtyOut) * x.Rate);
                 var rate = positiveQtyBal == 0 ? 0 : amt / positiveQtyBal;
 
+                var secPriQty = g.Where(x => x.VDate < filter.FromDate || x.VType == "Op").Sum(x => x.SecQtyIn - x.SecQtyOut);
+                var secQtyIn = g.Where(x => x.VDate >= filter.FromDate && x.VDate <= filter.ToDate && x.VType != "Op").Sum(x => x.SecQtyIn);
+                var secQtyOut = g.Where(x => x.VDate >= filter.FromDate && x.VDate <= filter.ToDate && x.VType != "Op").Sum(x => x.SecQtyOut);
+                var secQtyBal = g.Sum(x => x.SecQtyIn - x.SecQtyOut);
+
                 return new StockBalanceLineResponse
                 {
                     Item = g.Key.Item,
@@ -566,10 +585,15 @@ internal class ReportService : IReportService
                     QtyIn = qtyIn,
                     QtyOut = qtyOut,
                     QtyBal = qtyBal,
-                    Rate = rate
+                    Rate = rate,
+                    SecUnit = g.Key.SecUnit,
+                    SecPriQty = secPriQty,
+                    SecQtyIn = secQtyIn,
+                    SecQtyOut = secQtyOut,
+                    SecQtyBal = secQtyBal
                 };
             })
-            .Where(x => x.QtyBal != 0)
+            .Where(x => x.QtyBal != 0 || x.SecQtyBal != 0)
             .ToList();
 
         var mode = (filter.Filter ?? "All").Trim();

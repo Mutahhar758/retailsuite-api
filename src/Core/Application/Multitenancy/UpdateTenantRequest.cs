@@ -11,6 +11,7 @@ public class UpdateTenantRequest
     public bool HasSupplyFeature { get; set; }
     public bool HasSecondaryQty { get; set; }
     public bool HasKotFeature { get; set; }
+    public bool HasVariablePackFeature { get; set; }
     public DateTime? ValidFrom { get; set; }
     public DateTime? ValidUntil { get; set; }
 }

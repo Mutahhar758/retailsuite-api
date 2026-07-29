@@ -9,4 +9,5 @@ public interface ICurrentTenant
     bool HasSupplyFeature { get; }
     bool HasSecondaryQty { get; }
     bool HasKotFeature { get; }
+    bool HasVariablePackFeature { get; }
 }
