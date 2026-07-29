@@ -188,15 +188,22 @@ namespace PrinterRelay
 
         private static void RegisterForStartup()
         {
+            string? exePath = Environment.ProcessPath;
+            string? logPath = null;
+            if (!string.IsNullOrEmpty(exePath))
+            {
+                string? dir = Path.GetDirectoryName(exePath);
+                if (dir != null) logPath = Path.Combine(dir, "startup-log.txt");
+            }
+
             try
             {
+                if (logPath != null) File.WriteAllText(logPath, $"Startup registration started. exePath: {exePath}\n");
+                
                 if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 {
                     string runKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
                     string appName = "PrinterBridge";
-                    
-                    // Get full path to the current running .exe
-                    string? exePath = Environment.ProcessPath;
                     
                     if (!string.IsNullOrEmpty(exePath))
                     {
@@ -206,22 +213,28 @@ namespace PrinterRelay
                             object? existingValue = key.GetValue(appName);
                             string expectedValue = $"\"{exePath}\"";
 
+                            if (logPath != null) File.AppendAllText(logPath, $"Existing value: {existingValue}, Expected value: {expectedValue}\n");
+
                             if (existingValue == null || existingValue.ToString() != expectedValue)
                             {
                                 key.SetValue(appName, expectedValue);
-                                Console.ForegroundColor = ConsoleColor.Cyan;
-                                Console.WriteLine($"[Startup] Automatically registered startup key pointing to: {expectedValue}");
-                                Console.ResetColor();
+                                if (logPath != null) File.AppendAllText(logPath, "Registry key updated successfully!\n");
                             }
+                            else
+                            {
+                                if (logPath != null) File.AppendAllText(logPath, "Registry key already matches.\n");
+                            }
+                        }
+                        else
+                        {
+                            if (logPath != null) File.AppendAllText(logPath, "Registry key was null!\n");
                         }
                     }
                 }
             }
             catch (Exception ex)
             {
-                Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine($"[Startup Warning] Could not register for startup: {ex.Message}");
-                Console.ResetColor();
+                if (logPath != null) File.AppendAllText(logPath, $"Error: {ex.Message}\n{ex.StackTrace}\n");
             }
         }
     }
