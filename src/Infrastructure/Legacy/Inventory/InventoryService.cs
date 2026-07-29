@@ -47,6 +47,7 @@ internal class InventoryService : IInventoryService
                 PrimaryUnit = x.PrimaryUnitId,
                 SecondaryUnit = x.SecondaryUnitId,
                 DefaultUnit = x.DefaultUnitId,
+                QtyInPack = x.QtyInPack,
                 MediaId = x.MediaId,
                 QuickQtyPresets = x.QuickQtyPresets
             })

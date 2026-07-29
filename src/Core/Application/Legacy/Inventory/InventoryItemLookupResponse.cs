@@ -12,6 +12,7 @@ public class InventoryItemLookupResponse
     public string? PrimaryUnit { get; set; }
     public string? SecondaryUnit { get; set; }
     public string? DefaultUnit { get; set; }
+    public decimal? QtyInPack { get; set; }
     public string? MediaId { get; set; }
     public string? MediaUrl { get; set; }
     public string? QuickQtyPresets { get; set; }
