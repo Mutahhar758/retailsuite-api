@@ -106,6 +106,7 @@ internal class PurchaseReturnService : IPurchaseReturnService
                 SecUnit = d.SecUnitId,
                 SecQty = d.SecQty,
                 SecRate = d.SecRate,
+                QtyInPack = d.QtyInPack,
                 CreatedBy = m.CreatedBy,
                 CreatedOn = m.CreatedOn,
                 LastModifiedBy = m.LastModifiedBy,
@@ -153,7 +154,8 @@ internal class PurchaseReturnService : IPurchaseReturnService
                 Rate = line.Rate,
                 SecUnitId = string.IsNullOrWhiteSpace(line.SecUnit) ? null : line.SecUnit,
                 SecQty = line.SecQty,
-                SecRate = line.SecRate
+                SecRate = line.SecRate,
+                QtyInPack = line.QtyInPack
             }, false);
         }
 
@@ -204,7 +206,8 @@ internal class PurchaseReturnService : IPurchaseReturnService
                     Rate = line.Rate,
                     SecUnitId = string.IsNullOrWhiteSpace(line.SecUnit) ? null : line.SecUnit,
                     SecQty = line.SecQty,
-                    SecRate = line.SecRate
+                    SecRate = line.SecRate,
+                    QtyInPack = line.QtyInPack
                 }, false);
             }
             else
@@ -218,6 +221,7 @@ internal class PurchaseReturnService : IPurchaseReturnService
                 existing.SecUnitId = string.IsNullOrWhiteSpace(line.SecUnit) ? null : line.SecUnit;
                 existing.SecQty = line.SecQty;
                 existing.SecRate = line.SecRate;
+                existing.QtyInPack = line.QtyInPack;
 
                 await _purchaseRetDetailRepository.UpdateAsync(existing, false);
             }

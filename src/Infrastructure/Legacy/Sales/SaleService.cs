@@ -108,6 +108,7 @@ internal class SaleService : ISaleService
                 SecUnit = d.SecUnitId,
                 SecQty = d.SecQty,
                 SecRate = d.SecRate,
+                QtyInPack = d.QtyInPack,
                 CashReceipt = m.CashReceipt,
                 CashBack = m.CashBack ?? 0,
                 CreatedBy = m.CreatedBy,
@@ -165,7 +166,8 @@ internal class SaleService : ISaleService
                 Discount = line.Discount,
                 SecUnitId = string.IsNullOrWhiteSpace(line.SecUnit) ? null : line.SecUnit,
                 SecQty = line.SecQty,
-                SecRate = line.SecRate
+                SecRate = line.SecRate,
+                QtyInPack = line.QtyInPack
             }, false);
         }
 
@@ -223,7 +225,8 @@ internal class SaleService : ISaleService
                     Discount = line.Discount,
                     SecUnitId = string.IsNullOrWhiteSpace(line.SecUnit) ? null : line.SecUnit,
                     SecQty = line.SecQty,
-                    SecRate = line.SecRate
+                    SecRate = line.SecRate,
+                    QtyInPack = line.QtyInPack
                 }, false);
             }
             else
@@ -238,6 +241,7 @@ internal class SaleService : ISaleService
                 existing.SecUnitId = string.IsNullOrWhiteSpace(line.SecUnit) ? null : line.SecUnit;
                 existing.SecQty = line.SecQty;
                 existing.SecRate = line.SecRate;
+                existing.QtyInPack = line.QtyInPack;
 
                 await _saleRepository.UpdateAsync(existing, false);
             }
