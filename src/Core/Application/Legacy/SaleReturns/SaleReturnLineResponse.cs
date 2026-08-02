@@ -20,6 +20,7 @@ public class SaleReturnLineResponse
     public string? SecUnit { get; set; }
     public decimal? SecQty { get; set; }
     public decimal? SecRate { get; set; }
+    public decimal? QtyInPack { get; set; }
     public decimal CashReceipt { get; set; }
     public decimal CashBack { get; set; }
     public string CreatedBy { get; set; } = default!;
