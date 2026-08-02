@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Retailer.Application.Common.Exceptions;
+using Retailer.Application.Common.Interfaces;
 using Retailer.Application.Common.Persistence;
 using Retailer.Application.Legacy.Purchases;
 using Retailer.Domain.Legacy;
@@ -18,6 +19,7 @@ internal class PurchaseService : IPurchaseService
     private readonly IRepository<DefaultAccount> _defaultAccountRepository;
     private readonly IRepository<ChartOfAccount> _chartOfAccountRepository;
     private readonly IRepository<ItemDetail> _itemRepository;
+    private readonly ICurrentTenant _currentTenant;
 
     public PurchaseService(
         IRepository<PurchaseMaster> purchaseMasterRepository,
@@ -26,7 +28,8 @@ internal class PurchaseService : IPurchaseService
         IRepository<ItemTransaction> itemTransactionRepository,
         IRepository<DefaultAccount> defaultAccountRepository,
         IRepository<ChartOfAccount> chartOfAccountRepository,
-        IRepository<ItemDetail> itemRepository)
+        IRepository<ItemDetail> itemRepository,
+        ICurrentTenant currentTenant)
     {
         _purchaseMasterRepository = purchaseMasterRepository;
         _purchaseDetailRepository = purchaseDetailRepository;
@@ -35,6 +38,7 @@ internal class PurchaseService : IPurchaseService
         _defaultAccountRepository = defaultAccountRepository;
         _chartOfAccountRepository = chartOfAccountRepository;
         _itemRepository = itemRepository;
+        _currentTenant = currentTenant;
     }
 
     public async Task<List<PurchaseResponse>> GetListAsync(PurchaseListFilter filter, CancellationToken cancellationToken)
@@ -127,6 +131,11 @@ internal class PurchaseService : IPurchaseService
         var nextNum = maxVoucherNo == null ? 1L : long.Parse(maxVoucherNo) + 1;
         var voucherNo = nextNum.ToString("D5");
 
+        var isWanda = _currentTenant.HasVariablePackFeature;
+        var totalAmount = request.Lines.Sum(x => isWanda
+            ? ((x.Qty * x.Rate) + x.AddLess)
+            : ((x.Qty * x.Rate) + x.AddLess + ((x.SecQty ?? 0) * (x.SecRate ?? 0))));
+
         var master = new PurchaseMaster
         {
             VDate = request.Date,
@@ -136,7 +145,7 @@ internal class PurchaseService : IPurchaseService
             AccountId = request.Account,
             Descr = request.Description,
             NarrationId = request.Narration,
-            Amount = request.Lines.Sum(x => (x.Qty * x.Rate) + x.AddLess + ((x.SecQty ?? 0) * (x.SecRate ?? 0))),
+            Amount = totalAmount,
             Counter = "001"
         };
 
@@ -162,8 +171,7 @@ internal class PurchaseService : IPurchaseService
         }
 
         await UpsertItemTransactionsAsync(voucherNo, request.Date, request.Account, request.Lines, "001", cancellationToken);
-        await UpsertGlEntryAsync(voucherNo, request.Date, request.Account, request.Narration, request.Description,
-            request.Lines.Sum(x => (x.Qty * x.Rate) + x.AddLess + ((x.SecQty ?? 0) * (x.SecRate ?? 0))), cancellationToken);
+        await UpsertGlEntryAsync(voucherNo, request.Date, request.Account, request.Narration, request.Description, totalAmount, cancellationToken);
 
         await _purchaseMasterRepository.SaveChangesAsync(cancellationToken);
         return voucherNo;
@@ -177,12 +185,17 @@ internal class PurchaseService : IPurchaseService
         if (master is null)
             throw new NotFoundException($"Purchase voucher '{voucherNo}' not found.");
 
+        var isWanda = _currentTenant.HasVariablePackFeature;
+        var totalAmount = request.Lines.Sum(x => isWanda
+            ? ((x.Qty * x.Rate) + x.AddLess)
+            : ((x.Qty * x.Rate) + x.AddLess + ((x.SecQty ?? 0) * (x.SecRate ?? 0))));
+
         master.VDate = request.Date;
         master.VTime = TimeOnly.FromDateTime(DateTime.Now);
         master.AccountId = request.Account;
         master.Descr = request.Description;
         master.NarrationId = request.Narration;
-        master.Amount = request.Lines.Sum(x => (x.Qty * x.Rate) + x.AddLess + ((x.SecQty ?? 0) * (x.SecRate ?? 0)));
+        master.Amount = totalAmount;
 
         await _purchaseMasterRepository.UpdateAsync(master, false);
 
@@ -231,8 +244,7 @@ internal class PurchaseService : IPurchaseService
         }
 
         await UpsertItemTransactionsAsync(voucherNo, request.Date, request.Account, request.Lines, master.Counter, cancellationToken);
-        await UpsertGlEntryAsync(voucherNo, request.Date, request.Account, request.Narration, request.Description,
-            request.Lines.Sum(x => (x.Qty * x.Rate) + x.AddLess + ((x.SecQty ?? 0) * (x.SecRate ?? 0))), cancellationToken);
+        await UpsertGlEntryAsync(voucherNo, request.Date, request.Account, request.Narration, request.Description, totalAmount, cancellationToken);
 
         await _purchaseMasterRepository.SaveChangesAsync(cancellationToken);
     }

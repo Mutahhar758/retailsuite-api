@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Retailer.Application.Common.Exceptions;
+using Retailer.Application.Common.Interfaces;
 using Retailer.Application.Common.Persistence;
 using Retailer.Application.Legacy.SaleReturns;
 using Retailer.Domain.Legacy;
@@ -19,6 +20,7 @@ internal class SaleReturnService : ISaleReturnService
     private readonly IRepository<DefaultAccount> _defaultAccountRepository;
     private readonly IRepository<ChartOfAccount> _chartOfAccountRepository;
     private readonly IRepository<ItemDetail> _itemRepository;
+    private readonly ICurrentTenant _currentTenant;
 
     public SaleReturnService(
         IRepository<SaleRetMaster> saleRetMasterRepository,
@@ -27,7 +29,8 @@ internal class SaleReturnService : ISaleReturnService
         IRepository<ItemTransaction> itemTransactionRepository,
         IRepository<DefaultAccount> defaultAccountRepository,
         IRepository<ChartOfAccount> chartOfAccountRepository,
-        IRepository<ItemDetail> itemRepository)
+        IRepository<ItemDetail> itemRepository,
+        ICurrentTenant currentTenant)
     {
         _saleRetMasterRepository = saleRetMasterRepository;
         _saleRetDetailRepository = saleRetDetailRepository;
@@ -36,6 +39,7 @@ internal class SaleReturnService : ISaleReturnService
         _defaultAccountRepository = defaultAccountRepository;
         _chartOfAccountRepository = chartOfAccountRepository;
         _itemRepository = itemRepository;
+        _currentTenant = currentTenant;
     }
 
     public async Task<List<SaleReturnResponse>> GetListAsync(SaleReturnListFilter filter, CancellationToken cancellationToken)
@@ -129,9 +133,14 @@ internal class SaleReturnService : ISaleReturnService
         var nextNum = maxVoucherNo == null ? 1L : long.Parse(maxVoucherNo) + 1;
         var voucherNo = nextNum.ToString("D5");
 
-        var grossAmount = request.Lines.Sum(x => (x.Qty * x.Rate) + ((x.SecQty ?? 0) * (x.SecRate ?? 0)));
+        var isWanda = _currentTenant.HasVariablePackFeature;
+        var grossAmount = request.Lines.Sum(x => isWanda
+            ? (x.Qty * x.Rate)
+            : ((x.Qty * x.Rate) + ((x.SecQty ?? 0) * (x.SecRate ?? 0))));
         var discountAmount = request.Lines.Sum(x => x.Qty * x.Discount);
-        var netAmount = request.Lines.Sum(x => (x.Qty * (x.Rate - x.Discount)) + ((x.SecQty ?? 0) * (x.SecRate ?? 0)));
+        var netAmount = request.Lines.Sum(x => isWanda
+            ? (x.Qty * (x.Rate - x.Discount))
+            : ((x.Qty * (x.Rate - x.Discount)) + ((x.SecQty ?? 0) * (x.SecRate ?? 0))));
 
         var master = new SaleRetMaster
         {
@@ -186,9 +195,14 @@ internal class SaleReturnService : ISaleReturnService
         if (master is null)
             throw new NotFoundException($"Sale return voucher '{voucherNo}' not found.");
 
-        var grossAmount = request.Lines.Sum(x => (x.Qty * x.Rate) + ((x.SecQty ?? 0) * (x.SecRate ?? 0)));
+        var isWanda = _currentTenant.HasVariablePackFeature;
+        var grossAmount = request.Lines.Sum(x => isWanda
+            ? (x.Qty * x.Rate)
+            : ((x.Qty * x.Rate) + ((x.SecQty ?? 0) * (x.SecRate ?? 0))));
         var discountAmount = request.Lines.Sum(x => x.Qty * x.Discount);
-        var netAmount = request.Lines.Sum(x => (x.Qty * (x.Rate - x.Discount)) + ((x.SecQty ?? 0) * (x.SecRate ?? 0)));
+        var netAmount = request.Lines.Sum(x => isWanda
+            ? (x.Qty * (x.Rate - x.Discount))
+            : ((x.Qty * (x.Rate - x.Discount)) + ((x.SecQty ?? 0) * (x.SecRate ?? 0))));
 
         master.VDate = request.Date;
         master.VTime = TimeOnly.FromDateTime(DateTime.Now);

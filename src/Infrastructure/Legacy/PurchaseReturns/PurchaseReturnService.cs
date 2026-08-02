@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Retailer.Application.Common.Exceptions;
+using Retailer.Application.Common.Interfaces;
 using Retailer.Application.Common.Persistence;
 using Retailer.Application.Legacy.PurchaseReturns;
 using Retailer.Domain.Legacy;
@@ -18,6 +19,7 @@ internal class PurchaseReturnService : IPurchaseReturnService
     private readonly IRepository<DefaultAccount> _defaultAccountRepository;
     private readonly IRepository<ChartOfAccount> _chartOfAccountRepository;
     private readonly IRepository<ItemDetail> _itemRepository;
+    private readonly ICurrentTenant _currentTenant;
 
     public PurchaseReturnService(
         IRepository<PurchaseRetMaster> purchaseRetMasterRepository,
@@ -26,7 +28,8 @@ internal class PurchaseReturnService : IPurchaseReturnService
         IRepository<ItemTransaction> itemTransactionRepository,
         IRepository<DefaultAccount> defaultAccountRepository,
         IRepository<ChartOfAccount> chartOfAccountRepository,
-        IRepository<ItemDetail> itemRepository)
+        IRepository<ItemDetail> itemRepository,
+        ICurrentTenant currentTenant)
     {
         _purchaseRetMasterRepository = purchaseRetMasterRepository;
         _purchaseRetDetailRepository = purchaseRetDetailRepository;
@@ -35,6 +38,7 @@ internal class PurchaseReturnService : IPurchaseReturnService
         _defaultAccountRepository = defaultAccountRepository;
         _chartOfAccountRepository = chartOfAccountRepository;
         _itemRepository = itemRepository;
+        _currentTenant = currentTenant;
     }
 
     public async Task<List<PurchaseReturnResponse>> GetListAsync(PurchaseReturnListFilter filter, CancellationToken cancellationToken)
@@ -125,7 +129,10 @@ internal class PurchaseReturnService : IPurchaseReturnService
         var nextNum = maxVoucherNo == null ? 1L : long.Parse(maxVoucherNo) + 1;
         var voucherNo = nextNum.ToString("D5");
 
-        var amount = request.Lines.Sum(x => (x.Qty * x.Rate) + ((x.SecQty ?? 0) * (x.SecRate ?? 0)));
+        var isWanda = _currentTenant.HasVariablePackFeature;
+        var amount = request.Lines.Sum(x => isWanda
+            ? (x.Qty * x.Rate)
+            : ((x.Qty * x.Rate) + ((x.SecQty ?? 0) * (x.SecRate ?? 0))));
         var master = new PurchaseRetMaster
         {
             VDate = request.Date,
@@ -174,7 +181,10 @@ internal class PurchaseReturnService : IPurchaseReturnService
         if (master is null)
             throw new NotFoundException($"Purchase return voucher '{voucherNo}' not found.");
 
-        var amount = request.Lines.Sum(x => (x.Qty * x.Rate) + ((x.SecQty ?? 0) * (x.SecRate ?? 0)));
+        var isWanda = _currentTenant.HasVariablePackFeature;
+        var amount = request.Lines.Sum(x => isWanda
+            ? (x.Qty * x.Rate)
+            : ((x.Qty * x.Rate) + ((x.SecQty ?? 0) * (x.SecRate ?? 0))));
 
         master.VDate = request.Date;
         master.VTime = TimeOnly.FromDateTime(DateTime.Now);
