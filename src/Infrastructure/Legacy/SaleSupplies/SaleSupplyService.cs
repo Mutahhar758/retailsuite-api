@@ -484,8 +484,8 @@ internal class SaleSupplyService : ISaleSupplyService
             query = query.Where(x => x.m.ItemId == itemId);
 
         return await query
-            .OrderByDescending(x => x.m.VDate)
-            .ThenByDescending(x => x.m.VNo)
+            .OrderBy(x => x.m.VDate)
+            .ThenBy(x => x.m.VNo)
             .ThenBy(x => x.d.Seq)
             .Select(x => new SaleSupplyLineResponse
             {
