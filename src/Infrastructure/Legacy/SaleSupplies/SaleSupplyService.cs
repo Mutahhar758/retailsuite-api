@@ -84,11 +84,13 @@ internal class SaleSupplyService : ISaleSupplyService
                 Date = m.VDate,
                 VoucherNo = d.VNo,
                 ItemId = m.ItemId!,
+                ItemTitle = m.Item != null ? m.Item.Title : m.ItemId,
                 Narration = m.Narration != null ? m.Narration.Title : m.NarrationId,
                 NarrationId = m.NarrationId,
                 Description = m.Descr,
                 SupplyOrderMasterId = m.SupplyOrderMasterId,
                 CustomerId = d.CustomerAccountId!,
+                CustomerTitle = d.CustomerAccount != null ? d.CustomerAccount.Title : d.CustomerAccountId,
                 Unit = d.UnitId,
                 Qty = d.Qty,
                 Rate = d.GrossRate ?? 0,
@@ -457,5 +459,181 @@ internal class SaleSupplyService : ISaleSupplyService
 
         if (staleEntries.Count > 0)
             await _itemTransactionRepository.DeleteRangeAsync(staleEntries, false);
+    }
+
+    public async Task<List<SaleSupplyLineResponse>> GetCustomerLinesAsync(
+        string customerId,
+        DateOnly? fromDate,
+        DateOnly? toDate,
+        string? itemId,
+        CancellationToken cancellationToken)
+    {
+        var query = from d in _saleSupplyDetailRepository.GetAll().AsNoTracking()
+                    join m in _saleSupplyMasterRepository.GetAll().AsNoTracking()
+                        on new { d.VType, d.VNo } equals new { m.VType, VNo = m.VNo }
+                    where d.VType == VType && d.CustomerAccountId == customerId
+                    select new { d, m };
+
+        if (fromDate.HasValue)
+            query = query.Where(x => x.m.VDate >= fromDate.Value);
+
+        if (toDate.HasValue)
+            query = query.Where(x => x.m.VDate <= toDate.Value);
+
+        if (!string.IsNullOrWhiteSpace(itemId))
+            query = query.Where(x => x.m.ItemId == itemId);
+
+        return await query
+            .OrderByDescending(x => x.m.VDate)
+            .ThenByDescending(x => x.m.VNo)
+            .ThenBy(x => x.d.Seq)
+            .Select(x => new SaleSupplyLineResponse
+            {
+                Seq = x.d.Seq,
+                Date = x.m.VDate,
+                VoucherNo = x.d.VNo,
+                ItemId = x.m.ItemId!,
+                ItemTitle = x.m.Item != null ? x.m.Item.Title : x.m.ItemId,
+                Narration = x.m.Narration != null ? x.m.Narration.Title : x.m.NarrationId,
+                NarrationId = x.m.NarrationId,
+                Description = x.m.Descr,
+                SupplyOrderMasterId = x.m.SupplyOrderMasterId,
+                CustomerId = x.d.CustomerAccountId!,
+                CustomerTitle = x.d.CustomerAccount != null ? x.d.CustomerAccount.Title : x.d.CustomerAccountId,
+                Unit = x.d.UnitId,
+                Qty = x.d.Qty,
+                Rate = x.d.GrossRate ?? 0,
+                Discount = x.d.Discount ?? 0,
+                AddLess = x.d.AddLess ?? 0,
+                Amount = (x.d.Qty * ((x.d.GrossRate ?? 0) - (x.d.Discount ?? 0))) + (x.d.AddLess ?? 0) + ((x.d.SecQty ?? 0) * (x.d.SecRate ?? 0)),
+                SecUnit = x.d.SecUnitId,
+                SecQty = x.d.SecQty,
+                SecRate = x.d.SecRate,
+                QtyInPack = x.d.QtyInPack,
+                CreatedBy = x.m.CreatedBy,
+                CreatedOn = x.m.CreatedOn,
+                LastModifiedBy = x.m.LastModifiedBy,
+                LastModifiedOn = x.m.LastModifiedOn
+            })
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task UpdateLineAsync(string voucherNo, int seq, SaleSupplyLineRequest request, CancellationToken cancellationToken)
+    {
+        var line = await _saleSupplyDetailRepository.GetAll()
+            .FirstOrDefaultAsync(x => x.VType == VType && x.VNo == voucherNo && x.Seq == seq, cancellationToken);
+
+        if (line is null)
+            throw new NotFoundException($"Sale supply line seq '{seq}' for voucher '{voucherNo}' not found.");
+
+        var master = await _saleSupplyMasterRepository.GetAll()
+            .FirstOrDefaultAsync(x => x.VType == VType && x.VNo == voucherNo, cancellationToken);
+
+        if (master is null)
+            throw new NotFoundException($"Sale supply voucher '{voucherNo}' not found.");
+
+        line.CustomerAccountId = request.CustomerId;
+        line.UnitId = string.IsNullOrWhiteSpace(request.Unit) ? null : request.Unit;
+        line.Qty = request.Qty;
+        line.GrossRate = request.Rate;
+        line.Discount = request.Discount;
+        line.AddLess = request.AddLess;
+        line.SecUnitId = string.IsNullOrWhiteSpace(request.SecUnit) ? null : request.SecUnit;
+        line.SecQty = request.SecQty;
+        line.SecRate = request.SecRate;
+        line.QtyInPack = request.QtyInPack;
+
+        await _saleSupplyDetailRepository.UpdateAsync(line, false);
+
+        var allDetails = await _saleSupplyDetailRepository.GetAll()
+            .Where(x => x.VType == VType && x.VNo == voucherNo)
+            .ToListAsync(cancellationToken);
+
+        master.Amount = allDetails.Sum(x => (x.Qty * (x.GrossRate ?? 0)) + ((x.SecQty ?? 0) * (x.SecRate ?? 0)));
+        master.Discount = allDetails.Sum(x => x.Qty * (x.Discount ?? 0));
+        master.NetAmount = allDetails.Sum(x => (x.Qty * ((x.GrossRate ?? 0) - (x.Discount ?? 0))) + (x.AddLess ?? 0) + ((x.SecQty ?? 0) * (x.SecRate ?? 0)));
+
+        await _saleSupplyMasterRepository.UpdateAsync(master, false);
+
+        var netLineAmt = (request.Qty * (request.Rate - request.Discount)) + request.AddLess + ((request.SecQty ?? 0) * (request.SecRate ?? 0));
+        var tx = await _itemTransactionRepository.GetAll()
+            .IgnoreQueryFilters([GlobalQueryFilterConstants.SoftDelete])
+            .FirstOrDefaultAsync(x => x.VType == VType && x.VNo == voucherNo && x.Seq == seq, cancellationToken);
+
+        if (tx is not null)
+        {
+            tx.DeletedOn = null;
+            tx.DeletedBy = null;
+            tx.VDate = master.VDate;
+            tx.AccountId = request.CustomerId;
+            tx.ItemId = master.ItemId!;
+            tx.UnitId = string.IsNullOrWhiteSpace(request.Unit) ? null : request.Unit;
+            tx.QtyOut = request.Qty;
+            tx.Rate = request.Rate;
+            tx.Amount = netLineAmt;
+            tx.SecUnitId = string.IsNullOrWhiteSpace(request.SecUnit) ? null : request.SecUnit;
+            tx.SecQtyOut = request.SecQty;
+            tx.SecRate = request.SecRate;
+
+            await _itemTransactionRepository.UpdateAsync(tx, false);
+        }
+
+        var saleSupplyAccount = await _defaultAccountRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => x.Title == VType)
+            .Select(x => x.AccountId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (!string.IsNullOrWhiteSpace(saleSupplyAccount))
+        {
+            var gl = await _glRepository.GetAll()
+                .IgnoreQueryFilters([GlobalQueryFilterConstants.SoftDelete])
+                .FirstOrDefaultAsync(x => x.VType == VType && x.VoucherNo == voucherNo && x.VSeq == seq, cancellationToken);
+
+            if (gl is not null)
+            {
+                if (netLineAmt <= 0)
+                {
+                    await _glRepository.DeleteAsync(gl, false);
+                }
+                else
+                {
+                    gl.DeletedOn = null;
+                    gl.DeletedBy = null;
+                    gl.VDate = master.VDate;
+                    gl.DrAccountId = request.CustomerId;
+                    gl.CrAccountId = saleSupplyAccount;
+                    gl.Amount = netLineAmt;
+                    await _glRepository.UpdateAsync(gl, false);
+                }
+            }
+            else if (netLineAmt > 0)
+            {
+                await _glRepository.AddAsync(new GlEntry
+                {
+                    VDate = master.VDate,
+                    VTime = TimeOnly.FromDateTime(DateTime.Now),
+                    VoucherNo = voucherNo,
+                    VType = VType,
+                    VSeq = seq,
+                    DrAccountId = request.CustomerId,
+                    CrAccountId = saleSupplyAccount,
+                    Amount = netLineAmt,
+                    NarrationId = master.NarrationId,
+                    Remarks = master.Descr,
+                    Clear = 0
+                }, false);
+            }
+        }
+
+        await _saleSupplyMasterRepository.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task UpdateCustomerLinesAsync(List<SaleSupplyCustomerLineUpdateRequest> requests, CancellationToken cancellationToken)
+    {
+        foreach (var item in requests)
+        {
+            await UpdateLineAsync(item.VoucherNo, item.Seq, item.Line, cancellationToken);
+        }
     }
 }

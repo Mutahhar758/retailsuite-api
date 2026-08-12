@@ -8,4 +8,7 @@ public interface ISaleSupplyService : ITransientService
     Task UpdateAsync(string voucherNo, SaleSupplyUpdateRequest request, CancellationToken cancellationToken);
     Task DeleteAsync(string voucherNo, CancellationToken cancellationToken);
     Task DeleteLineAsync(string voucherNo, int seq, CancellationToken cancellationToken);
+    Task<List<SaleSupplyLineResponse>> GetCustomerLinesAsync(string customerId, DateOnly? fromDate, DateOnly? toDate, string? itemId, CancellationToken cancellationToken);
+    Task UpdateLineAsync(string voucherNo, int seq, SaleSupplyLineRequest request, CancellationToken cancellationToken);
+    Task UpdateCustomerLinesAsync(List<SaleSupplyCustomerLineUpdateRequest> requests, CancellationToken cancellationToken);
 }

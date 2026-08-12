@@ -6,11 +6,13 @@ public class SaleSupplyLineResponse
     public DateOnly Date { get; set; }
     public string VoucherNo { get; set; } = default!;
     public string ItemId { get; set; } = default!;
+    public string? ItemTitle { get; set; }
     public string? Narration { get; set; }
     public string? NarrationId { get; set; }
     public string? Description { get; set; }
     public int? SupplyOrderMasterId { get; set; }
     public string CustomerId { get; set; } = default!;
+    public string? CustomerTitle { get; set; }
     public string? Unit { get; set; }
     public decimal Qty { get; set; }
     public decimal Rate { get; set; }
