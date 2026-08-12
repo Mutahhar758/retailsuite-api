@@ -3,6 +3,7 @@ namespace Retailer.Application.Legacy.Payments;
 public class PaymentResponse
 {
     public DateOnly Date { get; set; }
+    public DateOnly? ClearingDate { get; set; }
     public string VoucherNo { get; set; } = default!;
     public decimal Amount { get; set; }
     public string? Narration { get; set; }

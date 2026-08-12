@@ -70,22 +70,24 @@ internal class ReportService : IReportService
         if (filter.ToDate < filter.FromDate)
             throw new BadRequestException("To date must be greater than or equal to from date.");
 
+        bool useClearingDate = string.Equals(filter.DateBasis, "ClearingDate", StringComparison.OrdinalIgnoreCase);
+
         var openingBalance = await _glRepository.GetAll()
             .AsNoTracking()
             .Where(x => (x.DrAccountId == filter.Account || x.CrAccountId == filter.Account)
-                && (x.VType == "Op" || x.VDate < filter.FromDate))
+                && (x.VType == "Op" || (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) < filter.FromDate))
             .Select(x => x.DrAccountId == filter.Account ? x.Amount : -x.Amount)
             .SumAsync(cancellationToken);
 
         var entries = await _glRepository.GetAll()
             .AsNoTracking()
             .Where(x => (x.DrAccountId == filter.Account || x.CrAccountId == filter.Account)
-                && x.VDate >= filter.FromDate
-                && x.VDate <= filter.ToDate
+                && (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) >= filter.FromDate
+                && (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) <= filter.ToDate
                 && x.VType != "Op")
             .Select(x => new
             {
-                x.VDate,
+                VDate = useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate,
                 x.VType,
                 x.VoucherNo,
                 x.VSeq,
@@ -169,22 +171,24 @@ internal class ReportService : IReportService
         if (filter.ToDate < filter.FromDate)
             throw new BadRequestException("To date must be greater than or equal to from date.");
 
+        bool useClearingDate = string.Equals(filter.DateBasis, "ClearingDate", StringComparison.OrdinalIgnoreCase);
+
         var openingBalance = await _glRepository.GetAll()
             .AsNoTracking()
             .Where(x => (x.DrAccountId == filter.Account || x.CrAccountId == filter.Account)
-                && (x.VType == "Op" || x.VDate < filter.FromDate))
+                && (x.VType == "Op" || (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) < filter.FromDate))
             .Select(x => x.DrAccountId == filter.Account ? x.Amount : -x.Amount)
             .SumAsync(cancellationToken);
 
         var entries = await _glRepository.GetAll()
             .AsNoTracking()
             .Where(x => (x.DrAccountId == filter.Account || x.CrAccountId == filter.Account)
-                && x.VDate >= filter.FromDate
-                && x.VDate <= filter.ToDate
+                && (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) >= filter.FromDate
+                && (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) <= filter.ToDate
                 && x.VType != "Op")
             .Select(x => new
             {
-                x.VDate,
+                VDate = useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate,
                 x.VType,
                 x.VoucherNo,
                 x.VSeq,
@@ -890,17 +894,20 @@ internal class ReportService : IReportService
             .ThenBy(x => x.VNo)
             .ToList();
 
+        bool useClearingDate = string.Equals(filter.DateBasis, "ClearingDate", StringComparison.OrdinalIgnoreCase);
+
         var previousBalance = await _glRepository.GetAll()
             .AsNoTracking()
             .Where(x => (x.DrAccountId == filter.Account || x.CrAccountId == filter.Account)
-                        && (x.VType == "Op" || x.VDate < filter.FromDate))
+                        && (x.VType == "Op" || (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) < filter.FromDate))
             .Select(x => x.DrAccountId == filter.Account ? x.Amount : -x.Amount)
             .SumAsync(cancellationToken);
 
         var payment = await _glRepository.GetAll()
             .AsNoTracking()
             .Where(x => (x.DrAccountId == filter.Account || x.CrAccountId == filter.Account)
-                        && x.VDate >= filter.FromDate && x.VDate <= filter.ToDate
+                        && (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) >= filter.FromDate
+                        && (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) <= filter.ToDate
                         && (x.VType == "PV" || x.VType == "RV" || x.VType == "JV"))
             .Select(x => x.DrAccountId == filter.Account ? x.Amount : -x.Amount)
             .SumAsync(cancellationToken);
@@ -908,7 +915,7 @@ internal class ReportService : IReportService
         var balance = await _glRepository.GetAll()
             .AsNoTracking()
             .Where(x => (x.DrAccountId == filter.Account || x.CrAccountId == filter.Account)
-                        && (x.VType == "Op" || x.VDate <= filter.ToDate))
+                        && (x.VType == "Op" || (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) <= filter.ToDate))
             .Select(x => x.DrAccountId == filter.Account ? x.Amount : -x.Amount)
             .SumAsync(cancellationToken);
 

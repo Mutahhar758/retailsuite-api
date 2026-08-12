@@ -4,6 +4,7 @@ public class PaymentLineResponse
 {
     public int Seq { get; set; }
     public DateOnly Date { get; set; }
+    public DateOnly? ClearingDate { get; set; }
     public string VoucherNo { get; set; } = default!;
     public string CashBankAccountId { get; set; } = default!;
     public string AccountId { get; set; } = default!;

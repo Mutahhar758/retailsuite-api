@@ -44,6 +44,7 @@ internal class PaymentService : IPaymentService
             {
                 x.VoucherNo,
                 x.VDate,
+                x.ClearingDate,
                 Narration = x.Narration != null ? x.Narration.Title : x.NarrationId,
                 NarrationId = x.NarrationId
             })
@@ -51,6 +52,7 @@ internal class PaymentService : IPaymentService
             {
                 VoucherNo = g.Key.VoucherNo,
                 Date = g.Key.VDate,
+                ClearingDate = g.Key.ClearingDate,
                 Amount = g.Sum(x => x.Amount),
                 Narration = g.Key.Narration,
                 NarrationId = g.Key.NarrationId,
@@ -79,6 +81,7 @@ internal class PaymentService : IPaymentService
             {
                 Seq = x.VSeq,
                 Date = x.VDate,
+                ClearingDate = x.ClearingDate,
                 VoucherNo = x.VoucherNo,
                 CashBankAccountId = x.CrAccountId!,
                 AccountId = x.DrAccountId!,
@@ -130,6 +133,7 @@ internal class PaymentService : IPaymentService
             await _glRepository.AddAsync(new GlEntry
             {
                 VDate = request.Date,
+                ClearingDate = request.ClearingDate,
                 VTime = TimeOnly.FromDateTime(DateTime.Now),
                 VoucherNo = voucherNo,
                 VType = VType,
@@ -171,6 +175,7 @@ internal class PaymentService : IPaymentService
                 await _glRepository.AddAsync(new GlEntry
                 {
                     VDate = request.Date,
+                    ClearingDate = request.ClearingDate,
                     VTime = TimeOnly.FromDateTime(DateTime.Now),
                     VoucherNo = voucherNo,
                     VType = VType,
@@ -191,6 +196,7 @@ internal class PaymentService : IPaymentService
                 existing.DeletedOn = null;
                 existing.DeletedBy = null;
                 existing.VDate = request.Date;
+                existing.ClearingDate = request.ClearingDate;
                 existing.VTime = TimeOnly.FromDateTime(DateTime.Now);
                 existing.DrAccountId = line.Account;
                 existing.Amount = line.Amount;

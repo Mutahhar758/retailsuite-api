@@ -15,6 +15,7 @@ public class GlEntry : AuditableEntity, IAggregateRoot
     public string? Remarks { get; set; }
     public string? CheckNum { get; set; }
     public DateOnly? CheckDate { get; set; }
+    public DateOnly? ClearingDate { get; set; }
     public string? CheckStatus { get; set; }
     public decimal Clear { get; set; }
 
