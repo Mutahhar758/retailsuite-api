@@ -15,4 +15,6 @@ public class CustomerBillLineResponse
     public decimal? SecRate { get; set; }
     public decimal? QtyInPack { get; set; }
     public string? SecUnitTitle { get; set; }
+    public DateOnly? ReceiptDate { get; set; }
+    public decimal? ReceiptAmount { get; set; }
 }
