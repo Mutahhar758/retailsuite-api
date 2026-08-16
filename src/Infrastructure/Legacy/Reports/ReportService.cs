@@ -866,7 +866,11 @@ internal class ReportService : IReportService
                 Qty = sd.Qty,
                 Rate = (sd.GrossRate ?? 0m) - (sd.Discount ?? 0m),
                 AddLess = 0m,
-                Amount = sd.Qty * ((sd.GrossRate ?? 0m) - (sd.Discount ?? 0m))
+                Amount = sd.Qty * ((sd.GrossRate ?? 0m) - (sd.Discount ?? 0m)),
+                SecQty = sd.SecQty,
+                SecRate = sd.SecRate,
+                QtyInPack = sd.QtyInPack,
+                SecUnitTitle = !string.IsNullOrWhiteSpace(sd.SecUnitId) && unitMap.ContainsKey(sd.SecUnitId) ? unitMap[sd.SecUnitId] : (sd.SecUnitId ?? string.Empty)
             }).ToListAsync(cancellationToken);
 
         var supplyLines = await (
@@ -885,7 +889,11 @@ internal class ReportService : IReportService
                 Qty = ssd.Qty,
                 Rate = (ssd.GrossRate ?? 0m) - (ssd.Discount ?? 0m),
                 AddLess = ssd.AddLess ?? 0m,
-                Amount = (ssd.Qty * ((ssd.GrossRate ?? 0m) - (ssd.Discount ?? 0m))) + (ssd.AddLess ?? 0m)
+                Amount = (ssd.Qty * ((ssd.GrossRate ?? 0m) - (ssd.Discount ?? 0m))) + (ssd.AddLess ?? 0m),
+                SecQty = ssd.SecQty,
+                SecRate = ssd.SecRate,
+                QtyInPack = ssd.QtyInPack,
+                SecUnitTitle = ssd.SecUnit != null ? ssd.SecUnit.Title : (!string.IsNullOrWhiteSpace(ssd.SecUnitId) && unitMap.ContainsKey(ssd.SecUnitId) ? unitMap[ssd.SecUnitId] : (ssd.SecUnitId ?? string.Empty))
             }).ToListAsync(cancellationToken);
 
         var lines = saleLines

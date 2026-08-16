@@ -11,4 +11,8 @@ public class CustomerBillLineResponse
     public decimal Rate { get; set; }
     public decimal AddLess { get; set; }
     public decimal Amount { get; set; }
+    public decimal? SecQty { get; set; }
+    public decimal? SecRate { get; set; }
+    public decimal? QtyInPack { get; set; }
+    public string? SecUnitTitle { get; set; }
 }
