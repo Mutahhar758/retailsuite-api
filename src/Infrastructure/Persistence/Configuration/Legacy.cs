@@ -639,9 +639,6 @@ public class CustomerSupplyItemConfig : IEntityTypeConfiguration<CustomerSupplyI
         builder.HasIndex(x => new { x.CustomerAccountId, x.ItemId }).IsUnique();
         mtBuilder.AdjustUniqueIndexes();
 
-        builder.Property(x => x.CustomerAccountId).HasMaxLength(50);
-        builder.Property(x => x.ItemId).HasMaxLength(50);
-
         builder.Property(x => x.Qty).HasPrecision(18, 4);
         builder.Property(x => x.SecQty).HasPrecision(18, 4);
 
@@ -656,5 +653,6 @@ public class CustomerSupplyItemConfig : IEntityTypeConfiguration<CustomerSupplyI
             .OnDelete(DeleteBehavior.Restrict);
     }
 }
+
 
 

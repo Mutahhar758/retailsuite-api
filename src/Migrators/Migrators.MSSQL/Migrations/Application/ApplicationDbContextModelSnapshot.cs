@@ -715,8 +715,7 @@ namespace Migrators.MSSQL.Migrations.Application
 
                     b.Property<string>("CustomerAccountId")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("customer_account_id");
 
                     b.Property<string>("DeletedBy")
@@ -729,8 +728,7 @@ namespace Migrators.MSSQL.Migrations.Application
 
                     b.Property<string>("ItemId")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("item_id");
 
                     b.Property<string>("LastModifiedBy")

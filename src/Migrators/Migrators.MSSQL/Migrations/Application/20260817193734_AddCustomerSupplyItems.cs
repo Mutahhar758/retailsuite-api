@@ -18,8 +18,8 @@ namespace Migrators.MSSQL.Migrations.Application
                     id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     tenant_id = table.Column<string>(type: "nvarchar(450)", nullable: false),
-                    customer_account_id = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    item_id = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    customer_account_id = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    item_id = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     qty = table.Column<decimal>(type: "decimal(18,4)", precision: 18, scale: 4, nullable: false),
                     sec_qty = table.Column<decimal>(type: "decimal(18,4)", precision: 18, scale: 4, nullable: true),
                     created_by = table.Column<string>(type: "nvarchar(max)", nullable: false),

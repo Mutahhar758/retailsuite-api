@@ -12,7 +12,7 @@ using Retailer.Infrastructure.Persistence.Context;
 namespace Migrators.MSSQL.Migrations.Application
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260817155937_AddCustomerSupplyItems")]
+    [Migration("20260817193734_AddCustomerSupplyItems")]
     partial class AddCustomerSupplyItems
     {
         /// <inheritdoc />
@@ -718,8 +718,7 @@ namespace Migrators.MSSQL.Migrations.Application
 
                     b.Property<string>("CustomerAccountId")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("customer_account_id");
 
                     b.Property<string>("DeletedBy")
@@ -732,8 +731,7 @@ namespace Migrators.MSSQL.Migrations.Application
 
                     b.Property<string>("ItemId")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("item_id");
 
                     b.Property<string>("LastModifiedBy")
