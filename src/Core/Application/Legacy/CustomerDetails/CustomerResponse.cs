@@ -22,4 +22,6 @@ public class CustomerResponse
     public DateTime? CreatedOn { get; set; }
     public string? LastModifiedBy { get; set; }
     public DateTime? LastModifiedOn { get; set; }
+    public List<CustomerSupplyItemDto> SupplyItems { get; set; } = new();
 }
+

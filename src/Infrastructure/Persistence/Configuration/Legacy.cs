@@ -630,3 +630,31 @@ public class KotOrderItemConfig : IEntityTypeConfiguration<KotOrderItem>
     }
 }
 
+public class CustomerSupplyItemConfig : IEntityTypeConfiguration<CustomerSupplyItem>
+{
+    public void Configure(EntityTypeBuilder<CustomerSupplyItem> builder)
+    {
+        var mtBuilder = builder.IsMultiTenant();
+        builder.Property(x => x.Id).ValueGeneratedOnAdd();
+        builder.HasIndex(x => new { x.CustomerAccountId, x.ItemId }).IsUnique();
+        mtBuilder.AdjustUniqueIndexes();
+
+        builder.Property(x => x.CustomerAccountId).HasMaxLength(50);
+        builder.Property(x => x.ItemId).HasMaxLength(50);
+
+        builder.Property(x => x.Qty).HasPrecision(18, 4);
+        builder.Property(x => x.SecQty).HasPrecision(18, 4);
+
+        builder.HasOne(x => x.CustomerAccount)
+            .WithMany()
+            .HasForeignKey(x => x.CustomerAccountId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne(x => x.Item)
+            .WithMany()
+            .HasForeignKey(x => x.ItemId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+

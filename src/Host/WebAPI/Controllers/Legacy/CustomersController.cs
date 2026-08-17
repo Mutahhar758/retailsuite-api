@@ -50,4 +50,15 @@ public class CustomersController : VersionNeutralApiController
         var response = await _customerService.GetPresignedUploadUrlAsync(fileName, cancellationToken);
         return response.ToInformationResponse();
     }
+
+    [HttpGet("supply-items")]
+    [MustHavePermission(AppAction.View, AppResource.Customers)]
+    [OpenApiOperation("Get customer supply items.", "")]
+    public async Task<HttpResponseDto<List<CustomerSupplyItemDto>>> GetSupplyItemsAsync([FromQuery] string? customerId, [FromQuery] string? itemId, CancellationToken cancellationToken)
+    {
+        var items = await _customerService.GetSupplyItemsAsync(customerId, itemId, cancellationToken);
+        return items.ToInformationResponse();
+    }
 }
+
+

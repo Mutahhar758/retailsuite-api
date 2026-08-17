@@ -15,17 +15,23 @@ internal class CustomerService : ICustomerService
     private readonly IRepository<ChartOfAccount> _chartOfAccountRepository;
     private readonly IRepository<CustomerDetail> _customerDetailRepository;
     private readonly IRepository<DefaultAccount> _defaultAccountRepository;
+    private readonly IRepository<CustomerSupplyItem> _customerSupplyItemRepository;
+    private readonly IRepository<ItemDetail> _itemDetailRepository;
     private readonly IMediaServiceClient _mediaServiceClient;
 
     public CustomerService(
         IRepository<ChartOfAccount> chartOfAccountRepository,
         IRepository<CustomerDetail> customerDetailRepository,
         IRepository<DefaultAccount> defaultAccountRepository,
+        IRepository<CustomerSupplyItem> customerSupplyItemRepository,
+        IRepository<ItemDetail> itemDetailRepository,
         IMediaServiceClient mediaServiceClient)
     {
         _chartOfAccountRepository = chartOfAccountRepository;
         _customerDetailRepository = customerDetailRepository;
         _defaultAccountRepository = defaultAccountRepository;
+        _customerSupplyItemRepository = customerSupplyItemRepository;
+        _itemDetailRepository = itemDetailRepository;
         _mediaServiceClient = mediaServiceClient;
     }
 
@@ -71,9 +77,38 @@ internal class CustomerService : ICustomerService
             })
             .ToDictionaryAsync(x => x.Id, cancellationToken);
 
+        var supplyItems = await _customerSupplyItemRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => accountIds.Contains(x.CustomerAccountId))
+            .Join(_itemDetailRepository.GetAll().AsNoTracking(),
+                cs => cs.ItemId,
+                item => item.Id,
+                (cs, item) => new
+                {
+                    cs.CustomerAccountId,
+                    cs.ItemId,
+                    ItemTitle = item.Title,
+                    cs.Qty,
+                    cs.SecQty
+                })
+            .ToListAsync(cancellationToken);
+
+        var supplyItemMap = supplyItems
+            .GroupBy(x => x.CustomerAccountId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.Select(i => new CustomerSupplyItemDto
+                {
+                    ItemId = i.ItemId,
+                    ItemTitle = i.ItemTitle,
+                    Qty = i.Qty,
+                    SecQty = i.SecQty
+                }).ToList());
+
         var mappedCustomers = accounts.Select(x =>
         {
             detailMap.TryGetValue(x.Id, out var detail);
+            supplyItemMap.TryGetValue(x.Id, out var items);
             return new CustomerResponse
             {
                 Account = x.Id,
@@ -94,7 +129,8 @@ internal class CustomerService : ICustomerService
                 CreatedBy = detail?.CreatedBy,
                 CreatedOn = detail?.CreatedOn,
                 LastModifiedBy = detail?.LastModifiedBy,
-                LastModifiedOn = detail?.LastModifiedOn
+                LastModifiedOn = detail?.LastModifiedOn,
+                SupplyItems = items ?? new()
             };
         }).ToList();
 
@@ -164,6 +200,24 @@ internal class CustomerService : ICustomerService
         };
         await _customerDetailRepository.AddAsync(customerDetail);
 
+        if (request.SupplyItems is not null && request.SupplyItems.Count > 0)
+        {
+            var itemsToAdd = request.SupplyItems
+                .Where(i => !string.IsNullOrWhiteSpace(i.ItemId))
+                .Select(item => new CustomerSupplyItem
+                {
+                    CustomerAccountId = newAccountCode,
+                    ItemId = item.ItemId,
+                    Qty = item.Qty,
+                    SecQty = item.SecQty
+                }).ToList();
+
+            if (itemsToAdd.Count > 0)
+            {
+                await _customerSupplyItemRepository.AddRangeAsync(itemsToAdd);
+            }
+        }
+
         return newAccountCode;
     }
 
@@ -198,11 +252,66 @@ internal class CustomerService : ICustomerService
 
             ApplyRequest(customerDetail, request);
             await _customerDetailRepository.AddAsync(customerDetail);
-            return;
+        }
+        else
+        {
+            ApplyRequest(customerDetail, request);
+            await _customerDetailRepository.UpdateAsync(customerDetail);
         }
 
-        ApplyRequest(customerDetail, request);
-        await _customerDetailRepository.UpdateAsync(customerDetail);
+        if (request.SupplyItems is not null)
+        {
+            var existingItems = await _customerSupplyItemRepository.GetAll()
+                .Where(x => x.CustomerAccountId == account)
+                .ToListAsync(cancellationToken);
+
+            if (existingItems.Count > 0)
+            {
+                await _customerSupplyItemRepository.DeleteRangeAsync(existingItems, true);
+            }
+
+            var itemsToAdd = request.SupplyItems
+                .Where(i => !string.IsNullOrWhiteSpace(i.ItemId))
+                .Select(item => new CustomerSupplyItem
+                {
+                    CustomerAccountId = account,
+                    ItemId = item.ItemId,
+                    Qty = item.Qty,
+                    SecQty = item.SecQty
+                }).ToList();
+
+            if (itemsToAdd.Count > 0)
+            {
+                await _customerSupplyItemRepository.AddRangeAsync(itemsToAdd);
+            }
+        }
+    }
+
+
+    public async Task<List<CustomerSupplyItemDto>> GetSupplyItemsAsync(string? customerId, string? itemId, CancellationToken cancellationToken)
+    {
+        var query = _customerSupplyItemRepository.GetAll().AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(customerId))
+            query = query.Where(x => x.CustomerAccountId == customerId);
+
+        if (!string.IsNullOrWhiteSpace(itemId))
+            query = query.Where(x => x.ItemId == itemId);
+
+        return await query
+            .Join(_itemDetailRepository.GetAll().AsNoTracking(),
+                cs => cs.ItemId,
+                item => item.Id,
+                (cs, item) => new CustomerSupplyItemDto
+                {
+                    CustomerAccountId = cs.CustomerAccountId,
+                    ItemId = cs.ItemId,
+                    ItemTitle = item.Title,
+                    Qty = cs.Qty,
+                    SecQty = cs.SecQty
+                })
+
+            .ToListAsync(cancellationToken);
     }
 
     public async Task<PresignedUploadUrlResponse?> GetPresignedUploadUrlAsync(string fileName, CancellationToken cancellationToken)
@@ -273,3 +382,4 @@ internal class CustomerService : ICustomerService
         customerDetail.MediaId = request.MediaId;
     }
 }
+
