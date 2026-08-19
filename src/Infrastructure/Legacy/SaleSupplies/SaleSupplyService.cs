@@ -101,6 +101,7 @@ internal class SaleSupplyService : ISaleSupplyService
                 SecQty = d.SecQty,
                 SecRate = d.SecRate,
                 QtyInPack = d.QtyInPack,
+                Packing = d.Packing,
                 CreatedBy = m.CreatedBy,
                 CreatedOn = m.CreatedOn,
                 LastModifiedBy = m.LastModifiedBy,
@@ -157,7 +158,8 @@ internal class SaleSupplyService : ISaleSupplyService
                 SecUnitId = string.IsNullOrWhiteSpace(line.SecUnit) ? null : line.SecUnit,
                 SecQty = line.SecQty,
                 SecRate = line.SecRate,
-                QtyInPack = line.QtyInPack
+                QtyInPack = line.QtyInPack,
+                Packing = line.Packing
             }, false);
         }
 
@@ -216,7 +218,8 @@ internal class SaleSupplyService : ISaleSupplyService
                     SecUnitId = string.IsNullOrWhiteSpace(line.SecUnit) ? null : line.SecUnit,
                     SecQty = line.SecQty,
                     SecRate = line.SecRate,
-                    QtyInPack = line.QtyInPack
+                    QtyInPack = line.QtyInPack,
+                    Packing = line.Packing
                 }, false);
             }
             else
@@ -233,6 +236,7 @@ internal class SaleSupplyService : ISaleSupplyService
                 existing.SecQty = line.SecQty;
                 existing.SecRate = line.SecRate;
                 existing.QtyInPack = line.QtyInPack;
+                existing.Packing = line.Packing;
 
                 await _saleSupplyDetailRepository.UpdateAsync(existing, false);
             }
@@ -510,6 +514,7 @@ internal class SaleSupplyService : ISaleSupplyService
                 SecQty = x.d.SecQty,
                 SecRate = x.d.SecRate,
                 QtyInPack = x.d.QtyInPack,
+                Packing = x.d.Packing,
                 CreatedBy = x.m.CreatedBy,
                 CreatedOn = x.m.CreatedOn,
                 LastModifiedBy = x.m.LastModifiedBy,
@@ -542,6 +547,7 @@ internal class SaleSupplyService : ISaleSupplyService
         line.SecQty = request.SecQty;
         line.SecRate = request.SecRate;
         line.QtyInPack = request.QtyInPack;
+        line.Packing = request.Packing;
 
         await _saleSupplyDetailRepository.UpdateAsync(line, false);
 

@@ -21,6 +21,7 @@ public class StockAdjustmentLineResponse
     public decimal? SecQtyOut { get; set; }
     public decimal? SecRate { get; set; }
     public decimal? QtyInPack { get; set; }
+    public decimal? Packing { get; set; }
     public string CreatedBy { get; set; } = default!;
     public DateTime CreatedOn { get; set; }
     public string? LastModifiedBy { get; set; }

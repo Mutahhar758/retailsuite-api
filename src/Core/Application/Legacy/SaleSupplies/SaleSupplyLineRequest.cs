@@ -13,4 +13,5 @@ public class SaleSupplyLineRequest
     public decimal? SecQty { get; set; }
     public decimal? SecRate { get; set; }
     public decimal? QtyInPack { get; set; }
+    public decimal? Packing { get; set; }
 }

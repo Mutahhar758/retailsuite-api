@@ -113,6 +113,7 @@ internal class PurchaseService : IPurchaseService
                 SecQty = d.SecQty,
                 SecRate = d.SecRate,
                 QtyInPack = d.QtyInPack,
+                Packing = d.Packing,
                 CreatedBy = m.CreatedBy,
                 CreatedOn = m.CreatedOn,
                 LastModifiedBy = m.LastModifiedBy,
@@ -166,7 +167,8 @@ internal class PurchaseService : IPurchaseService
                 SecUnitId = string.IsNullOrWhiteSpace(line.SecUnit) ? null : line.SecUnit,
                 SecQty = line.SecQty,
                 SecRate = line.SecRate,
-                QtyInPack = line.QtyInPack
+                QtyInPack = line.QtyInPack,
+                Packing = line.Packing
             }, false);
         }
 
@@ -222,7 +224,8 @@ internal class PurchaseService : IPurchaseService
                     SecUnitId = string.IsNullOrWhiteSpace(line.SecUnit) ? null : line.SecUnit,
                     SecQty = line.SecQty,
                     SecRate = line.SecRate,
-                    QtyInPack = line.QtyInPack
+                    QtyInPack = line.QtyInPack,
+                    Packing = line.Packing
                 }, false);
             }
             else
@@ -238,6 +241,7 @@ internal class PurchaseService : IPurchaseService
                 existing.SecQty = line.SecQty;
                 existing.SecRate = line.SecRate;
                 existing.QtyInPack = line.QtyInPack;
+                existing.Packing = line.Packing;
 
                 await _purchaseDetailRepository.UpdateAsync(existing, false);
             }

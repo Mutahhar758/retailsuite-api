@@ -17,6 +17,7 @@ public class SaleSupplyDetail : AuditableEntity, IAggregateRoot
     public decimal? SecQty { get; set; }
     public decimal? SecRate { get; set; }
     public decimal? QtyInPack { get; set; }
+    public decimal? Packing { get; set; }
 
     public int? SaleSupplyMasterId { get; set; }
     public string? CustomerAccountId { get; set; }

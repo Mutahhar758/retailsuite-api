@@ -10,6 +10,7 @@ public class Sale : AuditableEntity, IAggregateRoot
     public int Seq { get; set; }
     public string? UnitId { get; set; }
     public decimal? QtyInPack { get; set; }
+    public decimal? Packing { get; set; }
     public decimal Qty { get; set; }
     public decimal? GrossRate { get; set; }
     public decimal? Discount { get; set; }

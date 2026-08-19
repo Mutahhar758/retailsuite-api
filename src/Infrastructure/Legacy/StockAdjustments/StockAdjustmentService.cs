@@ -106,6 +106,7 @@ internal class StockAdjustmentService : IStockAdjustmentService
                 SecQtyOut = d.SecQtyOut,
                 SecRate = d.SecRate,
                 QtyInPack = d.QtyInPack,
+                Packing = d.Packing,
                 CreatedBy = m.CreatedBy,
                 CreatedOn = m.CreatedOn,
                 LastModifiedBy = m.LastModifiedBy,
@@ -153,7 +154,8 @@ internal class StockAdjustmentService : IStockAdjustmentService
                 SecQtyIn = line.SecQtyIn,
                 SecQtyOut = line.SecQtyOut,
                 SecRate = line.SecRate,
-                QtyInPack = line.QtyInPack
+                QtyInPack = line.QtyInPack,
+                Packing = line.Packing
             }, false);
         }
 
@@ -201,7 +203,8 @@ internal class StockAdjustmentService : IStockAdjustmentService
                     SecQtyIn = line.SecQtyIn,
                     SecQtyOut = line.SecQtyOut,
                     SecRate = line.SecRate,
-                    QtyInPack = line.QtyInPack
+                    QtyInPack = line.QtyInPack,
+                    Packing = line.Packing
                 }, false);
             }
             else
@@ -218,6 +221,7 @@ internal class StockAdjustmentService : IStockAdjustmentService
                 existing.SecQtyOut = line.SecQtyOut;
                 existing.SecRate = line.SecRate;
                 existing.QtyInPack = line.QtyInPack;
+                existing.Packing = line.Packing;
 
                 await _stockAdjDetailRepository.UpdateAsync(existing, false);
             }
