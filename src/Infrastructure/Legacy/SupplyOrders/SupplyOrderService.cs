@@ -64,6 +64,8 @@ internal class SupplyOrderService : ISupplyOrderService
 
     public async Task<int> CreateAsync(SupplyOrderUpsertRequest request, CancellationToken cancellationToken)
     {
+        ValidateDetails(request.Details);
+
         var master = new SupplyOrderMaster
         {
             Title = request.Title.Trim()
@@ -77,6 +79,8 @@ internal class SupplyOrderService : ISupplyOrderService
 
     public async Task<int> UpdateAsync(int id, SupplyOrderUpsertRequest request, CancellationToken cancellationToken)
     {
+        ValidateDetails(request.Details);
+
         var master = await _masterRepository.GetByIdAsync(id, cancellationToken);
         if (master is null)
             throw new NotFoundException($"Supply order '{id}' not found.");
@@ -106,22 +110,48 @@ internal class SupplyOrderService : ISupplyOrderService
         await _masterRepository.DeleteAsync(master);
     }
 
+    private static void ValidateDetails(IEnumerable<SupplyOrderDetailUpsertRequest>? details)
+    {
+        if (details is null)
+            return;
+
+        var seenCustomers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var detail in details)
+        {
+            if (string.IsNullOrWhiteSpace(detail.CustomerId))
+                continue;
+
+            var customerId = detail.CustomerId.Trim();
+            if (!seenCustomers.Add(customerId))
+            {
+                throw new BadRequestException($"Customer '{customerId}' cannot be added more than once in the same supply order.");
+            }
+        }
+    }
+
     private async Task ReplaceDetailsAsync(int supplyOrderId, IEnumerable<SupplyOrderDetailUpsertRequest> details, CancellationToken cancellationToken)
     {
-        // Deduplicate incoming by CustomerId (last entry wins for sort order)
-        var incomingByCustomer = details
+        var incomingList = details
             .Where(x => !string.IsNullOrWhiteSpace(x.CustomerId))
-            .GroupBy(x => x.CustomerId.Trim(), StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(g => g.Key, g => g.Last().SortOrder, StringComparer.OrdinalIgnoreCase);
+            .Select(x => new
+            {
+                CustomerId = x.CustomerId.Trim(),
+                x.SortOrder
+            })
+            .ToList();
+
+        var incomingCustomerIds = incomingList
+            .Select(x => x.CustomerId)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         var existingDetails = await _detailRepository.GetAll()
             .Where(x => x.SupplyOrderMasterId == supplyOrderId)
             .ToListAsync(cancellationToken);
 
-        // Remove rows whose customer is no longer in the incoming list
+        // Delete rows for customers no longer in the supply order
         foreach (var existing in existingDetails)
         {
-            if (existing.CustomerAccountId == null || !incomingByCustomer.ContainsKey(existing.CustomerAccountId))
+            if (existing.CustomerAccountId == null || !incomingCustomerIds.Contains(existing.CustomerAccountId))
             {
                 await _detailRepository.DeleteAsync(existing, false);
             }
@@ -129,29 +159,26 @@ internal class SupplyOrderService : ISupplyOrderService
 
         var existingByCustomer = existingDetails
             .Where(x => x.CustomerAccountId != null)
-            .ToDictionary(x => x.CustomerAccountId!, x => x, StringComparer.OrdinalIgnoreCase);
+            .ToDictionary(x => x.CustomerAccountId!, StringComparer.OrdinalIgnoreCase);
 
-        foreach (var (customerId, sortOrder) in incomingByCustomer)
+        // Update existing rows or add new rows
+        foreach (var item in incomingList)
         {
-            if (existingByCustomer.TryGetValue(customerId, out var existing))
+            if (existingByCustomer.TryGetValue(item.CustomerId, out var existing))
             {
-                // Customer already exists — only update SortOrder if it changed.
-                // This avoids a soft-delete + re-insert which would hit the unique
-                // index on (SupplyOrderMasterId, CustomerAccountId, SortOrder).
-                if (existing.SortOrder != sortOrder)
+                if (existing.SortOrder != item.SortOrder)
                 {
-                    existing.SortOrder = sortOrder;
+                    existing.SortOrder = item.SortOrder;
                     await _detailRepository.UpdateAsync(existing, false);
                 }
             }
             else
             {
-                // New customer — insert a fresh row
                 var detail = new SupplyOrderDetail
                 {
                     SupplyOrderMasterId = supplyOrderId,
-                    CustomerAccountId = customerId,
-                    SortOrder = sortOrder
+                    CustomerAccountId = item.CustomerId,
+                    SortOrder = item.SortOrder
                 };
 
                 await _detailRepository.AddAsync(detail, false);

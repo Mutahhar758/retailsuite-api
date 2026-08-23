@@ -524,10 +524,8 @@ public class SupplyOrderDetailConfig : IEntityTypeConfiguration<SupplyOrderDetai
 {
     public void Configure(EntityTypeBuilder<SupplyOrderDetail> builder)
     {
-        var mtBuilder = builder.IsMultiTenant();
+        builder.IsMultiTenant();
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
-        builder.HasIndex(x => new { x.SupplyOrderMasterId, x.CustomerAccountId, x.SortOrder }).IsUnique();
-        mtBuilder.AdjustUniqueIndexes();
 
         builder.HasOne(x => x.SupplyOrderMaster)
             .WithMany(x => x.Details)
