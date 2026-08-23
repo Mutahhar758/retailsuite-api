@@ -108,57 +108,56 @@ internal class SupplyOrderService : ISupplyOrderService
 
     private async Task ReplaceDetailsAsync(int supplyOrderId, IEnumerable<SupplyOrderDetailUpsertRequest> details, CancellationToken cancellationToken)
     {
-        var incomingDetails = details
+        // Deduplicate incoming by CustomerId (last entry wins for sort order)
+        var incomingByCustomer = details
             .Where(x => !string.IsNullOrWhiteSpace(x.CustomerId))
-            .Select(x => new
-            {
-                CustomerId = x.CustomerId.Trim(),
-                SortOrder = x.SortOrder
-            })
-            .GroupBy(x => BuildDetailKey(x.CustomerId, x.SortOrder), StringComparer.Ordinal)
-            .Select(x => x.First())
-            .ToList();
+            .GroupBy(x => x.CustomerId.Trim(), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.Last().SortOrder, StringComparer.OrdinalIgnoreCase);
 
         var existingDetails = await _detailRepository.GetAll()
             .Where(x => x.SupplyOrderMasterId == supplyOrderId)
             .ToListAsync(cancellationToken);
 
-        var incomingKeys = new HashSet<string>(
-            incomingDetails.Select(x => BuildDetailKey(x.CustomerId, x.SortOrder)),
-            StringComparer.Ordinal);
-
+        // Remove rows whose customer is no longer in the incoming list
         foreach (var existing in existingDetails)
         {
-            var existingKey = BuildDetailKey(existing.CustomerAccountId, existing.SortOrder ?? 0);
-            if (!incomingKeys.Contains(existingKey))
+            if (existing.CustomerAccountId == null || !incomingByCustomer.ContainsKey(existing.CustomerAccountId))
             {
                 await _detailRepository.DeleteAsync(existing, false);
             }
         }
 
-        var existingKeySet = new HashSet<string>(
-            existingDetails.Select(x => BuildDetailKey(x.CustomerAccountId, x.SortOrder ?? 0)),
-            StringComparer.Ordinal);
+        var existingByCustomer = existingDetails
+            .Where(x => x.CustomerAccountId != null)
+            .ToDictionary(x => x.CustomerAccountId!, x => x, StringComparer.OrdinalIgnoreCase);
 
-        foreach (var incoming in incomingDetails)
+        foreach (var (customerId, sortOrder) in incomingByCustomer)
         {
-            var key = BuildDetailKey(incoming.CustomerId, incoming.SortOrder);
-            if (existingKeySet.Contains(key))
-                continue;
-
-            var detail = new SupplyOrderDetail
+            if (existingByCustomer.TryGetValue(customerId, out var existing))
             {
-                SupplyOrderMasterId = supplyOrderId,
-                CustomerAccountId = incoming.CustomerId,
-                SortOrder = incoming.SortOrder
-            };
+                // Customer already exists — only update SortOrder if it changed.
+                // This avoids a soft-delete + re-insert which would hit the unique
+                // index on (SupplyOrderMasterId, CustomerAccountId, SortOrder).
+                if (existing.SortOrder != sortOrder)
+                {
+                    existing.SortOrder = sortOrder;
+                    await _detailRepository.UpdateAsync(existing, false);
+                }
+            }
+            else
+            {
+                // New customer — insert a fresh row
+                var detail = new SupplyOrderDetail
+                {
+                    SupplyOrderMasterId = supplyOrderId,
+                    CustomerAccountId = customerId,
+                    SortOrder = sortOrder
+                };
 
-            await _detailRepository.AddAsync(detail, false);
+                await _detailRepository.AddAsync(detail, false);
+            }
         }
 
         await _detailRepository.SaveChangesAsync(cancellationToken);
     }
-
-    private static string BuildDetailKey(string? customerId, int sortOrder)
-        => (customerId ?? string.Empty) + "|" + sortOrder;
 }
