@@ -10,13 +10,16 @@ internal class SupplyOrderService : ISupplyOrderService
 {
     private readonly IRepository<SupplyOrderMaster> _masterRepository;
     private readonly IRepository<SupplyOrderDetail> _detailRepository;
+    private readonly IRepository<ChartOfAccount> _chartOfAccountRepository;
 
     public SupplyOrderService(
         IRepository<SupplyOrderMaster> masterRepository,
-        IRepository<SupplyOrderDetail> detailRepository)
+        IRepository<SupplyOrderDetail> detailRepository,
+        IRepository<ChartOfAccount> chartOfAccountRepository)
     {
         _masterRepository = masterRepository;
         _detailRepository = detailRepository;
+        _chartOfAccountRepository = chartOfAccountRepository;
     }
 
     public async Task<List<SupplyOrderResponse>> GetAsync(CancellationToken cancellationToken)
@@ -64,7 +67,7 @@ internal class SupplyOrderService : ISupplyOrderService
 
     public async Task<int> CreateAsync(SupplyOrderUpsertRequest request, CancellationToken cancellationToken)
     {
-        ValidateDetails(request.Details);
+        await ValidateDetailsAsync(request.Details, cancellationToken);
 
         var master = new SupplyOrderMaster
         {
@@ -79,7 +82,7 @@ internal class SupplyOrderService : ISupplyOrderService
 
     public async Task<int> UpdateAsync(int id, SupplyOrderUpsertRequest request, CancellationToken cancellationToken)
     {
-        ValidateDetails(request.Details);
+        await ValidateDetailsAsync(request.Details, cancellationToken);
 
         var master = await _masterRepository.GetByIdAsync(id, cancellationToken);
         if (master is null)
@@ -110,7 +113,7 @@ internal class SupplyOrderService : ISupplyOrderService
         await _masterRepository.DeleteAsync(master);
     }
 
-    private static void ValidateDetails(IEnumerable<SupplyOrderDetailUpsertRequest>? details)
+    private async Task ValidateDetailsAsync(IEnumerable<SupplyOrderDetailUpsertRequest>? details, CancellationToken cancellationToken)
     {
         if (details is null)
             return;
@@ -124,7 +127,17 @@ internal class SupplyOrderService : ISupplyOrderService
             var customerId = detail.CustomerId.Trim();
             if (!seenCustomers.Add(customerId))
             {
-                throw new BadRequestException($"Customer '{customerId}' cannot be added more than once in the same supply order.");
+                var customerTitle = await _chartOfAccountRepository.GetAll()
+                    .AsNoTracking()
+                    .Where(x => x.Id == customerId)
+                    .Select(x => x.Title)
+                    .FirstOrDefaultAsync(cancellationToken);
+
+                string customerDisplay = !string.IsNullOrWhiteSpace(customerTitle)
+                    ? $"'{customerTitle}'"
+                    : $"'{customerId}'";
+
+                throw new BadRequestException($"Customer {customerDisplay} cannot be added more than once in the same supply order.");
             }
         }
     }
