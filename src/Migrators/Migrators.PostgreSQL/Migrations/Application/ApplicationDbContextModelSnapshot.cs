@@ -3380,10 +3380,6 @@ namespace Migrators.PostgreSQL.Migrations.Application
                     b.HasIndex("SupplyOrderMasterId", "TenantId")
                         .HasDatabaseName("ix_supply_order_detail_supply_order_master_id_tenant_id");
 
-                    b.HasIndex("SupplyOrderMasterId", "CustomerAccountId", "SortOrder", "TenantId")
-                        .IsUnique()
-                        .HasDatabaseName("ix_supply_order_detail_supply_order_master_id_customer_account_i");
-
                     b.ToTable("SupplyOrderDetail", "public");
 
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
