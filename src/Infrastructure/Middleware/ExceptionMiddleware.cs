@@ -77,7 +77,7 @@ internal class ExceptionMiddleware : IMiddleware
                     break;
             }
 
-            Log.Error($"{errorResult.Message} Request failed with Status Code {errorResult.StatusCode} and Error Id {errorId}.");
+            Log.Error(exception, $"{errorResult.Message} Request failed with Status Code {errorResult.StatusCode} and Error Id {errorId}.");
 
             HttpResponseDto<object> httpResponse = new HttpResponseDto<object>
             {

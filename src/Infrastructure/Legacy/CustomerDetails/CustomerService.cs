@@ -270,31 +270,69 @@ internal class CustomerService : ICustomerService
 
         if (request.SupplyItems is not null)
         {
+            var incomingItems = request.SupplyItems
+                .Where(i => !string.IsNullOrWhiteSpace(i.ItemId))
+                .ToList();
+
+            var incomingItemIds = incomingItems
+                .Select(i => i.ItemId)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
             var existingItems = await _customerSupplyItemRepository.GetAll()
                 .Where(x => x.CustomerAccountId == account)
                 .ToListAsync(cancellationToken);
 
-            if (existingItems.Count > 0)
+            var existingByItemId = existingItems
+                .Where(x => !string.IsNullOrWhiteSpace(x.ItemId))
+                .ToDictionary(x => x.ItemId, StringComparer.OrdinalIgnoreCase);
+
+            // Delete items that are no longer in the request
+            var itemsToDelete = existingItems
+                .Where(x => string.IsNullOrWhiteSpace(x.ItemId) || !incomingItemIds.Contains(x.ItemId))
+                .ToList();
+
+            if (itemsToDelete.Count > 0)
             {
-                await _customerSupplyItemRepository.DeleteRangeAsync(existingItems, true);
+                await _customerSupplyItemRepository.DeleteRangeAsync(itemsToDelete, false);
             }
 
-            var itemsToAdd = request.SupplyItems
-                .Where(i => !string.IsNullOrWhiteSpace(i.ItemId))
-                .Select(item => new CustomerSupplyItem
+            var itemsToUpdate = new List<CustomerSupplyItem>();
+            var itemsToAdd = new List<CustomerSupplyItem>();
+
+            foreach (var incoming in incomingItems)
+            {
+                if (existingByItemId.TryGetValue(incoming.ItemId, out var existing))
                 {
-                    CustomerAccountId = account,
-                    ItemId = item.ItemId,
-                    Qty = item.Qty,
-                    SecQty = item.SecQty,
-                    Rate = item.Rate,
-                    AddLess = item.AddLess,
-                    Discount = item.Discount
-                }).ToList();
+                    existing.Qty = incoming.Qty;
+                    existing.SecQty = incoming.SecQty;
+                    existing.Rate = incoming.Rate;
+                    existing.AddLess = incoming.AddLess;
+                    existing.Discount = incoming.Discount;
+                    itemsToUpdate.Add(existing);
+                }
+                else
+                {
+                    itemsToAdd.Add(new CustomerSupplyItem
+                    {
+                        CustomerAccountId = account,
+                        ItemId = incoming.ItemId,
+                        Qty = incoming.Qty,
+                        SecQty = incoming.SecQty,
+                        Rate = incoming.Rate,
+                        AddLess = incoming.AddLess,
+                        Discount = incoming.Discount
+                    });
+                }
+            }
+
+            if (itemsToUpdate.Count > 0)
+            {
+                await _customerSupplyItemRepository.UpdateRangeAsync(itemsToUpdate, false);
+            }
 
             if (itemsToAdd.Count > 0)
             {
-                await _customerSupplyItemRepository.AddRangeAsync(itemsToAdd);
+                await _customerSupplyItemRepository.AddRangeAsync(itemsToAdd, false);
             }
         }
     }
