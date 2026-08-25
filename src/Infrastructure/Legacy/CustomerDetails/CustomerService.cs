@@ -334,6 +334,8 @@ internal class CustomerService : ICustomerService
             {
                 await _customerSupplyItemRepository.AddRangeAsync(itemsToAdd, false);
             }
+
+            await _customerSupplyItemRepository.SaveChangesAsync(cancellationToken);
         }
     }
 
