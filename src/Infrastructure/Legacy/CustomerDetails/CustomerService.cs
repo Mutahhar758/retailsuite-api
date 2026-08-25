@@ -89,7 +89,10 @@ internal class CustomerService : ICustomerService
                     cs.ItemId,
                     ItemTitle = item.Title,
                     cs.Qty,
-                    cs.SecQty
+                    cs.SecQty,
+                    cs.Rate,
+                    cs.AddLess,
+                    cs.Discount
                 })
             .ToListAsync(cancellationToken);
 
@@ -102,7 +105,10 @@ internal class CustomerService : ICustomerService
                     ItemId = i.ItemId,
                     ItemTitle = i.ItemTitle,
                     Qty = i.Qty,
-                    SecQty = i.SecQty
+                    SecQty = i.SecQty,
+                    Rate = i.Rate,
+                    AddLess = i.AddLess,
+                    Discount = i.Discount
                 }).ToList());
 
         var mappedCustomers = accounts.Select(x =>
