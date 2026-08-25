@@ -20,7 +20,8 @@
   },
   "Serilog": {
     "Using": [
-      "Serilog.Sinks.ApplicationInsights"
+      "Serilog.Sinks.ApplicationInsights",
+      "Serilog.Sinks.Seq"
     ],
     "Enrich": [
       "FromLogContext",
@@ -43,6 +44,13 @@
       "Application": "RFP Success"
     },
     "WriteTo": [
+      {
+        "Name": "Seq",
+        "Args": {
+          "serverUrl": "http://localhost:5341",
+          "apiKey": "iWHPVfQjrrW6xWZNvrqb"
+        }
+      },
       {
         "Name": "ApplicationInsights",
         "Args": {

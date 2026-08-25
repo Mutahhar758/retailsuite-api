@@ -23,25 +23,8 @@ try
 
     builder.AddConfigurations();
 
-    // Configure Serilog to capture all logs
-    builder.Host.UseSerilog((context, services, configuration) =>
-    {
-        configuration
-            .ReadFrom.Configuration(context.Configuration)
-            .ReadFrom.Services(services)
-            .Enrich.FromLogContext();
-
-        // Add Application Insights if connection string is configured
-        string? connectionString = context.Configuration.GetSection("Serilog:WriteTo:0:Args:connectionString").Value;
-        if (!string.IsNullOrWhiteSpace(connectionString))
-        {
-            configuration.WriteTo.ApplicationInsights(
-                new TelemetryConfiguration { ConnectionString = connectionString },
-                TelemetryConverter.Traces);
-
-            Log.Information("Serilog with Application Insights configured");
-        }
-    });
+    // Configure Serilog to capture all logs (Console, File, Seq, AppInsights)
+    builder.RegisterSerilog();
 
     // Configure Application Insights if connection string exists
     string? appInsightsConnectionString = builder.Configuration.GetSection("Serilog:WriteTo:0:Args:connectionString").Value;
