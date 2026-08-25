@@ -704,7 +704,8 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("tenant_id");
 
                     b.Property<decimal?>("AddLess")
-                        .HasColumnType("numeric")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
                         .HasColumnName("add_less");
 
                     b.Property<string>("CreatedBy")
@@ -730,7 +731,8 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_on");
 
                     b.Property<decimal?>("Discount")
-                        .HasColumnType("numeric")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
                         .HasColumnName("discount");
 
                     b.Property<string>("ItemId")
@@ -753,7 +755,8 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("qty");
 
                     b.Property<decimal?>("Rate")
-                        .HasColumnType("numeric")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
                         .HasColumnName("rate");
 
                     b.Property<decimal?>("SecQty")
