@@ -209,7 +209,10 @@ internal class CustomerService : ICustomerService
                     CustomerAccountId = newAccountCode,
                     ItemId = item.ItemId,
                     Qty = item.Qty,
-                    SecQty = item.SecQty
+                    SecQty = item.SecQty,
+                    Rate = item.Rate,
+                    AddLess = item.AddLess,
+                    Discount = item.Discount
                 }).ToList();
 
             if (itemsToAdd.Count > 0)
@@ -277,7 +280,10 @@ internal class CustomerService : ICustomerService
                     CustomerAccountId = account,
                     ItemId = item.ItemId,
                     Qty = item.Qty,
-                    SecQty = item.SecQty
+                    SecQty = item.SecQty,
+                    Rate = item.Rate,
+                    AddLess = item.AddLess,
+                    Discount = item.Discount
                 }).ToList();
 
             if (itemsToAdd.Count > 0)
@@ -308,7 +314,10 @@ internal class CustomerService : ICustomerService
                     ItemId = cs.ItemId,
                     ItemTitle = item.Title,
                     Qty = cs.Qty,
-                    SecQty = cs.SecQty
+                    SecQty = cs.SecQty,
+                    Rate = cs.Rate,
+                    AddLess = cs.AddLess,
+                    Discount = cs.Discount
                 })
 
             .ToListAsync(cancellationToken);

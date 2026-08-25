@@ -2,48 +2,50 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Retailer.Infrastructure.Persistence.Context;
 
 #nullable disable
 
-namespace Migrators.PostgreSQL.Migrations.Application
+namespace Migrators.MSSQL.Migrations.Application
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260825182934_AddRateAddLessDiscountToCustomerSupplyItem")]
+    partial class AddRateAddLessDiscountToCustomerSupplyItem
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasDefaultSchema("public")
                 .HasAnnotation("ProductVersion", "10.0.5")
-                .HasAnnotation("Relational:MaxIdentifierLength", 63);
+                .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
-            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+            SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<string>", b =>
                 {
                     b.Property<int>("Id")
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("id");
 
                     b.Property<string>("TenantId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("tenant_id");
 
                     b.Property<string>("ClaimType")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("claim_type");
 
                     b.Property<string>("ClaimValue")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("claim_value");
 
                     b.Property<string>("UserId")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("user_id");
 
                     b.HasKey("Id", "TenantId")
@@ -60,24 +62,24 @@ namespace Migrators.PostgreSQL.Migrations.Application
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<string>", b =>
                 {
                     b.Property<string>("LoginProvider")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("login_provider");
 
                     b.Property<string>("ProviderKey")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("provider_key");
 
                     b.Property<string>("TenantId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("tenant_id");
 
                     b.Property<string>("ProviderDisplayName")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("provider_display_name");
 
                     b.Property<string>("UserId")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("user_id");
 
                     b.HasKey("LoginProvider", "ProviderKey", "TenantId")
@@ -94,15 +96,15 @@ namespace Migrators.PostgreSQL.Migrations.Application
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<string>", b =>
                 {
                     b.Property<string>("UserId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("user_id");
 
                     b.Property<string>("RoleId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("role_id");
 
                     b.Property<string>("TenantId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("tenant_id");
 
                     b.HasKey("UserId", "RoleId", "TenantId")
@@ -122,23 +124,23 @@ namespace Migrators.PostgreSQL.Migrations.Application
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<string>", b =>
                 {
                     b.Property<string>("UserId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("user_id");
 
                     b.Property<string>("LoginProvider")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("login_provider");
 
                     b.Property<string>("Name")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("name");
 
                     b.Property<string>("TenantId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("tenant_id");
 
                     b.Property<string>("Value")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("value");
 
                     b.HasKey("UserId", "LoginProvider", "Name", "TenantId")
@@ -155,30 +157,30 @@ namespace Migrators.PostgreSQL.Migrations.Application
             modelBuilder.Entity("Retailer.Domain.Identity.ApplicationRole", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("id");
 
                     b.Property<string>("TenantId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("tenant_id");
 
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("concurrency_stamp");
 
                     b.Property<string>("Description")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("description");
 
                     b.Property<string>("Name")
                         .HasMaxLength(256)
-                        .HasColumnType("character varying(256)")
+                        .HasColumnType("nvarchar(256)")
                         .HasColumnName("name");
 
                     b.Property<string>("NormalizedName")
                         .HasMaxLength(256)
-                        .HasColumnType("character varying(256)")
+                        .HasColumnType("nvarchar(256)")
                         .HasColumnName("normalized_name");
 
                     b.HasKey("Id", "TenantId")
@@ -186,7 +188,8 @@ namespace Migrators.PostgreSQL.Migrations.Application
 
                     b.HasIndex("NormalizedName", "TenantId")
                         .IsUnique()
-                        .HasDatabaseName("RoleNameIndex");
+                        .HasDatabaseName("RoleNameIndex")
+                        .HasFilter("[normalized_name] IS NOT NULL");
 
                     b.ToTable("roles", "identity");
 
@@ -196,32 +199,32 @@ namespace Migrators.PostgreSQL.Migrations.Application
             modelBuilder.Entity("Retailer.Domain.Identity.ApplicationRoleClaim", b =>
                 {
                     b.Property<int>("Id")
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("id");
 
                     b.Property<string>("TenantId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("tenant_id");
 
                     b.Property<string>("ClaimType")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("claim_type");
 
                     b.Property<string>("ClaimValue")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("claim_value");
 
                     b.Property<string>("CreatedBy")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("created_on");
 
                     b.Property<string>("RoleId")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("role_id");
 
                     b.HasKey("Id", "TenantId")
@@ -238,109 +241,109 @@ namespace Migrators.PostgreSQL.Migrations.Application
             modelBuilder.Entity("Retailer.Domain.Identity.ApplicationUser", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("id");
 
                     b.Property<string>("TenantId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("tenant_id");
 
                     b.Property<int>("AccessFailedCount")
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("access_failed_count");
 
                     b.Property<string>("BiometricPublicKey")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("biometric_public_key");
 
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("concurrency_stamp");
 
                     b.Property<string>("Email")
                         .HasMaxLength(256)
-                        .HasColumnType("character varying(256)")
+                        .HasColumnType("nvarchar(256)")
                         .HasColumnName("email");
 
                     b.Property<bool>("EmailConfirmed")
-                        .HasColumnType("boolean")
+                        .HasColumnType("bit")
                         .HasColumnName("email_confirmed");
 
                     b.Property<string>("FirstName")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("first_name");
 
                     b.Property<string>("ImageUrl")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("image_url");
 
                     b.Property<bool>("IsOwner")
-                        .HasColumnType("boolean")
+                        .HasColumnType("bit")
                         .HasColumnName("is_owner");
 
                     b.Property<string>("LastName")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("last_name");
 
                     b.Property<bool>("LockoutEnabled")
-                        .HasColumnType("boolean")
+                        .HasColumnType("bit")
                         .HasColumnName("lockout_enabled");
 
                     b.Property<DateTimeOffset?>("LockoutEnd")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetimeoffset")
                         .HasColumnName("lockout_end");
 
                     b.Property<string>("NormalizedEmail")
                         .HasMaxLength(256)
-                        .HasColumnType("character varying(256)")
+                        .HasColumnType("nvarchar(256)")
                         .HasColumnName("normalized_email");
 
                     b.Property<string>("NormalizedUserName")
                         .HasMaxLength(256)
-                        .HasColumnType("character varying(256)")
+                        .HasColumnType("nvarchar(256)")
                         .HasColumnName("normalized_user_name");
 
                     b.Property<string>("ObjectId")
                         .HasMaxLength(256)
-                        .HasColumnType("character varying(256)")
+                        .HasColumnType("nvarchar(256)")
                         .HasColumnName("object_id");
 
                     b.Property<string>("PasswordHash")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("password_hash");
 
                     b.Property<string>("PhoneNumber")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("phone_number");
 
                     b.Property<bool>("PhoneNumberConfirmed")
-                        .HasColumnType("boolean")
+                        .HasColumnType("bit")
                         .HasColumnName("phone_number_confirmed");
 
                     b.Property<string>("RefreshToken")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("refresh_token");
 
                     b.Property<DateTime>("RefreshTokenExpiryTime")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("refresh_token_expiry_time");
 
                     b.Property<string>("SecurityStamp")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("security_stamp");
 
                     b.Property<int>("Status")
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("status");
 
                     b.Property<bool>("TwoFactorEnabled")
-                        .HasColumnType("boolean")
+                        .HasColumnType("bit")
                         .HasColumnName("two_factor_enabled");
 
                     b.Property<string>("UserName")
                         .HasMaxLength(256)
-                        .HasColumnType("character varying(256)")
+                        .HasColumnType("nvarchar(256)")
                         .HasColumnName("user_name");
 
                     b.HasKey("Id", "TenantId")
@@ -351,7 +354,8 @@ namespace Migrators.PostgreSQL.Migrations.Application
 
                     b.HasIndex("NormalizedUserName", "TenantId")
                         .IsUnique()
-                        .HasDatabaseName("UserNameIndex");
+                        .HasDatabaseName("UserNameIndex")
+                        .HasFilter("[normalized_user_name] IS NOT NULL");
 
                     b.ToTable("users", "identity");
 
@@ -365,73 +369,73 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("id");
 
                     b.Property<string>("TenantId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("tenant_id");
 
                     b.Property<string>("ApplicationUserId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("application_user_id");
 
                     b.Property<string>("CreatedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("DeviceId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("device_id");
 
                     b.Property<string>("DeviceName")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("device_name");
 
                     b.Property<DateTime?>("ExpiryDate")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("expiry_date");
 
                     b.Property<bool>("ExplicitLogout")
-                        .HasColumnType("boolean")
+                        .HasColumnType("bit")
                         .HasColumnName("explicit_logout");
 
                     b.Property<string>("FCMToken")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("fcm_token");
 
                     b.Property<bool>("IsRemember")
-                        .HasColumnType("boolean")
+                        .HasColumnType("bit")
                         .HasColumnName("is_remember");
 
                     b.Property<string>("LastModifiedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("Token")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("token");
 
                     b.Property<int>("Type")
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("type");
 
                     b.Property<string>("Version")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("version");
 
                     b.HasKey("Id", "TenantId")
@@ -440,7 +444,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                     b.HasIndex("ApplicationUserId", "TenantId")
                         .HasDatabaseName("ix_user_sessions_application_user_id_tenant_id");
 
-                    b.ToTable("user_sessions", "public");
+                    b.ToTable("user_sessions", (string)null);
 
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
@@ -448,55 +452,55 @@ namespace Migrators.PostgreSQL.Migrations.Application
             modelBuilder.Entity("Retailer.Domain.Legacy.ChartOfAccount", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("id");
 
                     b.Property<string>("TenantId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("tenant_id");
 
                     b.Property<int>("AccLevel")
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("acc_level");
 
                     b.Property<string>("AccType")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("acc_type");
 
                     b.Property<string>("CreatedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("LastModifiedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("ParentId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("parent_id");
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("title");
 
                     b.HasKey("Id", "TenantId")
@@ -505,7 +509,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                     b.HasIndex("ParentId", "TenantId")
                         .HasDatabaseName("ix_chart_of_account_parent_id_tenant_id");
 
-                    b.ToTable("ChartOfAccount", "public");
+                    b.ToTable("ChartOfAccount");
 
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
@@ -514,78 +518,78 @@ namespace Migrators.PostgreSQL.Migrations.Application
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("TenantId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("tenant_id");
 
                     b.Property<string>("Address")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("address");
 
                     b.Property<string>("Cell")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("cell");
 
                     b.Property<string>("Cell2")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("cell2");
 
                     b.Property<string>("CompanyName")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("company_name");
 
                     b.Property<string>("ContactHeader")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("contact_header");
 
                     b.Property<string>("CreatedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("Descr")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("descr");
 
                     b.Property<string>("LastModifiedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("Phone")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("phone");
 
                     b.Property<string>("UrCompanyName")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("ur_company_name");
 
                     b.HasKey("Id", "TenantId")
                         .HasName("ak_company_detail_id_tenant_id");
 
-                    b.ToTable("CompanyDetail", "public");
+                    b.ToTable("CompanyDetail");
 
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
@@ -593,11 +597,11 @@ namespace Migrators.PostgreSQL.Migrations.Application
             modelBuilder.Entity("Retailer.Domain.Legacy.CustomerDetail", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("id");
 
                     b.Property<string>("TenantId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("tenant_id");
 
                     b.Property<decimal?>("Active")
@@ -605,32 +609,32 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("active");
 
                     b.Property<string>("Address")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("address");
 
                     b.Property<string>("Cnic")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("cnic");
 
                     b.Property<string>("CreatedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("Email")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("email");
 
                     b.Property<decimal?>("EmailAlert")
@@ -638,40 +642,40 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("email_alert");
 
                     b.Property<string>("Fax")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("fax");
 
                     b.Property<string>("Iban")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("iban");
 
                     b.Property<byte[]>("Image")
-                        .HasColumnType("bytea")
+                        .HasColumnType("varbinary(max)")
                         .HasColumnName("image");
 
                     b.Property<string>("LastModifiedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("MediaId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("media_id");
 
                     b.Property<string>("Phone1")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("phone1");
 
                     b.Property<string>("Phone2")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("phone2");
 
                     b.Property<string>("Qualification")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("qualification");
 
                     b.Property<decimal?>("SmsAlert")
@@ -679,13 +683,13 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("sms_alert");
 
                     b.Property<string>("SmsNumber")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("sms_number");
 
                     b.HasKey("Id", "TenantId")
                         .HasName("ak_customer_detail_id_tenant_id");
 
-                    b.ToTable("CustomerDetail", "public");
+                    b.ToTable("CustomerDetail");
 
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
@@ -694,71 +698,71 @@ namespace Migrators.PostgreSQL.Migrations.Application
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("TenantId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("tenant_id");
 
                     b.Property<decimal?>("AddLess")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("add_less");
 
                     b.Property<string>("CreatedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("created_on");
 
                     b.Property<string>("CustomerAccountId")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("customer_account_id");
 
                     b.Property<string>("DeletedBy")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("deleted_on");
 
                     b.Property<decimal?>("Discount")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("discount");
 
                     b.Property<string>("ItemId")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("item_id");
 
                     b.Property<string>("LastModifiedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("last_modified_on");
 
                     b.Property<decimal>("Qty")
                         .HasPrecision(18, 4)
-                        .HasColumnType("numeric(18,4)")
+                        .HasColumnType("decimal(18,4)")
                         .HasColumnName("qty");
 
                     b.Property<decimal?>("Rate")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("rate");
 
                     b.Property<decimal?>("SecQty")
                         .HasPrecision(18, 4)
-                        .HasColumnType("numeric(18,4)")
+                        .HasColumnType("decimal(18,4)")
                         .HasColumnName("sec_qty");
 
                     b.HasKey("Id", "TenantId")
@@ -774,7 +778,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .IsUnique()
                         .HasDatabaseName("ix_customer_supply_item_customer_account_id_item_id");
 
-                    b.ToTable("CustomerSupplyItem", "public");
+                    b.ToTable("CustomerSupplyItem");
 
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
@@ -783,55 +787,55 @@ namespace Migrators.PostgreSQL.Migrations.Application
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("TenantId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("tenant_id");
 
                     b.Property<string>("A")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("a");
 
                     b.Property<string>("AccountId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("account_id");
 
                     b.Property<string>("CreatedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("LastModifiedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("MapAccountId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("map_account_id");
 
                     b.Property<string>("Title")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("title");
 
                     b.HasKey("Id", "TenantId")
@@ -843,7 +847,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                     b.HasIndex("MapAccountId", "TenantId")
                         .HasDatabaseName("ix_default_account_map_account_id_tenant_id");
 
-                    b.ToTable("DefaultAccount", "public");
+                    b.ToTable("DefaultAccount");
 
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
@@ -852,63 +856,63 @@ namespace Migrators.PostgreSQL.Migrations.Application
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("TenantId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("tenant_id");
 
                     b.Property<bool>("Active")
-                        .HasColumnType("boolean")
+                        .HasColumnType("bit")
                         .HasColumnName("active");
 
                     b.Property<int>("Capacity")
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("capacity");
 
                     b.Property<string>("CreatedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("LastModifiedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("name");
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("status");
 
                     b.HasKey("Id", "TenantId")
                         .HasName("ak_dining_tables_id_tenant_id");
 
-                    b.ToTable("DiningTables", "public");
+                    b.ToTable("DiningTables");
 
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
@@ -917,17 +921,17 @@ namespace Migrators.PostgreSQL.Migrations.Application
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("TenantId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("tenant_id");
 
                     b.Property<decimal>("Amount")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("amount");
 
                     b.Property<DateOnly?>("CheckDate")
@@ -935,15 +939,15 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("check_date");
 
                     b.Property<string>("CheckNum")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("check_num");
 
                     b.Property<string>("CheckStatus")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("check_status");
 
                     b.Property<decimal>("Clear")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("clear");
 
                     b.Property<DateOnly?>("ClearingDate")
@@ -951,45 +955,45 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("clearing_date");
 
                     b.Property<string>("CrAccountId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("cr_account_id");
 
                     b.Property<string>("CreatedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("DrAccountId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("dr_account_id");
 
                     b.Property<string>("LastModifiedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("NarrationId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("narration_id");
 
                     b.Property<string>("Remarks")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("remarks");
 
                     b.Property<DateOnly>("VDate")
@@ -997,21 +1001,21 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("v_date");
 
                     b.Property<int>("VSeq")
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("v_seq");
 
                     b.Property<TimeOnly>("VTime")
-                        .HasColumnType("time without time zone")
+                        .HasColumnType("time")
                         .HasColumnName("v_time");
 
                     b.Property<string>("VType")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("v_type");
 
                     b.Property<string>("VoucherNo")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("voucher_no");
 
                     b.HasKey("Id", "TenantId")
@@ -1030,7 +1034,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .IsUnique()
                         .HasDatabaseName("ix_gl1_v_type_voucher_no_v_seq");
 
-                    b.ToTable("GL1", "public");
+                    b.ToTable("GL1");
 
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
@@ -1038,11 +1042,11 @@ namespace Migrators.PostgreSQL.Migrations.Application
             modelBuilder.Entity("Retailer.Domain.Legacy.HrInfo", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("id");
 
                     b.Property<string>("TenantId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("tenant_id");
 
                     b.Property<DateOnly>("AppointmentDate")
@@ -1050,28 +1054,28 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("appointment_date");
 
                     b.Property<string>("Cnic")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("cnic");
 
                     b.Property<string>("CreatedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("Designation")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("designation");
 
                     b.Property<DateOnly>("Dob")
@@ -1079,20 +1083,20 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("dob");
 
                     b.Property<string>("ExpenseAccount")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("expense_account");
 
                     b.Property<string>("ExpenseAccountId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("expense_account_id");
 
                     b.Property<string>("FatherName")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("father_name");
 
                     b.Property<string>("Gender")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("gender");
 
                     b.Property<DateOnly>("JoiningDate")
@@ -1101,49 +1105,49 @@ namespace Migrators.PostgreSQL.Migrations.Application
 
                     b.Property<string>("LastModifiedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("last_modified_on");
 
                     b.Property<decimal>("LeaveCharges")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("leave_charges");
 
                     b.Property<string>("MaritialStatus")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("maritial_status");
 
                     b.Property<string>("MediaId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("media_id");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("name");
 
                     b.Property<decimal>("Overtime")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("overtime");
 
                     b.Property<string>("PayableAccount")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("payable_account");
 
                     b.Property<string>("PayableAccountId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("payable_account_id");
 
                     b.Property<decimal>("Salary")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("salary");
 
                     b.Property<string>("SalaryType")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("salary_type");
 
                     b.HasKey("Id", "TenantId")
@@ -1155,7 +1159,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                     b.HasIndex("PayableAccountId", "TenantId")
                         .HasDatabaseName("ix_hr_info_payable_account_id_tenant_id");
 
-                    b.ToTable("HRInfo", "public");
+                    b.ToTable("HRInfo");
 
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
@@ -1163,11 +1167,11 @@ namespace Migrators.PostgreSQL.Migrations.Application
             modelBuilder.Entity("Retailer.Domain.Legacy.ItemCategory", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("id");
 
                     b.Property<string>("TenantId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("tenant_id");
 
                     b.Property<decimal>("Active")
@@ -1176,45 +1180,45 @@ namespace Migrators.PostgreSQL.Migrations.Application
 
                     b.Property<string>("CreatedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("ItemType")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("item_type");
 
                     b.Property<string>("LastModifiedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("MediaId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("media_id");
 
                     b.Property<string>("PrepStationId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("prep_station_id");
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("title");
 
                     b.HasKey("Id", "TenantId")
@@ -1223,7 +1227,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                     b.HasIndex("PrepStationId", "TenantId")
                         .HasDatabaseName("ix_item_catagory_prep_station_id_tenant_id");
 
-                    b.ToTable("ItemCatagory", "public");
+                    b.ToTable("ItemCatagory");
 
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
@@ -1231,11 +1235,11 @@ namespace Migrators.PostgreSQL.Migrations.Application
             modelBuilder.Entity("Retailer.Domain.Legacy.ItemDetail", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("id");
 
                     b.Property<string>("TenantId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("tenant_id");
 
                     b.Property<decimal?>("Alert")
@@ -1243,96 +1247,96 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("alert");
 
                     b.Property<string>("Barcode")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("barcode");
 
                     b.Property<string>("CreatedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DefaultUnitId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("default_unit_id");
 
                     b.Property<string>("DeletedBy")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("ItemCategoryId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("item_category_id");
 
                     b.Property<string>("ItemKey")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("item_key");
 
                     b.Property<string>("ItemType")
                         .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
+                        .HasColumnType("nvarchar(50)")
                         .HasColumnName("item_type");
 
                     b.Property<string>("LastModifiedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("last_modified_on");
 
                     b.Property<bool?>("LowStockAlert")
-                        .HasColumnType("boolean")
+                        .HasColumnType("bit")
                         .HasColumnName("low_stock_alert");
 
                     b.Property<string>("MediaId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("media_id");
 
                     b.Property<decimal?>("OpnRate")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("opn_rate");
 
                     b.Property<decimal?>("OpnStock")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("opn_stock");
 
                     b.Property<decimal>("PriRate")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("pri_rate");
 
                     b.Property<string>("PrimaryUnitId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("primary_unit_id");
 
                     b.Property<decimal?>("QtyInPack")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("qty_in_pack");
 
                     b.Property<string>("QuickQtyPresets")
                         .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)")
+                        .HasColumnType("nvarchar(1000)")
                         .HasColumnName("quick_qty_presets");
 
                     b.Property<decimal>("SecRate")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("sec_rate");
 
                     b.Property<string>("SecondaryUnitId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("secondary_unit_id");
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("title");
 
                     b.HasKey("Id", "TenantId")
@@ -1350,7 +1354,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                     b.HasIndex("SecondaryUnitId", "TenantId")
                         .HasDatabaseName("ix_item_detail_secondary_unit_id_tenant_id");
 
-                    b.ToTable("ItemDetail", "public");
+                    b.ToTable("ItemDetail");
 
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
@@ -1359,96 +1363,96 @@ namespace Migrators.PostgreSQL.Migrations.Application
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("TenantId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("tenant_id");
 
                     b.Property<string>("AccountId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("account_id");
 
                     b.Property<decimal>("Amount")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("amount");
 
                     b.Property<string>("Counter")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("counter");
 
                     b.Property<string>("CreatedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("ItemId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("item_id");
 
                     b.Property<string>("LastModifiedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("last_modified_on");
 
                     b.Property<decimal>("QtyIn")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("qty_in");
 
                     b.Property<decimal>("QtyOut")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("qty_out");
 
                     b.Property<decimal>("Rate")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("rate");
 
                     b.Property<decimal?>("SecQtyIn")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("sec_qty_in");
 
                     b.Property<decimal?>("SecQtyOut")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("sec_qty_out");
 
                     b.Property<decimal?>("SecRate")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("sec_rate");
 
                     b.Property<string>("SecUnitId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("sec_unit_id");
 
                     b.Property<int>("Seq")
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("seq");
 
                     b.Property<string>("TranType")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("tran_type");
 
                     b.Property<string>("UnitId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("unit_id");
 
                     b.Property<DateOnly>("VDate")
@@ -1457,16 +1461,16 @@ namespace Migrators.PostgreSQL.Migrations.Application
 
                     b.Property<string>("VNo")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("v_no");
 
                     b.Property<TimeOnly?>("VTime")
-                        .HasColumnType("time without time zone")
+                        .HasColumnType("time")
                         .HasColumnName("v_time");
 
                     b.Property<string>("VType")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("v_type");
 
                     b.HasKey("Id", "TenantId")
@@ -1488,7 +1492,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .IsUnique()
                         .HasDatabaseName("ix_item_transaction_v_type_v_no_seq");
 
-                    b.ToTable("ItemTransaction", "public");
+                    b.ToTable("ItemTransaction");
 
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
@@ -1497,43 +1501,43 @@ namespace Migrators.PostgreSQL.Migrations.Application
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("TenantId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("tenant_id");
 
                     b.Property<string>("CreatedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("created_on");
 
                     b.Property<string>("CustomerId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("customer_id");
 
                     b.Property<string>("DeletedBy")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("LastModifiedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("last_modified_on");
 
                     b.Property<DateOnly>("OrderDate")
@@ -1541,37 +1545,37 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("order_date");
 
                     b.Property<TimeOnly>("OrderTime")
-                        .HasColumnType("time without time zone")
+                        .HasColumnType("time")
                         .HasColumnName("order_time");
 
                     b.Property<string>("OrderType")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("order_type");
 
                     b.Property<string>("Remarks")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("remarks");
 
                     b.Property<string>("SaleVoucherNo")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("sale_voucher_no");
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("status");
 
                     b.Property<int?>("TableId")
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("table_id");
 
                     b.Property<int>("TokenNo")
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("token_no");
 
                     b.Property<decimal>("TotalAmount")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("total_amount");
 
                     b.HasKey("Id", "TenantId")
@@ -1580,7 +1584,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                     b.HasIndex("TableId", "TenantId")
                         .HasDatabaseName("ix_kot_orders_table_id_tenant_id");
 
-                    b.ToTable("KotOrders", "public");
+                    b.ToTable("KotOrders");
 
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
@@ -1589,65 +1593,65 @@ namespace Migrators.PostgreSQL.Migrations.Application
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("TenantId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("tenant_id");
 
                     b.Property<string>("CreatedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("ItemId")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("item_id");
 
                     b.Property<int>("KotOrderId")
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("kot_order_id");
 
                     b.Property<string>("LastModifiedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("Notes")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("notes");
 
                     b.Property<decimal>("Qty")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("qty");
 
                     b.Property<decimal>("Rate")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("rate");
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("status");
 
                     b.HasKey("Id", "TenantId")
@@ -1659,7 +1663,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                     b.HasIndex("KotOrderId", "TenantId")
                         .HasDatabaseName("ix_kot_order_items_kot_order_id_tenant_id");
 
-                    b.ToTable("KotOrderItems", "public");
+                    b.ToTable("KotOrderItems");
 
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
@@ -1667,48 +1671,48 @@ namespace Migrators.PostgreSQL.Migrations.Application
             modelBuilder.Entity("Retailer.Domain.Legacy.Narration", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("id");
 
                     b.Property<string>("TenantId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("tenant_id");
 
                     b.Property<string>("CreatedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("LastModifiedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("title");
 
                     b.HasKey("Id", "TenantId")
                         .HasName("ak_narration_id_tenant_id");
 
-                    b.ToTable("Narration", "public");
+                    b.ToTable("Narration");
 
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
@@ -1717,92 +1721,92 @@ namespace Migrators.PostgreSQL.Migrations.Application
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("TenantId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("tenant_id");
 
                     b.Property<decimal>("Bonus")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("bonus");
 
                     b.Property<string>("CreatedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("Description")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("description");
 
                     b.Property<string>("ExpenseAccountId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("expense_account_id");
 
                     b.Property<string>("HrInfoId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("hr_info_id");
 
                     b.Property<string>("LastModifiedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("last_modified_on");
 
                     b.Property<decimal>("LeaveCharges")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("leave_charges");
 
                     b.Property<decimal>("NetSalary")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("net_salary");
 
                     b.Property<decimal>("NoOfLeaves")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("no_of_leaves");
 
                     b.Property<decimal>("Overtime")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("overtime");
 
                     b.Property<decimal>("OvertimeCharges")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("overtime_charges");
 
                     b.Property<string>("PayableAccountId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("payable_account_id");
 
                     b.Property<string>("Remarks")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("remarks");
 
                     b.Property<decimal>("Salary")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("salary");
 
                     b.Property<string>("SalaryType")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("salary_type");
 
                     b.Property<long>("Seq")
@@ -1815,7 +1819,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
 
                     b.Property<string>("VoucherNo")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("voucher_no");
 
                     b.HasKey("Id", "TenantId")
@@ -1834,7 +1838,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .IsUnique()
                         .HasDatabaseName("ix_payroll_voucher_no_seq");
 
-                    b.ToTable("Payroll", "public");
+                    b.ToTable("Payroll");
 
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
@@ -1842,52 +1846,52 @@ namespace Migrators.PostgreSQL.Migrations.Application
             modelBuilder.Entity("Retailer.Domain.Legacy.PrepStation", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("id");
 
                     b.Property<string>("TenantId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("tenant_id");
 
                     b.Property<bool>("Active")
-                        .HasColumnType("boolean")
+                        .HasColumnType("bit")
                         .HasColumnName("active");
 
                     b.Property<string>("CreatedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("LastModifiedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("name");
 
                     b.HasKey("Id", "TenantId")
                         .HasName("ak_prep_stations_id_tenant_id");
 
-                    b.ToTable("PrepStations", "public");
+                    b.ToTable("PrepStations");
 
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
@@ -1896,97 +1900,97 @@ namespace Migrators.PostgreSQL.Migrations.Application
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("TenantId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("tenant_id");
 
                     b.Property<decimal>("AddLess")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("add_less");
 
                     b.Property<string>("CreatedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("ItemId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("item_id");
 
                     b.Property<string>("LastModifiedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("last_modified_on");
 
                     b.Property<decimal?>("Packing")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("packing");
 
                     b.Property<int?>("PurchaseMasterId")
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("purchase_master_id");
 
                     b.Property<decimal>("Qty")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("qty");
 
                     b.Property<decimal?>("QtyInPack")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("qty_in_pack");
 
                     b.Property<decimal>("Rate")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("rate");
 
                     b.Property<decimal?>("SecQty")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("sec_qty");
 
                     b.Property<decimal?>("SecRate")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("sec_rate");
 
                     b.Property<string>("SecUnitId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("sec_unit_id");
 
                     b.Property<int>("Seq")
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("seq");
 
                     b.Property<string>("UnitId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("unit_id");
 
                     b.Property<string>("VNo")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("v_no");
 
                     b.Property<string>("VType")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("v_type");
 
                     b.HasKey("Id", "TenantId")
@@ -2008,7 +2012,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .IsUnique()
                         .HasDatabaseName("ix_purchase_detail_v_type_v_no_seq");
 
-                    b.ToTable("PurchaseDetail", "public");
+                    b.ToTable("PurchaseDetail");
 
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
@@ -2017,59 +2021,59 @@ namespace Migrators.PostgreSQL.Migrations.Application
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("TenantId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("tenant_id");
 
                     b.Property<string>("AccountId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("account_id");
 
                     b.Property<decimal?>("Amount")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("amount");
 
                     b.Property<string>("Counter")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("counter");
 
                     b.Property<string>("CreatedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("Descr")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("descr");
 
                     b.Property<string>("LastModifiedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("NarrationId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("narration_id");
 
                     b.Property<DateOnly>("VDate")
@@ -2078,16 +2082,16 @@ namespace Migrators.PostgreSQL.Migrations.Application
 
                     b.Property<string>("VNo")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("v_no");
 
                     b.Property<TimeOnly>("VTime")
-                        .HasColumnType("time without time zone")
+                        .HasColumnType("time")
                         .HasColumnName("v_time");
 
                     b.Property<string>("VType")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("v_type");
 
                     b.HasKey("Id", "TenantId")
@@ -2103,7 +2107,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .IsUnique()
                         .HasDatabaseName("ix_purchase_master_v_type_v_no");
 
-                    b.ToTable("PurchaseMaster", "public");
+                    b.ToTable("PurchaseMaster");
 
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
@@ -2112,93 +2116,93 @@ namespace Migrators.PostgreSQL.Migrations.Application
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("TenantId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("tenant_id");
 
                     b.Property<string>("CreatedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("ItemId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("item_id");
 
                     b.Property<string>("LastModifiedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("last_modified_on");
 
                     b.Property<decimal?>("Packing")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("packing");
 
                     b.Property<int?>("PurchaseRetMasterId")
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("purchase_ret_master_id");
 
                     b.Property<decimal>("Qty")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("qty");
 
                     b.Property<decimal?>("QtyInPack")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("qty_in_pack");
 
                     b.Property<decimal>("Rate")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("rate");
 
                     b.Property<decimal?>("SecQty")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("sec_qty");
 
                     b.Property<decimal?>("SecRate")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("sec_rate");
 
                     b.Property<string>("SecUnitId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("sec_unit_id");
 
                     b.Property<int>("Seq")
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("seq");
 
                     b.Property<string>("UnitId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("unit_id");
 
                     b.Property<string>("VNo")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("v_no");
 
                     b.Property<string>("VType")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("v_type");
 
                     b.HasKey("Id", "TenantId")
@@ -2220,7 +2224,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .IsUnique()
                         .HasDatabaseName("ix_purchase_ret_detail_v_type_v_no_seq");
 
-                    b.ToTable("PurchaseRetDetail", "public");
+                    b.ToTable("PurchaseRetDetail");
 
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
@@ -2229,59 +2233,59 @@ namespace Migrators.PostgreSQL.Migrations.Application
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("TenantId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("tenant_id");
 
                     b.Property<string>("AccountId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("account_id");
 
                     b.Property<decimal?>("Amount")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("amount");
 
                     b.Property<string>("Counter")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("counter");
 
                     b.Property<string>("CreatedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("Descr")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("descr");
 
                     b.Property<string>("LastModifiedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("NarrationId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("narration_id");
 
                     b.Property<DateOnly>("VDate")
@@ -2290,16 +2294,16 @@ namespace Migrators.PostgreSQL.Migrations.Application
 
                     b.Property<string>("VNo")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("v_no");
 
                     b.Property<TimeOnly>("VTime")
-                        .HasColumnType("time without time zone")
+                        .HasColumnType("time")
                         .HasColumnName("v_time");
 
                     b.Property<string>("VType")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("v_type");
 
                     b.HasKey("Id", "TenantId")
@@ -2315,7 +2319,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .IsUnique()
                         .HasDatabaseName("ix_purchase_ret_master_v_type_v_no");
 
-                    b.ToTable("PurchaseRetMaster", "public");
+                    b.ToTable("PurchaseRetMaster");
 
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
@@ -2324,97 +2328,97 @@ namespace Migrators.PostgreSQL.Migrations.Application
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("TenantId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("tenant_id");
 
                     b.Property<string>("CreatedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("deleted_on");
 
                     b.Property<decimal?>("Discount")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("discount");
 
                     b.Property<decimal?>("GrossRate")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("gross_rate");
 
                     b.Property<string>("ItemId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("item_id");
 
                     b.Property<string>("LastModifiedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("last_modified_on");
 
                     b.Property<decimal?>("Packing")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("packing");
 
                     b.Property<decimal>("Qty")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("qty");
 
                     b.Property<decimal?>("QtyInPack")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("qty_in_pack");
 
                     b.Property<int?>("SaleMasterId")
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("sale_master_id");
 
                     b.Property<decimal?>("SecQty")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("sec_qty");
 
                     b.Property<decimal?>("SecRate")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("sec_rate");
 
                     b.Property<string>("SecUnitId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("sec_unit_id");
 
                     b.Property<int>("Seq")
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("seq");
 
                     b.Property<string>("UnitId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("unit_id");
 
                     b.Property<string>("VNo")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("v_no");
 
                     b.Property<string>("VType")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("v_type");
 
                     b.HasKey("Id", "TenantId")
@@ -2436,7 +2440,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .IsUnique()
                         .HasDatabaseName("ix_sales_v_type_v_no_seq");
 
-                    b.ToTable("Sales", "public");
+                    b.ToTable("Sales");
 
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
@@ -2445,75 +2449,75 @@ namespace Migrators.PostgreSQL.Migrations.Application
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("TenantId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("tenant_id");
 
                     b.Property<string>("AccountId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("account_id");
 
                     b.Property<decimal?>("Amount")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("amount");
 
                     b.Property<decimal?>("CashBack")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("cash_back");
 
                     b.Property<decimal>("CashReceipt")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("cash_receipt");
 
                     b.Property<string>("Counter")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("counter");
 
                     b.Property<string>("CreatedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("Descr")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("descr");
 
                     b.Property<decimal?>("Discount")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("discount");
 
                     b.Property<string>("LastModifiedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("NarrationId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("narration_id");
 
                     b.Property<decimal?>("NetAmount")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("net_amount");
 
                     b.Property<DateOnly>("VDate")
@@ -2522,16 +2526,16 @@ namespace Migrators.PostgreSQL.Migrations.Application
 
                     b.Property<string>("VNo")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("v_no");
 
                     b.Property<TimeOnly>("VTime")
-                        .HasColumnType("time without time zone")
+                        .HasColumnType("time")
                         .HasColumnName("v_time");
 
                     b.Property<string>("VType")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("v_type");
 
                     b.HasKey("Id", "TenantId")
@@ -2547,7 +2551,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .IsUnique()
                         .HasDatabaseName("ix_sale_master_v_type_v_no");
 
-                    b.ToTable("SaleMaster", "public");
+                    b.ToTable("SaleMaster");
 
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
@@ -2556,97 +2560,97 @@ namespace Migrators.PostgreSQL.Migrations.Application
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("TenantId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("tenant_id");
 
                     b.Property<string>("CreatedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("deleted_on");
 
                     b.Property<decimal?>("Discount")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("discount");
 
                     b.Property<decimal?>("GrossRate")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("gross_rate");
 
                     b.Property<string>("ItemId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("item_id");
 
                     b.Property<string>("LastModifiedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("last_modified_on");
 
                     b.Property<decimal?>("Packing")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("packing");
 
                     b.Property<decimal>("Qty")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("qty");
 
                     b.Property<decimal?>("QtyInPack")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("qty_in_pack");
 
                     b.Property<int?>("SaleRetMasterId")
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("sale_ret_master_id");
 
                     b.Property<decimal?>("SecQty")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("sec_qty");
 
                     b.Property<decimal?>("SecRate")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("sec_rate");
 
                     b.Property<string>("SecUnitId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("sec_unit_id");
 
                     b.Property<int>("Seq")
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("seq");
 
                     b.Property<string>("UnitId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("unit_id");
 
                     b.Property<string>("VNo")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("v_no");
 
                     b.Property<string>("VType")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("v_type");
 
                     b.HasKey("Id", "TenantId")
@@ -2668,7 +2672,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .IsUnique()
                         .HasDatabaseName("ix_sale_ret_detail_v_type_v_no_seq");
 
-                    b.ToTable("SaleRetDetail", "public");
+                    b.ToTable("SaleRetDetail");
 
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
@@ -2677,75 +2681,75 @@ namespace Migrators.PostgreSQL.Migrations.Application
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("TenantId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("tenant_id");
 
                     b.Property<string>("AccountId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("account_id");
 
                     b.Property<decimal?>("Amount")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("amount");
 
                     b.Property<decimal?>("CashBack")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("cash_back");
 
                     b.Property<decimal>("CashReceipt")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("cash_receipt");
 
                     b.Property<string>("Counter")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("counter");
 
                     b.Property<string>("CreatedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("Descr")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("descr");
 
                     b.Property<decimal?>("Discount")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("discount");
 
                     b.Property<string>("LastModifiedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("NarrationId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("narration_id");
 
                     b.Property<decimal?>("NetAmount")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("net_amount");
 
                     b.Property<DateOnly>("VDate")
@@ -2754,16 +2758,16 @@ namespace Migrators.PostgreSQL.Migrations.Application
 
                     b.Property<string>("VNo")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("v_no");
 
                     b.Property<TimeOnly>("VTime")
-                        .HasColumnType("time without time zone")
+                        .HasColumnType("time")
                         .HasColumnName("v_time");
 
                     b.Property<string>("VType")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("v_type");
 
                     b.HasKey("Id", "TenantId")
@@ -2779,7 +2783,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .IsUnique()
                         .HasDatabaseName("ix_sale_ret_master_v_type_v_no");
 
-                    b.ToTable("SaleRetMaster", "public");
+                    b.ToTable("SaleRetMaster");
 
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
@@ -2788,101 +2792,101 @@ namespace Migrators.PostgreSQL.Migrations.Application
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("TenantId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("tenant_id");
 
                     b.Property<decimal?>("AddLess")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("add_less");
 
                     b.Property<string>("CreatedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("created_on");
 
                     b.Property<string>("CustomerAccountId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("customer_account_id");
 
                     b.Property<string>("DeletedBy")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("deleted_on");
 
                     b.Property<decimal?>("Discount")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("discount");
 
                     b.Property<decimal?>("GrossRate")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("gross_rate");
 
                     b.Property<string>("LastModifiedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("last_modified_on");
 
                     b.Property<decimal?>("Packing")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("packing");
 
                     b.Property<decimal>("Qty")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("qty");
 
                     b.Property<decimal?>("QtyInPack")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("qty_in_pack");
 
                     b.Property<int?>("SaleSupplyMasterId")
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("sale_supply_master_id");
 
                     b.Property<decimal?>("SecQty")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("sec_qty");
 
                     b.Property<decimal?>("SecRate")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("sec_rate");
 
                     b.Property<string>("SecUnitId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("sec_unit_id");
 
                     b.Property<int>("Seq")
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("seq");
 
                     b.Property<string>("UnitId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("unit_id");
 
                     b.Property<string>("VNo")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("v_no");
 
                     b.Property<string>("VType")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("v_type");
 
                     b.HasKey("Id", "TenantId")
@@ -2904,7 +2908,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .IsUnique()
                         .HasDatabaseName("ix_sale_supply_detail_v_type_v_no_seq");
 
-                    b.ToTable("SaleSupplyDetail", "public");
+                    b.ToTable("SaleSupplyDetail");
 
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
@@ -2913,71 +2917,71 @@ namespace Migrators.PostgreSQL.Migrations.Application
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("TenantId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("tenant_id");
 
                     b.Property<decimal?>("Amount")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("amount");
 
                     b.Property<string>("Counter")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("counter");
 
                     b.Property<string>("CreatedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("Descr")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("descr");
 
                     b.Property<decimal?>("Discount")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("discount");
 
                     b.Property<string>("ItemId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("item_id");
 
                     b.Property<string>("LastModifiedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("NarrationId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("narration_id");
 
                     b.Property<decimal?>("NetAmount")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("net_amount");
 
                     b.Property<int?>("SupplyOrderMasterId")
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("supply_order_master_id");
 
                     b.Property<DateOnly>("VDate")
@@ -2986,16 +2990,16 @@ namespace Migrators.PostgreSQL.Migrations.Application
 
                     b.Property<string>("VNo")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("v_no");
 
                     b.Property<TimeOnly>("VTime")
-                        .HasColumnType("time without time zone")
+                        .HasColumnType("time")
                         .HasColumnName("v_time");
 
                     b.Property<string>("VType")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("v_type");
 
                     b.HasKey("Id", "TenantId")
@@ -3014,7 +3018,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .IsUnique()
                         .HasDatabaseName("ix_sale_supply_master_v_type_v_no");
 
-                    b.ToTable("SaleSupplyMaster", "public");
+                    b.ToTable("SaleSupplyMaster");
 
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
@@ -3023,101 +3027,101 @@ namespace Migrators.PostgreSQL.Migrations.Application
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("TenantId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("tenant_id");
 
                     b.Property<string>("CategoryId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("category_id");
 
                     b.Property<string>("CreatedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("ItemId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("item_id");
 
                     b.Property<string>("LastModifiedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("last_modified_on");
 
                     b.Property<decimal?>("Packing")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("packing");
 
                     b.Property<decimal>("QtyIn")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("qty_in");
 
                     b.Property<decimal?>("QtyInPack")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("qty_in_pack");
 
                     b.Property<decimal>("QtyOut")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("qty_out");
 
                     b.Property<decimal>("Rate")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("rate");
 
                     b.Property<decimal?>("SecQtyIn")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("sec_qty_in");
 
                     b.Property<decimal?>("SecQtyOut")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("sec_qty_out");
 
                     b.Property<decimal?>("SecRate")
-                        .HasColumnType("numeric")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("sec_rate");
 
                     b.Property<string>("SecUnitId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("sec_unit_id");
 
                     b.Property<int>("Seq")
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("seq");
 
                     b.Property<int?>("StockAdjMasterId")
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("stock_adj_master_id");
 
                     b.Property<string>("VNo")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("v_no");
 
                     b.Property<string>("VType")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("v_type");
 
                     b.HasKey("Id", "TenantId")
@@ -3139,7 +3143,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .IsUnique()
                         .HasDatabaseName("ix_stock_adj_detail_v_type_v_no_seq");
 
-                    b.ToTable("StockAdjDetail", "public");
+                    b.ToTable("StockAdjDetail");
 
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
@@ -3148,51 +3152,51 @@ namespace Migrators.PostgreSQL.Migrations.Application
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("TenantId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("tenant_id");
 
                     b.Property<string>("CreatedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("Descr")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("descr");
 
                     b.Property<string>("LastModifiedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("NarrationId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("narration_id");
 
                     b.Property<string>("Terminal")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("terminal");
 
                     b.Property<DateOnly>("VDate")
@@ -3201,16 +3205,16 @@ namespace Migrators.PostgreSQL.Migrations.Application
 
                     b.Property<string>("VNo")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("v_no");
 
                     b.Property<TimeOnly>("VTime")
-                        .HasColumnType("time without time zone")
+                        .HasColumnType("time")
                         .HasColumnName("v_time");
 
                     b.Property<string>("VType")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("v_type");
 
                     b.HasKey("Id", "TenantId")
@@ -3223,7 +3227,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .IsUnique()
                         .HasDatabaseName("ix_stock_adj_master_v_type_v_no");
 
-                    b.ToTable("StockAdjMaster", "public");
+                    b.ToTable("StockAdjMaster");
 
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
@@ -3231,11 +3235,11 @@ namespace Migrators.PostgreSQL.Migrations.Application
             modelBuilder.Entity("Retailer.Domain.Legacy.SupplierDetail", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("id");
 
                     b.Property<string>("TenantId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("tenant_id");
 
                     b.Property<decimal?>("Active")
@@ -3243,32 +3247,32 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("active");
 
                     b.Property<string>("Address")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("address");
 
                     b.Property<string>("Cnic")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("cnic");
 
                     b.Property<string>("CreatedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("Email")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("email");
 
                     b.Property<decimal?>("EmailAlert")
@@ -3276,40 +3280,40 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("email_alert");
 
                     b.Property<string>("Fax")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("fax");
 
                     b.Property<string>("Iban")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("iban");
 
                     b.Property<byte[]>("Image")
-                        .HasColumnType("bytea")
+                        .HasColumnType("varbinary(max)")
                         .HasColumnName("image");
 
                     b.Property<string>("LastModifiedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("MediaId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("media_id");
 
                     b.Property<string>("Phone1")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("phone1");
 
                     b.Property<string>("Phone2")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("phone2");
 
                     b.Property<string>("Qualification")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("qualification");
 
                     b.Property<decimal?>("ShowInSales")
@@ -3321,13 +3325,13 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("sms_alert");
 
                     b.Property<string>("SmsNumber")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("sms_number");
 
                     b.HasKey("Id", "TenantId")
                         .HasName("ak_supplier_detail_id_tenant_id");
 
-                    b.ToTable("SupplierDetail", "public");
+                    b.ToTable("SupplierDetail");
 
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
@@ -3336,51 +3340,51 @@ namespace Migrators.PostgreSQL.Migrations.Application
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("TenantId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("tenant_id");
 
                     b.Property<string>("CreatedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("created_on");
 
                     b.Property<string>("CustomerAccountId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("customer_account_id");
 
                     b.Property<string>("DeletedBy")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("LastModifiedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("last_modified_on");
 
                     b.Property<int?>("SortOrder")
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("sort_order");
 
                     b.Property<int?>("SupplyOrderMasterId")
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("supply_order_master_id");
 
                     b.HasKey("Id", "TenantId")
@@ -3392,7 +3396,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                     b.HasIndex("SupplyOrderMasterId", "TenantId")
                         .HasDatabaseName("ix_supply_order_detail_supply_order_master_id_tenant_id");
 
-                    b.ToTable("SupplyOrderDetail", "public");
+                    b.ToTable("SupplyOrderDetail");
 
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
@@ -3401,49 +3405,49 @@ namespace Migrators.PostgreSQL.Migrations.Application
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("TenantId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("tenant_id");
 
                     b.Property<string>("CreatedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("LastModifiedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("Title")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("title");
 
                     b.HasKey("Id", "TenantId")
                         .HasName("ak_supply_order_master_id_tenant_id");
 
-                    b.ToTable("SupplyOrderMaster", "public");
+                    b.ToTable("SupplyOrderMaster");
 
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
@@ -3451,48 +3455,48 @@ namespace Migrators.PostgreSQL.Migrations.Application
             modelBuilder.Entity("Retailer.Domain.Legacy.Unit", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("id");
 
                     b.Property<string>("TenantId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("tenant_id");
 
                     b.Property<string>("CreatedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("LastModifiedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("title");
 
                     b.HasKey("Id", "TenantId")
                         .HasName("ak_units_id_tenant_id");
 
-                    b.ToTable("Units", "public");
+                    b.ToTable("Units");
 
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
@@ -3500,66 +3504,66 @@ namespace Migrators.PostgreSQL.Migrations.Application
             modelBuilder.Entity("Retailer.Domain.Public.Document", b =>
                 {
                     b.Property<int>("Id")
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("id");
 
                     b.Property<string>("TenantId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("tenant_id");
 
                     b.Property<string>("AccessURL")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("access_url");
 
                     b.Property<string>("ConvertedFileName")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("converted_file_name");
 
                     b.Property<string>("CreatedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("FileType")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("file_type");
 
                     b.Property<string>("LastModifiedBy")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("OriginalFileName")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("original_file_name");
 
                     b.Property<string>("Path")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("path");
 
                     b.HasKey("Id", "TenantId")
                         .HasName("ak_documents_id_tenant_id");
 
-                    b.ToTable("documents", "public");
+                    b.ToTable("documents", (string)null);
 
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
@@ -3567,44 +3571,44 @@ namespace Migrators.PostgreSQL.Migrations.Application
             modelBuilder.Entity("Retailer.Infrastructure.Auditing.Trail", b =>
                 {
                     b.Property<Guid>("Id")
-                        .HasColumnType("uuid")
+                        .HasColumnType("uniqueidentifier")
                         .HasColumnName("id");
 
                     b.Property<string>("TenantId")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("tenant_id");
 
                     b.Property<string>("AffectedColumns")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("affected_columns");
 
                     b.Property<DateTime>("DateTime")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime2")
                         .HasColumnName("date_time");
 
                     b.Property<string>("NewValues")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("new_values");
 
                     b.Property<string>("OldValues")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("old_values");
 
                     b.Property<string>("PrimaryKey")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("primary_key");
 
                     b.Property<string>("TableName")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("table_name");
 
                     b.Property<string>("Type")
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("type");
 
                     b.Property<string>("UserId")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("user_id");
 
                     b.HasKey("Id", "TenantId")
@@ -3700,7 +3704,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasForeignKey("CustomerAccountId", "TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_customer_supply_item_chart_of_account_customer_account_id_tenan");
+                        .HasConstraintName("fk_customer_supply_item_chart_of_account_customer_account_id_tenant_id");
 
                     b.HasOne("Retailer.Domain.Legacy.ItemDetail", "Item")
                         .WithMany()
@@ -3985,7 +3989,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .WithMany("Details")
                         .HasForeignKey("PurchaseRetMasterId", "TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_purchase_ret_detail_purchase_ret_master_purchase_ret_master_id_");
+                        .HasConstraintName("fk_purchase_ret_detail_purchase_ret_master_purchase_ret_master_id_tenant_id");
 
                     b.HasOne("Retailer.Domain.Legacy.Unit", "SecUnit")
                         .WithMany()
@@ -4141,13 +4145,13 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .WithMany()
                         .HasForeignKey("CustomerAccountId", "TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_sale_supply_detail_chart_of_account_customer_account_id_tenant_");
+                        .HasConstraintName("fk_sale_supply_detail_chart_of_account_customer_account_id_tenant_id");
 
                     b.HasOne("Retailer.Domain.Legacy.SaleSupplyMaster", "SaleSupplyMaster")
                         .WithMany("Details")
                         .HasForeignKey("SaleSupplyMasterId", "TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_sale_supply_detail_sale_supply_master_sale_supply_master_id_ten");
+                        .HasConstraintName("fk_sale_supply_detail_sale_supply_master_sale_supply_master_id_tenant_id");
 
                     b.HasOne("Retailer.Domain.Legacy.Unit", "SecUnit")
                         .WithMany()
@@ -4188,7 +4192,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .WithMany()
                         .HasForeignKey("SupplyOrderMasterId", "TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_sale_supply_master_supply_order_master_supply_order_master_id_t");
+                        .HasConstraintName("fk_sale_supply_master_supply_order_master_supply_order_master_id_tenant_id");
 
                     b.Navigation("Item");
 
@@ -4249,13 +4253,13 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .WithMany()
                         .HasForeignKey("CustomerAccountId", "TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_supply_order_detail_chart_of_account_customer_account_id_tenant");
+                        .HasConstraintName("fk_supply_order_detail_chart_of_account_customer_account_id_tenant_id");
 
                     b.HasOne("Retailer.Domain.Legacy.SupplyOrderMaster", "SupplyOrderMaster")
                         .WithMany("Details")
                         .HasForeignKey("SupplyOrderMasterId", "TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_supply_order_detail_supply_order_master_supply_order_master_id_");
+                        .HasConstraintName("fk_supply_order_detail_supply_order_master_supply_order_master_id_tenant_id");
 
                     b.Navigation("CustomerAccount");
 

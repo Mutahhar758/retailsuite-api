@@ -704,6 +704,10 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasColumnType("nvarchar(450)")
                         .HasColumnName("tenant_id");
 
+                    b.Property<decimal?>("AddLess")
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("add_less");
+
                     b.Property<string>("CreatedBy")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)")
@@ -726,6 +730,10 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasColumnType("datetime2")
                         .HasColumnName("deleted_on");
 
+                    b.Property<decimal?>("Discount")
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("discount");
+
                     b.Property<string>("ItemId")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)")
@@ -744,6 +752,10 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasPrecision(18, 4)
                         .HasColumnType("decimal(18,4)")
                         .HasColumnName("qty");
+
+                    b.Property<decimal?>("Rate")
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("rate");
 
                     b.Property<decimal?>("SecQty")
                         .HasPrecision(18, 4)
