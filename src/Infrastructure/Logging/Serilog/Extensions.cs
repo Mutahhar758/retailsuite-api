@@ -33,6 +33,7 @@ public static class Extensions
             ConfigureEnrichers(serilogConfig, appName);
             ConfigureConsoleLogging(serilogConfig, structuredConsoleLogging);
             ConfigureWriteToFile(serilogConfig, writeToFile);
+            ConfigureSeq(serilogConfig, loggerSettings.SeqServerUrl, loggerSettings.SeqApiKey);
             ConfigureElasticSearch(builder, serilogConfig, appName, elasticSearchUrl);
             SetMinimumLogLevel(serilogConfig, minLogLevel);
             OverideMinimumLogLevel(serilogConfig);
@@ -71,6 +72,20 @@ public static class Extensions
             restrictedToMinimumLevel: LogEventLevel.Information,
             rollingInterval: RollingInterval.Day,
             retainedFileCountLimit: 5);
+        }
+    }
+
+    private static void ConfigureSeq(LoggerConfiguration serilogConfig, string seqServerUrl, string? apiKey)
+    {
+        if (!string.IsNullOrWhiteSpace(seqServerUrl))
+        {
+            serilogConfig.WriteTo.Async(writeTo =>
+            {
+                if (!string.IsNullOrWhiteSpace(apiKey))
+                    writeTo.Seq(seqServerUrl, apiKey: apiKey);
+                else
+                    writeTo.Seq(seqServerUrl);
+            });
         }
     }
 

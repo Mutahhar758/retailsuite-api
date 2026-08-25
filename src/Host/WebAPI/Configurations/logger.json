@@ -1,9 +1,12 @@
 {
   "LoggerSettings": {
     "AppName": "Retailer",
-    "ElasticSearchUrl": "http://localhost:9200",
-    "WriteToFile": false,
-    "StructuredConsoleLogging": false
+    "SeqServerUrl": "http://localhost:5341",
+    "SeqApiKey": "iWHPVfQjrrW6xWZNvrqb",
+    "ElasticSearchUrl": "",
+    "WriteToFile": true,
+    "StructuredConsoleLogging": false,
+    "MinimumLogLevel": "Information"
   },
   "Logging": {
     "LogLevel": {
