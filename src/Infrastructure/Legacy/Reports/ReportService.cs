@@ -25,6 +25,7 @@ internal class ReportService : IReportService
     private readonly IRepository<PurchaseRetMaster> _purchaseRetMasterRepository;
     private readonly IRepository<SaleRetDetail> _saleRetDetailRepository;
     private readonly IRepository<SaleRetMaster> _saleRetMasterRepository;
+    private readonly IRepository<DefaultAccount> _defaultAccountRepository;
 
     public ReportService(
         IRepository<GlEntry> glRepository,
@@ -42,7 +43,8 @@ internal class ReportService : IReportService
         IRepository<PurchaseRetDetail> purchaseRetDetailRepository,
         IRepository<PurchaseRetMaster> purchaseRetMasterRepository,
         IRepository<SaleRetDetail> saleRetDetailRepository,
-        IRepository<SaleRetMaster> saleRetMasterRepository)
+        IRepository<SaleRetMaster> saleRetMasterRepository,
+        IRepository<DefaultAccount> defaultAccountRepository)
     {
         _glRepository = glRepository;
         _chartOfAccountRepository = chartOfAccountRepository;
@@ -1427,30 +1429,53 @@ internal class ReportService : IReportService
 
         bool useClearingDate = !string.Equals(filter.DateBasis, "VoucherDate", StringComparison.OrdinalIgnoreCase);
 
-        // 1. Fetch Customers
-        var customerQuery = from c in _customerDetailRepository.GetAll().AsNoTracking()
-                            join coa in _chartOfAccountRepository.GetAll().AsNoTracking()
-                                on c.Id equals coa.Id
-                            select new
-                            {
-                                CustomerAccountId = c.Id,
-                                CustomerTitle = coa.Title,
-                                Phone = c.Phone1 ?? c.Phone2 ?? c.SmsNumber,
-                                c.Address
-                            };
+        // 1. Gather all Customer Accounts using standard Customer Default Account mapping
+        const string customerDefaultAccountTitle = "Customers";
+        var defaultAccount = await _defaultAccountRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => x.Title == customerDefaultAccountTitle)
+            .Select(x => new { x.AccountId, x.MapAccountId })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var accountPrefix = defaultAccount?.MapAccountId ?? defaultAccount?.AccountId;
+
+        var accountsQuery = _chartOfAccountRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => x.AccLevel == 5);
+
+        if (!string.IsNullOrWhiteSpace(accountPrefix))
+        {
+            accountsQuery = accountsQuery.Where(x => x.Id.StartsWith(accountPrefix));
+        }
 
         if (!string.IsNullOrWhiteSpace(filter.CustomerAccountId))
         {
-            customerQuery = customerQuery.Where(x => x.CustomerAccountId == filter.CustomerAccountId);
+            accountsQuery = accountsQuery.Where(x => x.Id == filter.CustomerAccountId);
         }
 
-        var customers = await customerQuery.ToListAsync(cancellationToken);
-        if (customers.Count == 0)
+        var customerAccounts = await accountsQuery
+            .OrderBy(x => x.Title)
+            .Select(x => new { x.Id, x.Title })
+            .ToListAsync(cancellationToken);
+
+        if (customerAccounts.Count == 0)
         {
             return new CustomerBalanceRecoveryResponse();
         }
 
-        var customerAccountIds = customers.Select(x => x.CustomerAccountId).ToList();
+        var customerAccountIds = customerAccounts.Select(x => x.Id).ToList();
+
+        // Fetch CustomerDetail metadata (phone, address) via Left Join in memory
+        var detailMap = await _customerDetailRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => customerAccountIds.Contains(x.Id))
+            .Select(x => new
+            {
+                x.Id,
+                Phone = x.Phone1 ?? x.Phone2 ?? x.SmsNumber,
+                x.Address
+            })
+            .ToDictionaryAsync(x => x.Id, x => new { x.Phone, x.Address }, cancellationToken);
 
         // 2. Fetch Opening/Previous Balances before FromDate
         var prevEntries = await _glRepository.GetAll()
@@ -1518,20 +1543,14 @@ internal class ReportService : IReportService
         // 4. Build Customer Line items
         var lines = new List<CustomerBalanceRecoveryLineResponse>();
 
-        foreach (var cust in customers)
+        foreach (var cust in customerAccounts)
         {
-            var prevBalance = prevBalanceMap.GetValueOrDefault(cust.CustomerAccountId, 0m);
-            var currentBilling = periodDebitMap.GetValueOrDefault(cust.CustomerAccountId, 0m);
+            var prevBalance = prevBalanceMap.GetValueOrDefault(cust.Id, 0m);
+            var currentBilling = periodDebitMap.GetValueOrDefault(cust.Id, 0m);
             var totalDue = prevBalance + currentBilling;
-            var recovery = periodCreditMap.GetValueOrDefault(cust.CustomerAccountId, 0m);
+            var recovery = periodCreditMap.GetValueOrDefault(cust.Id, 0m);
             var discount = 0m;
             var closingBalance = totalDue - recovery - discount;
-
-            // Don't show inactive accounts if they have no activity and 0 balance
-            if (prevBalance == 0m && currentBilling == 0m && recovery == 0m)
-            {
-                continue;
-            }
 
             var recoveryPercentage = totalDue > 0
                 ? Math.Round(Math.Min(100m, Math.Max(0m, (recovery / totalDue) * 100m)), 1)
@@ -1549,12 +1568,20 @@ internal class ReportService : IReportService
             else
                 status = "Cleared";
 
+            string? phone = null;
+            string? address = null;
+            if (detailMap.TryGetValue(cust.Id, out var det))
+            {
+                phone = det.Phone;
+                address = det.Address;
+            }
+
             lines.Add(new CustomerBalanceRecoveryLineResponse
             {
-                CustomerAccountId = cust.CustomerAccountId,
-                CustomerTitle = cust.CustomerTitle,
-                Phone = cust.Phone,
-                Address = cust.Address,
+                CustomerAccountId = cust.Id,
+                CustomerTitle = cust.Title,
+                Phone = phone,
+                Address = address,
                 PreviousBalance = prevBalance,
                 CurrentBilling = currentBilling,
                 TotalDue = totalDue,
