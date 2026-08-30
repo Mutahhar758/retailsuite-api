@@ -3,6 +3,7 @@ namespace Retailer.Application.Legacy.Reports;
 public class PurchaseSupplyComparisonResponse
 {
     public string ItemTitle { get; set; } = string.Empty;
+    public string UnitTitle { get; set; } = string.Empty;
     public List<PurchaseSupplyComparisonLineResponse> Lines { get; set; } = new();
     public PurchaseSupplyComparisonSummaryResponse Summary { get; set; } = new();
 }

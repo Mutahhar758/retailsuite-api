@@ -1246,6 +1246,7 @@ internal class ReportService : IReportService
                                 pm.VDate,
                                 pd.ItemId,
                                 ItemTitle = pd.Item != null ? pd.Item.Title : string.Empty,
+                                UnitTitle = pd.Unit != null ? pd.Unit.Title : (pd.Item != null && pd.Item.PrimaryUnit != null ? pd.Item.PrimaryUnit.Title : string.Empty),
                                 pd.Qty,
                                 pd.Rate,
                                 pd.AddLess,
@@ -1270,6 +1271,7 @@ internal class ReportService : IReportService
                               ssm.VDate,
                               ssm.ItemId,
                               ItemTitle = ssm.Item != null ? ssm.Item.Title : string.Empty,
+                              UnitTitle = ssm.Item != null && ssm.Item.PrimaryUnit != null ? ssm.Item.PrimaryUnit.Title : string.Empty,
                               ssd.Qty,
                               GrossRate = ssd.GrossRate ?? 0m,
                               Discount = ssd.Discount ?? 0m,
@@ -1295,6 +1297,7 @@ internal class ReportService : IReportService
                                    sm.VDate,
                                    sd.ItemId,
                                    ItemTitle = sd.Item != null ? sd.Item.Title : string.Empty,
+                                   UnitTitle = sd.Unit != null ? sd.Unit.Title : (sd.Item != null && sd.Item.PrimaryUnit != null ? sd.Item.PrimaryUnit.Title : string.Empty),
                                    sd.Qty,
                                    GrossRate = sd.GrossRate ?? 0m,
                                    Discount = sd.Discount ?? 0m,
@@ -1308,14 +1311,20 @@ internal class ReportService : IReportService
 
         var regularSales = await regularSaleQuery.ToListAsync(cancellationToken);
 
-        // Resolve item title
+        // Resolve item title and unit
         var itemTitle = "All Items";
+        var unitTitle = string.Empty;
         if (!string.IsNullOrWhiteSpace(filter.ItemId))
         {
             itemTitle = purchases.FirstOrDefault(x => !string.IsNullOrEmpty(x.ItemTitle))?.ItemTitle
                         ?? supplies.FirstOrDefault(x => !string.IsNullOrEmpty(x.ItemTitle))?.ItemTitle
                         ?? regularSales.FirstOrDefault(x => !string.IsNullOrEmpty(x.ItemTitle))?.ItemTitle
                         ?? filter.ItemId;
+
+            unitTitle = purchases.FirstOrDefault(x => !string.IsNullOrEmpty(x.UnitTitle))?.UnitTitle
+                        ?? supplies.FirstOrDefault(x => !string.IsNullOrEmpty(x.UnitTitle))?.UnitTitle
+                        ?? regularSales.FirstOrDefault(x => !string.IsNullOrEmpty(x.UnitTitle))?.UnitTitle
+                        ?? string.Empty;
         }
 
         // Generate daily lines
@@ -1345,9 +1354,9 @@ internal class ReportService : IReportService
             var netDiffQty = pQty - totalDispatchedQty;
 
             string status;
-            if (pQty == sQty)
+            if (pQty == totalDispatchedQty)
                 status = "Equal";
-            else if (pQty > sQty)
+            else if (pQty > totalDispatchedQty)
                 status = "Surplus";
             else
                 status = "Shortage";
@@ -1355,7 +1364,7 @@ internal class ReportService : IReportService
             lines.Add(new PurchaseSupplyComparisonLineResponse
             {
                 Date = currentDate,
-                DayName = currentDate.ToDateTime(TimeOnly.MinValue).ToString("dddd"),
+                DayName = currentDate.DayOfWeek.ToString(),
                 PurchaseQty = pQty,
                 PurchaseAvgRate = pAvgRate,
                 PurchaseAmount = pAmount,
@@ -1405,6 +1414,7 @@ internal class ReportService : IReportService
         return new PurchaseSupplyComparisonResponse
         {
             ItemTitle = itemTitle,
+            UnitTitle = unitTitle,
             Lines = lines,
             Summary = summary
         };
