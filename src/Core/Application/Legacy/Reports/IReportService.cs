@@ -16,4 +16,5 @@ public interface IReportService : ITransientService
     Task<PurchaseBillResponse> GetPurchaseBillAsync(PurchaseBillFilter filter, CancellationToken cancellationToken);
     Task<PurchaseBillResponse> GetPurchaseRetBillAsync(PurchaseBillFilter filter, CancellationToken cancellationToken);
     Task<SaleRetBillResponse> GetSaleRetBillAsync(SaleRetBillFilter filter, CancellationToken cancellationToken);
+    Task<PurchaseSupplyComparisonResponse> GetPurchaseSupplyComparisonAsync(PurchaseSupplyComparisonFilter filter, CancellationToken cancellationToken);
 }

@@ -1229,4 +1229,184 @@ internal class ReportService : IReportService
             .Select(x => x.Address)
             .FirstOrDefaultAsync(cancellationToken) ?? string.Empty;
     }
+
+    public async Task<PurchaseSupplyComparisonResponse> GetPurchaseSupplyComparisonAsync(PurchaseSupplyComparisonFilter filter, CancellationToken cancellationToken)
+    {
+        if (filter.ToDate < filter.FromDate)
+            throw new BadRequestException("To date must be greater than or equal to from date.");
+
+        // 1. Fetch Purchase transactions in date range
+        var purchaseQuery = from pd in _purchaseDetailRepository.GetAll().AsNoTracking()
+                            join pm in _purchaseMasterRepository.GetAll().AsNoTracking()
+                                on new { pd.VType, pd.VNo } equals new { pm.VType, VNo = pm.VNo }
+                            where pm.VDate >= filter.FromDate && pm.VDate <= filter.ToDate
+                                  && pm.VType == "PU"
+                            select new
+                            {
+                                pm.VDate,
+                                pd.ItemId,
+                                ItemTitle = pd.Item != null ? pd.Item.Title : string.Empty,
+                                pd.Qty,
+                                pd.Rate,
+                                pd.AddLess,
+                                Amount = (pd.Qty * pd.Rate) + pd.AddLess
+                            };
+
+        if (!string.IsNullOrWhiteSpace(filter.ItemId))
+        {
+            purchaseQuery = purchaseQuery.Where(x => x.ItemId == filter.ItemId);
+        }
+
+        var purchases = await purchaseQuery.ToListAsync(cancellationToken);
+
+        // 2. Fetch Sale Supply transactions in date range
+        var supplyQuery = from ssd in _saleSupplyDetailRepository.GetAll().AsNoTracking()
+                          join ssm in _saleSupplyMasterRepository.GetAll().AsNoTracking()
+                              on new { ssd.VType, ssd.VNo } equals new { ssm.VType, VNo = ssm.VNo }
+                          where ssm.VDate >= filter.FromDate && ssm.VDate <= filter.ToDate
+                                && (ssm.VType == "SP" || ssm.VType == "SS")
+                          select new
+                          {
+                              ssm.VDate,
+                              ssm.ItemId,
+                              ItemTitle = ssm.Item != null ? ssm.Item.Title : string.Empty,
+                              ssd.Qty,
+                              GrossRate = ssd.GrossRate ?? 0m,
+                              Discount = ssd.Discount ?? 0m,
+                              AddLess = ssd.AddLess ?? 0m,
+                              Amount = (ssd.Qty * ((ssd.GrossRate ?? 0m) - (ssd.Discount ?? 0m))) + (ssd.AddLess ?? 0m)
+                          };
+
+        if (!string.IsNullOrWhiteSpace(filter.ItemId))
+        {
+            supplyQuery = supplyQuery.Where(x => x.ItemId == filter.ItemId);
+        }
+
+        var supplies = await supplyQuery.ToListAsync(cancellationToken);
+
+        // 3. Fetch regular Sale transactions (if any) in date range
+        var regularSaleQuery = from sd in _saleRepository.GetAll().AsNoTracking()
+                               join sm in _saleMasterRepository.GetAll().AsNoTracking()
+                                   on new { sd.VType, sd.VNo } equals new { sm.VType, VNo = sm.VNo }
+                               where sm.VDate >= filter.FromDate && sm.VDate <= filter.ToDate
+                                     && sm.VType == "SL"
+                               select new
+                               {
+                                   sm.VDate,
+                                   sd.ItemId,
+                                   ItemTitle = sd.Item != null ? sd.Item.Title : string.Empty,
+                                   sd.Qty,
+                                   GrossRate = sd.GrossRate ?? 0m,
+                                   Discount = sd.Discount ?? 0m,
+                                   Amount = sd.Qty * ((sd.GrossRate ?? 0m) - (sd.Discount ?? 0m))
+                               };
+
+        if (!string.IsNullOrWhiteSpace(filter.ItemId))
+        {
+            regularSaleQuery = regularSaleQuery.Where(x => x.ItemId == filter.ItemId);
+        }
+
+        var regularSales = await regularSaleQuery.ToListAsync(cancellationToken);
+
+        // Resolve item title
+        var itemTitle = "All Items";
+        if (!string.IsNullOrWhiteSpace(filter.ItemId))
+        {
+            itemTitle = purchases.FirstOrDefault(x => !string.IsNullOrEmpty(x.ItemTitle))?.ItemTitle
+                        ?? supplies.FirstOrDefault(x => !string.IsNullOrEmpty(x.ItemTitle))?.ItemTitle
+                        ?? regularSales.FirstOrDefault(x => !string.IsNullOrEmpty(x.ItemTitle))?.ItemTitle
+                        ?? filter.ItemId;
+        }
+
+        // Generate daily lines
+        var lines = new List<PurchaseSupplyComparisonLineResponse>();
+        var currentDate = filter.FromDate;
+
+        while (currentDate <= filter.ToDate)
+        {
+            var dayPurchases = purchases.Where(x => x.VDate == currentDate).ToList();
+            var daySupplies = supplies.Where(x => x.VDate == currentDate).ToList();
+            var dayRegularSales = regularSales.Where(x => x.VDate == currentDate).ToList();
+
+            var pQty = dayPurchases.Sum(x => x.Qty);
+            var pAmount = dayPurchases.Sum(x => x.Amount);
+            var pAvgRate = pQty > 0 ? Math.Round(pAmount / pQty, 2) : 0m;
+
+            var sQty = daySupplies.Sum(x => x.Qty);
+            var sAmount = daySupplies.Sum(x => x.Amount);
+            var sAvgRate = sQty > 0 ? Math.Round(sAmount / sQty, 2) : 0m;
+
+            var regSaleQty = dayRegularSales.Sum(x => x.Qty);
+            var regSaleAmount = dayRegularSales.Sum(x => x.Amount);
+
+            var totalDispatchedQty = sQty + regSaleQty;
+            var diffQty = pQty - sQty;
+            var diffAmount = sAmount - pAmount;
+            var netDiffQty = pQty - totalDispatchedQty;
+
+            string status;
+            if (pQty == sQty)
+                status = "Equal";
+            else if (pQty > sQty)
+                status = "Surplus";
+            else
+                status = "Shortage";
+
+            lines.Add(new PurchaseSupplyComparisonLineResponse
+            {
+                Date = currentDate,
+                DayName = currentDate.ToDateTime(TimeOnly.MinValue).ToString("dddd"),
+                PurchaseQty = pQty,
+                PurchaseAvgRate = pAvgRate,
+                PurchaseAmount = pAmount,
+                SupplyQty = sQty,
+                SupplyAvgRate = sAvgRate,
+                SupplyAmount = sAmount,
+                RegularSaleQty = regSaleQty,
+                RegularSaleAmount = regSaleAmount,
+                TotalDispatchedQty = totalDispatchedQty,
+                DiffQty = diffQty,
+                DiffAmount = diffAmount,
+                NetDiffQty = netDiffQty,
+                Status = status
+            });
+
+            currentDate = currentDate.AddDays(1);
+        }
+
+        var totalPurchaseQty = lines.Sum(x => x.PurchaseQty);
+        var totalPurchaseAmount = lines.Sum(x => x.PurchaseAmount);
+        var avgPurchaseRate = totalPurchaseQty > 0 ? Math.Round(totalPurchaseAmount / totalPurchaseQty, 2) : 0m;
+
+        var totalSupplyQty = lines.Sum(x => x.SupplyQty);
+        var totalSupplyAmount = lines.Sum(x => x.SupplyAmount);
+        var avgSupplyRate = totalSupplyQty > 0 ? Math.Round(totalSupplyAmount / totalSupplyQty, 2) : 0m;
+
+        var totalRegSaleQty = lines.Sum(x => x.RegularSaleQty);
+        var totalRegSaleAmount = lines.Sum(x => x.RegularSaleAmount);
+        var totalDispatched = lines.Sum(x => x.TotalDispatchedQty);
+
+        var summary = new PurchaseSupplyComparisonSummaryResponse
+        {
+            TotalPurchaseQty = totalPurchaseQty,
+            TotalPurchaseAmount = totalPurchaseAmount,
+            AvgPurchaseRate = avgPurchaseRate,
+            TotalSupplyQty = totalSupplyQty,
+            TotalSupplyAmount = totalSupplyAmount,
+            AvgSupplyRate = avgSupplyRate,
+            TotalRegularSaleQty = totalRegSaleQty,
+            TotalRegularSaleAmount = totalRegSaleAmount,
+            TotalDispatchedQty = totalDispatched,
+            TotalDiffQty = totalPurchaseQty - totalSupplyQty,
+            TotalDiffAmount = totalSupplyAmount - totalPurchaseAmount,
+            TotalNetDiffQty = totalPurchaseQty - totalDispatched
+        };
+
+        return new PurchaseSupplyComparisonResponse
+        {
+            ItemTitle = itemTitle,
+            Lines = lines,
+            Summary = summary
+        };
+    }
 }

@@ -167,4 +167,15 @@ public class ReportsController : VersionNeutralApiController
         var result = await _reportService.GetSaleRetBillAsync(filter, cancellationToken);
         return result.ToInformationResponse();
     }
+
+    [HttpGet("purchase-supply-comparison")]
+    [MustHavePermission(AppAction.View, AppResource.Reports)]
+    [OpenApiOperation("Get purchase vs sale supply comparison report data.", "")]
+    public async Task<HttpResponseDto<PurchaseSupplyComparisonResponse>> GetPurchaseSupplyComparisonAsync(
+        [FromQuery] PurchaseSupplyComparisonFilter filter,
+        CancellationToken cancellationToken)
+    {
+        var result = await _reportService.GetPurchaseSupplyComparisonAsync(filter, cancellationToken);
+        return result.ToInformationResponse();
+    }
 }
