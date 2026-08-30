@@ -1419,4 +1419,187 @@ internal class ReportService : IReportService
             Summary = summary
         };
     }
+
+    public async Task<CustomerBalanceRecoveryResponse> GetCustomerBalanceRecoveryAsync(CustomerBalanceRecoveryFilter filter, CancellationToken cancellationToken)
+    {
+        if (filter.ToDate < filter.FromDate)
+            throw new BadRequestException("To date must be greater than or equal to from date.");
+
+        bool useClearingDate = !string.Equals(filter.DateBasis, "VoucherDate", StringComparison.OrdinalIgnoreCase);
+
+        // 1. Fetch Customers
+        var customerQuery = from c in _customerDetailRepository.GetAll().AsNoTracking()
+                            join coa in _chartOfAccountRepository.GetAll().AsNoTracking()
+                                on c.Id equals coa.Id
+                            select new
+                            {
+                                CustomerAccountId = c.Id,
+                                CustomerTitle = coa.Title,
+                                Phone = c.Phone1 ?? c.Phone2 ?? c.SmsNumber,
+                                c.Address
+                            };
+
+        if (!string.IsNullOrWhiteSpace(filter.CustomerAccountId))
+        {
+            customerQuery = customerQuery.Where(x => x.CustomerAccountId == filter.CustomerAccountId);
+        }
+
+        var customers = await customerQuery.ToListAsync(cancellationToken);
+        if (customers.Count == 0)
+        {
+            return new CustomerBalanceRecoveryResponse();
+        }
+
+        var customerAccountIds = customers.Select(x => x.CustomerAccountId).ToList();
+
+        // 2. Fetch Opening/Previous Balances before FromDate
+        var prevEntries = await _glRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => (customerAccountIds.Contains(x.DrAccountId!) || customerAccountIds.Contains(x.CrAccountId!))
+                        && (x.VType == "Op" || (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) < filter.FromDate))
+            .Select(x => new
+            {
+                x.DrAccountId,
+                x.CrAccountId,
+                x.Amount
+            })
+            .ToListAsync(cancellationToken);
+
+        var prevBalanceMap = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+        foreach (var entry in prevEntries)
+        {
+            if (!string.IsNullOrWhiteSpace(entry.DrAccountId) && customerAccountIds.Contains(entry.DrAccountId))
+            {
+                prevBalanceMap.TryGetValue(entry.DrAccountId, out var current);
+                prevBalanceMap[entry.DrAccountId] = current + entry.Amount;
+            }
+
+            if (!string.IsNullOrWhiteSpace(entry.CrAccountId) && customerAccountIds.Contains(entry.CrAccountId))
+            {
+                prevBalanceMap.TryGetValue(entry.CrAccountId, out var current);
+                prevBalanceMap[entry.CrAccountId] = current - entry.Amount;
+            }
+        }
+
+        // 3. Fetch Period Transactions between FromDate and ToDate
+        var periodEntries = await _glRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => (customerAccountIds.Contains(x.DrAccountId!) || customerAccountIds.Contains(x.CrAccountId!))
+                        && x.VType != "Op"
+                        && (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) >= filter.FromDate
+                        && (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) <= filter.ToDate)
+            .Select(x => new
+            {
+                x.DrAccountId,
+                x.CrAccountId,
+                x.Amount,
+                x.VType
+            })
+            .ToListAsync(cancellationToken);
+
+        var periodDebitMap = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+        var periodCreditMap = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var entry in periodEntries)
+        {
+            if (!string.IsNullOrWhiteSpace(entry.DrAccountId) && customerAccountIds.Contains(entry.DrAccountId))
+            {
+                periodDebitMap.TryGetValue(entry.DrAccountId, out var current);
+                periodDebitMap[entry.DrAccountId] = current + entry.Amount;
+            }
+
+            if (!string.IsNullOrWhiteSpace(entry.CrAccountId) && customerAccountIds.Contains(entry.CrAccountId))
+            {
+                periodCreditMap.TryGetValue(entry.CrAccountId, out var current);
+                periodCreditMap[entry.CrAccountId] = current + entry.Amount;
+            }
+        }
+
+        // 4. Build Customer Line items
+        var lines = new List<CustomerBalanceRecoveryLineResponse>();
+
+        foreach (var cust in customers)
+        {
+            var prevBalance = prevBalanceMap.GetValueOrDefault(cust.CustomerAccountId, 0m);
+            var currentBilling = periodDebitMap.GetValueOrDefault(cust.CustomerAccountId, 0m);
+            var totalDue = prevBalance + currentBilling;
+            var recovery = periodCreditMap.GetValueOrDefault(cust.CustomerAccountId, 0m);
+            var discount = 0m;
+            var closingBalance = totalDue - recovery - discount;
+
+            // Don't show inactive accounts if they have no activity and 0 balance
+            if (prevBalance == 0m && currentBilling == 0m && recovery == 0m)
+            {
+                continue;
+            }
+
+            var recoveryPercentage = totalDue > 0
+                ? Math.Round(Math.Min(100m, Math.Max(0m, (recovery / totalDue) * 100m)), 1)
+                : (closingBalance <= 0 && recovery > 0 ? 100m : 0m);
+
+            string status;
+            if (closingBalance == 0m && (totalDue > 0 || recovery > 0))
+                status = "Cleared";
+            else if (closingBalance < 0m)
+                status = "Advance";
+            else if (recovery > 0m && closingBalance > 0m)
+                status = "Partial";
+            else if (recovery == 0m && totalDue > 0m)
+                status = "Unpaid";
+            else
+                status = "Cleared";
+
+            lines.Add(new CustomerBalanceRecoveryLineResponse
+            {
+                CustomerAccountId = cust.CustomerAccountId,
+                CustomerTitle = cust.CustomerTitle,
+                Phone = cust.Phone,
+                Address = cust.Address,
+                PreviousBalance = prevBalance,
+                CurrentBilling = currentBilling,
+                TotalDue = totalDue,
+                RecoveryAmount = recovery,
+                Discount = discount,
+                ClosingBalance = closingBalance,
+                RecoveryPercentage = recoveryPercentage,
+                Status = status
+            });
+        }
+
+        // 5. Apply Balance Filter
+        if (string.Equals(filter.BalanceFilter, "OutstandingOnly", StringComparison.OrdinalIgnoreCase))
+        {
+            lines = lines.Where(x => x.ClosingBalance > 0).ToList();
+        }
+        else if (string.Equals(filter.BalanceFilter, "ClearedOnly", StringComparison.OrdinalIgnoreCase))
+        {
+            lines = lines.Where(x => x.ClosingBalance <= 0).ToList();
+        }
+        else if (string.Equals(filter.BalanceFilter, "UnpaidOnly", StringComparison.OrdinalIgnoreCase))
+        {
+            lines = lines.Where(x => x.RecoveryAmount == 0 && x.TotalDue > 0).ToList();
+        }
+
+        lines = lines.OrderBy(x => x.CustomerTitle).ToList();
+
+        var summary = new CustomerBalanceRecoverySummaryResponse
+        {
+            TotalCustomers = lines.Count,
+            TotalPreviousBalance = lines.Sum(x => x.PreviousBalance),
+            TotalCurrentBilling = lines.Sum(x => x.CurrentBilling),
+            TotalDue = lines.Sum(x => x.TotalDue),
+            TotalRecovery = lines.Sum(x => x.RecoveryAmount),
+            TotalDiscount = lines.Sum(x => x.Discount),
+            TotalClosingBalance = lines.Sum(x => x.ClosingBalance),
+            OverallRecoveryRate = lines.Sum(x => x.TotalDue) > 0
+                ? Math.Round(Math.Min(100m, Math.Max(0m, (lines.Sum(x => x.RecoveryAmount) / lines.Sum(x => x.TotalDue)) * 100m)), 1)
+                : 0m
+        };
+
+        return new CustomerBalanceRecoveryResponse
+        {
+            Lines = lines,
+            Summary = summary
+        };
+    }
 }

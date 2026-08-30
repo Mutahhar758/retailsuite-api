@@ -178,4 +178,15 @@ public class ReportsController : VersionNeutralApiController
         var result = await _reportService.GetPurchaseSupplyComparisonAsync(filter, cancellationToken);
         return result.ToInformationResponse();
     }
+
+    [HttpGet("customer-balance-recovery")]
+    [MustHavePermission(AppAction.View, AppResource.Reports)]
+    [OpenApiOperation("Get customer balance and recovery report data (clearing date reconciled).", "")]
+    public async Task<HttpResponseDto<CustomerBalanceRecoveryResponse>> GetCustomerBalanceRecoveryAsync(
+        [FromQuery] CustomerBalanceRecoveryFilter filter,
+        CancellationToken cancellationToken)
+    {
+        var result = await _reportService.GetCustomerBalanceRecoveryAsync(filter, cancellationToken);
+        return result.ToInformationResponse();
+    }
 }
