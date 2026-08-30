@@ -62,6 +62,7 @@ internal class ReportService : IReportService
         _purchaseRetMasterRepository = purchaseRetMasterRepository;
         _saleRetDetailRepository = saleRetDetailRepository;
         _saleRetMasterRepository = saleRetMasterRepository;
+        _defaultAccountRepository = defaultAccountRepository;
     }
 
     public async Task<List<AccountStatementLineResponse>> GetAccountStatementAsync(AccountStatementFilter filter, CancellationToken cancellationToken)
