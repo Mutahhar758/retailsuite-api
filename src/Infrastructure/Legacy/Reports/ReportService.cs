@@ -1429,78 +1429,55 @@ internal class ReportService : IReportService
 
         bool useClearingDate = !string.Equals(filter.DateBasis, "VoucherDate", StringComparison.OrdinalIgnoreCase);
 
-        // 1. Gather all Customer Accounts from DefaultAccount mapping ("Customers")
-        var prefixes = await _defaultAccountRepository.GetAll()
+        // 1. Get Customer Account Prefix from DefaultAccount ("Customers")
+        var defaultAccount = await _defaultAccountRepository.GetAll()
             .AsNoTracking()
-            .Where(x => x.Title != null && (x.Title == "Customers" || x.Title == "Customer"))
-            .Select(x => x.MapAccountId ?? x.AccountId)
-            .Where(x => !string.IsNullOrWhiteSpace(x))
-            .ToListAsync(cancellationToken);
+            .Where(x => x.Title == "Customers")
+            .Select(x => new { x.AccountId, x.MapAccountId })
+            .FirstOrDefaultAsync(cancellationToken);
 
-        if (prefixes.Count == 0)
+        var prefix = defaultAccount?.MapAccountId ?? defaultAccount?.AccountId;
+        if (string.IsNullOrWhiteSpace(prefix))
         {
-            prefixes = await _defaultAccountRepository.GetAll()
-                .AsNoTracking()
-                .Where(x => x.Title != null && x.Title.Contains("Customer"))
-                .Select(x => x.MapAccountId ?? x.AccountId)
-                .Where(x => !string.IsNullOrWhiteSpace(x))
-                .ToListAsync(cancellationToken);
+            throw new NotFoundException("Default account mapping for 'Customers' is not configured.");
         }
 
-        var distinctPrefixes = prefixes
-            .Where(x => !string.IsNullOrWhiteSpace(x))
-            .Select(x => x!)
-            .Distinct()
-            .ToList();
-
+        // 2. Query ChartOfAccount for all Level 5 Customer Accounts
         var accountsQuery = _chartOfAccountRepository.GetAll()
             .AsNoTracking()
-            .Where(x => x.AccLevel == 5);
+            .Where(x => x.AccLevel == 5 && x.Id.StartsWith(prefix));
 
         if (!string.IsNullOrWhiteSpace(filter.CustomerAccountId))
         {
             accountsQuery = accountsQuery.Where(x => x.Id == filter.CustomerAccountId);
         }
-        else if (distinctPrefixes.Count > 0)
-        {
-            accountsQuery = accountsQuery.Where(x => distinctPrefixes.Any(p => x.Id.StartsWith(p)));
-        }
 
-        var rawAccounts = await accountsQuery
-            .Select(x => new { Id = x.Id ?? string.Empty, Title = x.Title ?? string.Empty })
+        var accounts = await accountsQuery
+            .OrderBy(x => x.Id)
+            .Select(x => new { x.Id, x.Title })
             .ToListAsync(cancellationToken);
 
-        var customerAccounts = rawAccounts
-            .Where(x => !string.IsNullOrWhiteSpace(x.Id))
-            .Select(x => new
-            {
-                x.Id,
-                Title = !string.IsNullOrWhiteSpace(x.Title) ? x.Title : x.Id
-            })
-            .OrderBy(x => x.Title)
-            .ToList();
-
-        if (customerAccounts.Count == 0)
+        if (accounts.Count == 0)
         {
             return new CustomerBalanceRecoveryResponse();
         }
 
-        var customerAccountIds = customerAccounts.Select(x => x.Id).ToList();
+        var accountIds = accounts.Select(x => x.Id).ToList();
 
-        // Safe fetch of CustomerDetail metadata (phone, address) via Left Join in memory
-        var detailsList = await _customerDetailRepository.GetAll()
+        // 3. Left join with CustomerDetail for phone and address
+        var customerDetails = await _customerDetailRepository.GetAll()
             .AsNoTracking()
-            .Where(x => x.Id != null && customerAccountIds.Contains(x.Id))
+            .Where(x => accountIds.Contains(x.Id))
             .Select(x => new
             {
-                Id = x.Id!,
+                x.Id,
                 Phone = x.Phone1 ?? x.Phone2 ?? x.SmsNumber,
                 x.Address
             })
             .ToListAsync(cancellationToken);
 
         var detailMap = new Dictionary<string, (string? Phone, string? Address)>(StringComparer.OrdinalIgnoreCase);
-        foreach (var d in detailsList)
+        foreach (var d in customerDetails)
         {
             if (!string.IsNullOrWhiteSpace(d.Id) && !detailMap.ContainsKey(d.Id))
             {
@@ -1508,100 +1485,70 @@ internal class ReportService : IReportService
             }
         }
 
-        // 2. Fetch Opening/Previous Balances before FromDate
-        var prevQuery = _glRepository.GetAll()
+        // 4. Fetch GL entries for these customer accounts
+        var glEntries = await _glRepository.GetAll()
             .AsNoTracking()
-            .Where(x => (x.DrAccountId != null && customerAccountIds.Contains(x.DrAccountId)) ||
-                        (x.CrAccountId != null && customerAccountIds.Contains(x.CrAccountId)));
-
-        if (useClearingDate)
-        {
-            prevQuery = prevQuery.Where(x => x.VType == "Op" || (x.ClearingDate != null ? x.ClearingDate < filter.FromDate : x.VDate < filter.FromDate));
-        }
-        else
-        {
-            prevQuery = prevQuery.Where(x => x.VType == "Op" || x.VDate < filter.FromDate);
-        }
-
-        var prevEntries = await prevQuery
+            .Where(x => accountIds.Contains(x.DrAccountId!) || accountIds.Contains(x.CrAccountId!))
             .Select(x => new
             {
-                DrAccountId = x.DrAccountId ?? string.Empty,
-                CrAccountId = x.CrAccountId ?? string.Empty,
-                x.Amount
+                x.DrAccountId,
+                x.CrAccountId,
+                x.Amount,
+                x.VType,
+                x.VDate,
+                x.ClearingDate
             })
             .ToListAsync(cancellationToken);
 
         var prevBalanceMap = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
-        foreach (var entry in prevEntries)
+        var currentBillingMap = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+        var recoveryMap = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var gl in glEntries)
         {
-            if (!string.IsNullOrWhiteSpace(entry.DrAccountId) && customerAccountIds.Contains(entry.DrAccountId))
+            var effectiveDate = useClearingDate ? (gl.ClearingDate ?? gl.VDate) : gl.VDate;
+
+            // A. Previous / Opening Balance
+            if (gl.VType == "Op" || effectiveDate < filter.FromDate)
             {
-                prevBalanceMap.TryGetValue(entry.DrAccountId, out var current);
-                prevBalanceMap[entry.DrAccountId] = current + entry.Amount;
+                if (!string.IsNullOrWhiteSpace(gl.DrAccountId) && accountIds.Contains(gl.DrAccountId))
+                {
+                    prevBalanceMap.TryGetValue(gl.DrAccountId, out var cur);
+                    prevBalanceMap[gl.DrAccountId] = cur + gl.Amount;
+                }
+
+                if (!string.IsNullOrWhiteSpace(gl.CrAccountId) && accountIds.Contains(gl.CrAccountId))
+                {
+                    prevBalanceMap.TryGetValue(gl.CrAccountId, out var cur);
+                    prevBalanceMap[gl.CrAccountId] = cur - gl.Amount;
+                }
             }
-
-            if (!string.IsNullOrWhiteSpace(entry.CrAccountId) && customerAccountIds.Contains(entry.CrAccountId))
+            // B. Current Period Activity
+            else if (effectiveDate >= filter.FromDate && effectiveDate <= filter.ToDate)
             {
-                prevBalanceMap.TryGetValue(entry.CrAccountId, out var current);
-                prevBalanceMap[entry.CrAccountId] = current - entry.Amount;
-            }
-        }
+                if (!string.IsNullOrWhiteSpace(gl.DrAccountId) && accountIds.Contains(gl.DrAccountId))
+                {
+                    currentBillingMap.TryGetValue(gl.DrAccountId, out var cur);
+                    currentBillingMap[gl.DrAccountId] = cur + gl.Amount;
+                }
 
-        // 3. Fetch Period Transactions between FromDate and ToDate
-        var periodQuery = _glRepository.GetAll()
-            .AsNoTracking()
-            .Where(x => ((x.DrAccountId != null && customerAccountIds.Contains(x.DrAccountId)) ||
-                         (x.CrAccountId != null && customerAccountIds.Contains(x.CrAccountId)))
-                        && x.VType != "Op");
-
-        if (useClearingDate)
-        {
-            periodQuery = periodQuery.Where(x =>
-                (x.ClearingDate != null ? x.ClearingDate : x.VDate) >= filter.FromDate &&
-                (x.ClearingDate != null ? x.ClearingDate : x.VDate) <= filter.ToDate);
-        }
-        else
-        {
-            periodQuery = periodQuery.Where(x => x.VDate >= filter.FromDate && x.VDate <= filter.ToDate);
-        }
-
-        var periodEntries = await periodQuery
-            .Select(x => new
-            {
-                DrAccountId = x.DrAccountId ?? string.Empty,
-                CrAccountId = x.CrAccountId ?? string.Empty,
-                x.Amount
-            })
-            .ToListAsync(cancellationToken);
-
-        var periodDebitMap = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
-        var periodCreditMap = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var entry in periodEntries)
-        {
-            if (!string.IsNullOrWhiteSpace(entry.DrAccountId) && customerAccountIds.Contains(entry.DrAccountId))
-            {
-                periodDebitMap.TryGetValue(entry.DrAccountId, out var current);
-                periodDebitMap[entry.DrAccountId] = current + entry.Amount;
-            }
-
-            if (!string.IsNullOrWhiteSpace(entry.CrAccountId) && customerAccountIds.Contains(entry.CrAccountId))
-            {
-                periodCreditMap.TryGetValue(entry.CrAccountId, out var current);
-                periodCreditMap[entry.CrAccountId] = current + entry.Amount;
+                if (!string.IsNullOrWhiteSpace(gl.CrAccountId) && accountIds.Contains(gl.CrAccountId))
+                {
+                    recoveryMap.TryGetValue(gl.CrAccountId, out var cur);
+                    recoveryMap[gl.CrAccountId] = cur + gl.Amount;
+                }
             }
         }
 
-        // 4. Build Customer Line items
+        // 5. Build Customer Lines
         var lines = new List<CustomerBalanceRecoveryLineResponse>();
 
-        foreach (var cust in customerAccounts)
+        foreach (var acc in accounts)
         {
-            var prevBalance = prevBalanceMap.GetValueOrDefault(cust.Id, 0m);
-            var currentBilling = periodDebitMap.GetValueOrDefault(cust.Id, 0m);
+            var prevBalance = prevBalanceMap.GetValueOrDefault(acc.Id, 0m);
+            var currentBilling = currentBillingMap.GetValueOrDefault(acc.Id, 0m);
             var totalDue = prevBalance + currentBilling;
-            var recovery = periodCreditMap.GetValueOrDefault(cust.Id, 0m);
+            var recovery = recoveryMap.GetValueOrDefault(acc.Id, 0m);
             var discount = 0m;
             var closingBalance = totalDue - recovery - discount;
 
@@ -1621,20 +1568,14 @@ internal class ReportService : IReportService
             else
                 status = "Cleared";
 
-            string? phone = null;
-            string? address = null;
-            if (detailMap.TryGetValue(cust.Id, out var det))
-            {
-                phone = det.Phone;
-                address = det.Address;
-            }
+            detailMap.TryGetValue(acc.Id, out var det);
 
             lines.Add(new CustomerBalanceRecoveryLineResponse
             {
-                CustomerAccountId = cust.Id,
-                CustomerTitle = cust.Title,
-                Phone = phone,
-                Address = address,
+                CustomerAccountId = acc.Id,
+                CustomerTitle = !string.IsNullOrWhiteSpace(acc.Title) ? acc.Title : acc.Id,
+                Phone = det.Phone,
+                Address = det.Address,
                 PreviousBalance = prevBalance,
                 CurrentBilling = currentBilling,
                 TotalDue = totalDue,
@@ -1646,7 +1587,7 @@ internal class ReportService : IReportService
             });
         }
 
-        // 5. Apply Balance Filter
+        // 6. Apply Balance Filter
         if (string.Equals(filter.BalanceFilter, "OutstandingOnly", StringComparison.OrdinalIgnoreCase))
         {
             lines = lines.Where(x => x.ClosingBalance > 0).ToList();
@@ -1660,7 +1601,7 @@ internal class ReportService : IReportService
             lines = lines.Where(x => x.RecoveryAmount == 0 && x.TotalDue > 0).ToList();
         }
 
-        lines = lines.OrderBy(x => x.CustomerTitle ?? string.Empty).ToList();
+        lines = lines.OrderBy(x => x.CustomerTitle).ToList();
 
         var summary = new CustomerBalanceRecoverySummaryResponse
         {
