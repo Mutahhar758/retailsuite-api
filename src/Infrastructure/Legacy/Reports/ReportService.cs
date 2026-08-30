@@ -1429,34 +1429,56 @@ internal class ReportService : IReportService
 
         bool useClearingDate = !string.Equals(filter.DateBasis, "VoucherDate", StringComparison.OrdinalIgnoreCase);
 
-        // 1. Gather all Customer Accounts using standard Customer Default Account mapping
-        const string customerDefaultAccountTitle = "Customers";
-        var defaultAccount = await _defaultAccountRepository.GetAll()
+        // 1. Gather all Customer Accounts from DefaultAccount mapping ("Customers")
+        var prefixes = await _defaultAccountRepository.GetAll()
             .AsNoTracking()
-            .Where(x => x.Title == customerDefaultAccountTitle)
-            .Select(x => new { x.AccountId, x.MapAccountId })
-            .FirstOrDefaultAsync(cancellationToken);
+            .Where(x => x.Title != null && (x.Title == "Customers" || x.Title == "Customer"))
+            .Select(x => x.MapAccountId ?? x.AccountId)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .ToListAsync(cancellationToken);
 
-        var accountPrefix = defaultAccount?.MapAccountId ?? defaultAccount?.AccountId;
+        if (prefixes.Count == 0)
+        {
+            prefixes = await _defaultAccountRepository.GetAll()
+                .AsNoTracking()
+                .Where(x => x.Title != null && x.Title.Contains("Customer"))
+                .Select(x => x.MapAccountId ?? x.AccountId)
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .ToListAsync(cancellationToken);
+        }
+
+        var distinctPrefixes = prefixes
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Select(x => x!)
+            .Distinct()
+            .ToList();
 
         var accountsQuery = _chartOfAccountRepository.GetAll()
             .AsNoTracking()
             .Where(x => x.AccLevel == 5);
 
-        if (!string.IsNullOrWhiteSpace(accountPrefix))
-        {
-            accountsQuery = accountsQuery.Where(x => x.Id.StartsWith(accountPrefix));
-        }
-
         if (!string.IsNullOrWhiteSpace(filter.CustomerAccountId))
         {
             accountsQuery = accountsQuery.Where(x => x.Id == filter.CustomerAccountId);
         }
+        else if (distinctPrefixes.Count > 0)
+        {
+            accountsQuery = accountsQuery.Where(x => distinctPrefixes.Any(p => x.Id.StartsWith(p)));
+        }
 
-        var customerAccounts = await accountsQuery
-            .OrderBy(x => x.Title)
-            .Select(x => new { x.Id, x.Title })
+        var rawAccounts = await accountsQuery
+            .Select(x => new { Id = x.Id ?? string.Empty, Title = x.Title ?? string.Empty })
             .ToListAsync(cancellationToken);
+
+        var customerAccounts = rawAccounts
+            .Where(x => !string.IsNullOrWhiteSpace(x.Id))
+            .Select(x => new
+            {
+                x.Id,
+                Title = !string.IsNullOrWhiteSpace(x.Title) ? x.Title : x.Id
+            })
+            .OrderBy(x => x.Title)
+            .ToList();
 
         if (customerAccounts.Count == 0)
         {
@@ -1465,27 +1487,47 @@ internal class ReportService : IReportService
 
         var customerAccountIds = customerAccounts.Select(x => x.Id).ToList();
 
-        // Fetch CustomerDetail metadata (phone, address) via Left Join in memory
-        var detailMap = await _customerDetailRepository.GetAll()
+        // Safe fetch of CustomerDetail metadata (phone, address) via Left Join in memory
+        var detailsList = await _customerDetailRepository.GetAll()
             .AsNoTracking()
-            .Where(x => customerAccountIds.Contains(x.Id))
+            .Where(x => x.Id != null && customerAccountIds.Contains(x.Id))
             .Select(x => new
             {
-                x.Id,
+                Id = x.Id!,
                 Phone = x.Phone1 ?? x.Phone2 ?? x.SmsNumber,
                 x.Address
             })
-            .ToDictionaryAsync(x => x.Id, x => new { x.Phone, x.Address }, cancellationToken);
+            .ToListAsync(cancellationToken);
+
+        var detailMap = new Dictionary<string, (string? Phone, string? Address)>(StringComparer.OrdinalIgnoreCase);
+        foreach (var d in detailsList)
+        {
+            if (!string.IsNullOrWhiteSpace(d.Id) && !detailMap.ContainsKey(d.Id))
+            {
+                detailMap[d.Id] = (d.Phone, d.Address);
+            }
+        }
 
         // 2. Fetch Opening/Previous Balances before FromDate
-        var prevEntries = await _glRepository.GetAll()
+        var prevQuery = _glRepository.GetAll()
             .AsNoTracking()
-            .Where(x => (customerAccountIds.Contains(x.DrAccountId!) || customerAccountIds.Contains(x.CrAccountId!))
-                        && (x.VType == "Op" || (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) < filter.FromDate))
+            .Where(x => (x.DrAccountId != null && customerAccountIds.Contains(x.DrAccountId)) ||
+                        (x.CrAccountId != null && customerAccountIds.Contains(x.CrAccountId)));
+
+        if (useClearingDate)
+        {
+            prevQuery = prevQuery.Where(x => x.VType == "Op" || (x.ClearingDate != null ? x.ClearingDate < filter.FromDate : x.VDate < filter.FromDate));
+        }
+        else
+        {
+            prevQuery = prevQuery.Where(x => x.VType == "Op" || x.VDate < filter.FromDate);
+        }
+
+        var prevEntries = await prevQuery
             .Select(x => new
             {
-                x.DrAccountId,
-                x.CrAccountId,
+                DrAccountId = x.DrAccountId ?? string.Empty,
+                CrAccountId = x.CrAccountId ?? string.Empty,
                 x.Amount
             })
             .ToListAsync(cancellationToken);
@@ -1507,18 +1549,29 @@ internal class ReportService : IReportService
         }
 
         // 3. Fetch Period Transactions between FromDate and ToDate
-        var periodEntries = await _glRepository.GetAll()
+        var periodQuery = _glRepository.GetAll()
             .AsNoTracking()
-            .Where(x => (customerAccountIds.Contains(x.DrAccountId!) || customerAccountIds.Contains(x.CrAccountId!))
-                        && x.VType != "Op"
-                        && (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) >= filter.FromDate
-                        && (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) <= filter.ToDate)
+            .Where(x => ((x.DrAccountId != null && customerAccountIds.Contains(x.DrAccountId)) ||
+                         (x.CrAccountId != null && customerAccountIds.Contains(x.CrAccountId)))
+                        && x.VType != "Op");
+
+        if (useClearingDate)
+        {
+            periodQuery = periodQuery.Where(x =>
+                (x.ClearingDate != null ? x.ClearingDate : x.VDate) >= filter.FromDate &&
+                (x.ClearingDate != null ? x.ClearingDate : x.VDate) <= filter.ToDate);
+        }
+        else
+        {
+            periodQuery = periodQuery.Where(x => x.VDate >= filter.FromDate && x.VDate <= filter.ToDate);
+        }
+
+        var periodEntries = await periodQuery
             .Select(x => new
             {
-                x.DrAccountId,
-                x.CrAccountId,
-                x.Amount,
-                x.VType
+                DrAccountId = x.DrAccountId ?? string.Empty,
+                CrAccountId = x.CrAccountId ?? string.Empty,
+                x.Amount
             })
             .ToListAsync(cancellationToken);
 
@@ -1607,7 +1660,7 @@ internal class ReportService : IReportService
             lines = lines.Where(x => x.RecoveryAmount == 0 && x.TotalDue > 0).ToList();
         }
 
-        lines = lines.OrderBy(x => x.CustomerTitle).ToList();
+        lines = lines.OrderBy(x => x.CustomerTitle ?? string.Empty).ToList();
 
         var summary = new CustomerBalanceRecoverySummaryResponse
         {
