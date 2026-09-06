@@ -655,5 +655,17 @@ public class CustomerSupplyItemConfig : IEntityTypeConfiguration<CustomerSupplyI
     }
 }
 
-
-
+public class SettingConfig : IEntityTypeConfiguration<Setting>
+{
+    public void Configure(EntityTypeBuilder<Setting> builder)
+    {
+        var mtBuilder = builder.IsMultiTenant();
+        builder.Property(x => x.Id).ValueGeneratedOnAdd();
+        builder.Property(x => x.Key).HasMaxLength(100).IsRequired();
+        builder.Property(x => x.Value).HasMaxLength(1000);
+        builder.Property(x => x.Description).HasMaxLength(250);
+        builder.Property(x => x.Category).HasMaxLength(50);
+        builder.HasIndex(x => x.Key).IsUnique();
+        mtBuilder.AdjustUniqueIndexes();
+    }
+}

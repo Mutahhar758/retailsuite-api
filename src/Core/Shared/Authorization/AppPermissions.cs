@@ -20,6 +20,7 @@ public static class AppResource
     public const string Dashboard = nameof(Dashboard);
     public const string Reports = nameof(Reports);
     public const string PrinterSettings = nameof(PrinterSettings);
+    public const string Settings = nameof(Settings);
     public const string ChartOfAccounts = nameof(ChartOfAccounts);
     public const string DetailAccounts = nameof(DetailAccounts);
     public const string Customers = nameof(Customers);
@@ -76,6 +77,10 @@ public static class AppPermissions
         // PrinterSettings
         new("View PrinterSettings", AppAction.View, AppResource.PrinterSettings),
         new("Update PrinterSettings", AppAction.Update, AppResource.PrinterSettings),
+
+        // Settings
+        new("View Settings", AppAction.View, AppResource.Settings, IsBasic: true),
+        new("Update Settings", AppAction.Update, AppResource.Settings),
 
         // ChartOfAccounts
         new("View ChartOfAccounts", AppAction.View, AppResource.ChartOfAccounts),
