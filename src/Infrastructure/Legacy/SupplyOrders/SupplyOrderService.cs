@@ -11,15 +11,18 @@ internal class SupplyOrderService : ISupplyOrderService
     private readonly IRepository<SupplyOrderMaster> _masterRepository;
     private readonly IRepository<SupplyOrderDetail> _detailRepository;
     private readonly IRepository<ChartOfAccount> _chartOfAccountRepository;
+    private readonly IRepository<CustomerDetail> _customerDetailRepository;
 
     public SupplyOrderService(
         IRepository<SupplyOrderMaster> masterRepository,
         IRepository<SupplyOrderDetail> detailRepository,
-        IRepository<ChartOfAccount> chartOfAccountRepository)
+        IRepository<ChartOfAccount> chartOfAccountRepository,
+        IRepository<CustomerDetail> customerDetailRepository)
     {
         _masterRepository = masterRepository;
         _detailRepository = detailRepository;
         _chartOfAccountRepository = chartOfAccountRepository;
+        _customerDetailRepository = customerDetailRepository;
     }
 
     public async Task<List<SupplyOrderResponse>> GetAsync(CancellationToken cancellationToken)
@@ -50,17 +53,19 @@ internal class SupplyOrderService : ISupplyOrderService
         if (master is null)
             return null;
 
-        master.Details = await _detailRepository.GetAll()
-            .AsNoTracking()
-            .Where(x => x.SupplyOrderMasterId == id)
-            .OrderBy(x => x.SortOrder)
-            .ThenBy(x => x.CustomerAccountId)
-            .Select(x => new SupplyOrderDetailResponse
-            {
-                CustomerId = x.CustomerAccountId,
-                SortOrder = x.SortOrder ?? 0
-            })
-            .ToListAsync(cancellationToken);
+        var detailsQuery = from d in _detailRepository.GetAll().AsNoTracking()
+                           join c in _customerDetailRepository.GetAll().AsNoTracking()
+                               on d.CustomerAccountId equals c.Id into custDetails
+                           from cd in custDetails.DefaultIfEmpty()
+                           where d.SupplyOrderMasterId == id && !string.IsNullOrEmpty(d.CustomerAccountId) && (cd == null || cd.Active != false)
+                           orderby d.SortOrder, d.CustomerAccountId
+                           select new SupplyOrderDetailResponse
+                           {
+                               CustomerId = d.CustomerAccountId,
+                               SortOrder = d.SortOrder ?? 0
+                           };
+
+        master.Details = await detailsQuery.ToListAsync(cancellationToken);
 
         return master;
     }
