@@ -12,6 +12,8 @@ public class PurchaseMaster : AuditableEntity, IAggregateRoot
     public string? Descr { get; set; }
     public string? NarrationId { get; set; }
     public decimal? Amount { get; set; }
+    public decimal CashPaid { get; set; }
+    public decimal? CashBack { get; set; }
     public string? Counter { get; set; }
 
     public string? AccountId { get; set; }

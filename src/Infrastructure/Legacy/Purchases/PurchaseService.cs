@@ -11,6 +11,7 @@ namespace Retailer.Infrastructure.Legacy.Purchases;
 internal class PurchaseService : IPurchaseService
 {
     private const string VType = "PU";
+    private const string CashDefaultAccountTitle = "Cash";
 
     private readonly IRepository<PurchaseMaster> _purchaseMasterRepository;
     private readonly IRepository<PurchaseDetail> _purchaseDetailRepository;
@@ -114,6 +115,8 @@ internal class PurchaseService : IPurchaseService
                 SecRate = d.SecRate,
                 QtyInPack = d.QtyInPack,
                 Packing = d.Packing,
+                CashPaid = m.CashPaid,
+                CashBack = m.CashBack ?? 0,
                 CreatedBy = m.CreatedBy,
                 CreatedOn = m.CreatedOn,
                 LastModifiedBy = m.LastModifiedBy,
@@ -147,6 +150,8 @@ internal class PurchaseService : IPurchaseService
             Descr = request.Description,
             NarrationId = request.Narration,
             Amount = totalAmount,
+            CashPaid = request.CashPaid,
+            CashBack = request.CashBack,
             Counter = "001"
         };
 
@@ -173,7 +178,7 @@ internal class PurchaseService : IPurchaseService
         }
 
         await UpsertItemTransactionsAsync(voucherNo, request.Date, request.Account, request.Lines, "001", cancellationToken);
-        await UpsertGlEntryAsync(voucherNo, request.Date, request.Account, request.Narration, request.Description, totalAmount, cancellationToken);
+        await UpsertGlEntriesAsync(voucherNo, request, totalAmount, cancellationToken);
 
         await _purchaseMasterRepository.SaveChangesAsync(cancellationToken);
         return voucherNo;
@@ -198,6 +203,8 @@ internal class PurchaseService : IPurchaseService
         master.Descr = request.Description;
         master.NarrationId = request.Narration;
         master.Amount = totalAmount;
+        master.CashPaid = request.CashPaid;
+        master.CashBack = request.CashBack;
 
         await _purchaseMasterRepository.UpdateAsync(master, false);
 
@@ -248,7 +255,7 @@ internal class PurchaseService : IPurchaseService
         }
 
         await UpsertItemTransactionsAsync(voucherNo, request.Date, request.Account, request.Lines, master.Counter, cancellationToken);
-        await UpsertGlEntryAsync(voucherNo, request.Date, request.Account, request.Narration, request.Description, totalAmount, cancellationToken);
+        await UpsertGlEntriesAsync(voucherNo, request, totalAmount, cancellationToken);
 
         await _purchaseMasterRepository.SaveChangesAsync(cancellationToken);
     }
@@ -303,14 +310,17 @@ internal class PurchaseService : IPurchaseService
             master.Amount = amount;
             await _purchaseMasterRepository.UpdateAsync(master, false);
 
-            await UpsertGlEntryAsync(
-                voucherNo,
-                master.VDate,
-                master.AccountId!,
-                master.NarrationId,
-                master.Descr,
-                amount,
-                cancellationToken);
+            var glRequest = new PurchaseUpdateRequest
+            {
+                Date = master.VDate,
+                Account = master.AccountId!,
+                Description = master.Descr,
+                Narration = master.NarrationId,
+                CashPaid = master.CashPaid,
+                CashBack = master.CashBack ?? 0
+            };
+
+            await UpsertGlEntriesAsync(voucherNo, glRequest, amount, cancellationToken);
         }
 
         await _purchaseMasterRepository.SaveChangesAsync(cancellationToken);
@@ -388,14 +398,7 @@ internal class PurchaseService : IPurchaseService
             await _itemTransactionRepository.DeleteRangeAsync(staleEntries, false);
     }
 
-    private async Task UpsertGlEntryAsync(
-        string voucherNo,
-        DateOnly date,
-        string account,
-        string? narration,
-        string? description,
-        decimal amount,
-        CancellationToken cancellationToken)
+    private async Task UpsertGlEntriesAsync(string voucherNo, PurchaseCreateRequest request, decimal totalAmount, CancellationToken cancellationToken)
     {
         var purchaseAccount = await _defaultAccountRepository.GetAll()
             .AsNoTracking()
@@ -406,9 +409,57 @@ internal class PurchaseService : IPurchaseService
         if (string.IsNullOrWhiteSpace(purchaseAccount))
             throw new NotFoundException("Default purchase account is not configured.");
 
+        var cashAccount = await _defaultAccountRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => x.Title == CashDefaultAccountTitle)
+            .Select(x => x.AccountId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (string.IsNullOrWhiteSpace(cashAccount))
+            throw new NotFoundException("Default cash account is not configured.");
+
+        await UpsertGlEntryAsync(voucherNo, request.Date, 1, purchaseAccount, request.Account, totalAmount, request.Narration, request.Description, cancellationToken);
+        await UpsertGlEntryAsync(voucherNo, request.Date, 2, request.Account, cashAccount, request.CashPaid - request.CashBack, request.Narration, request.Description, cancellationToken);
+    }
+
+    private async Task UpsertGlEntriesAsync(string voucherNo, PurchaseUpdateRequest request, decimal totalAmount, CancellationToken cancellationToken)
+    {
+        var purchaseAccount = await _defaultAccountRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => x.Title == VType)
+            .Select(x => x.AccountId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (string.IsNullOrWhiteSpace(purchaseAccount))
+            throw new NotFoundException("Default purchase account is not configured.");
+
+        var cashAccount = await _defaultAccountRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => x.Title == CashDefaultAccountTitle)
+            .Select(x => x.AccountId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (string.IsNullOrWhiteSpace(cashAccount))
+            throw new NotFoundException("Default cash account is not configured.");
+
+        await UpsertGlEntryAsync(voucherNo, request.Date, 1, purchaseAccount, request.Account, totalAmount, request.Narration, request.Description, cancellationToken);
+        await UpsertGlEntryAsync(voucherNo, request.Date, 2, request.Account, cashAccount, request.CashPaid - request.CashBack, request.Narration, request.Description, cancellationToken);
+    }
+
+    private async Task UpsertGlEntryAsync(
+        string voucherNo,
+        DateOnly date,
+        int seq,
+        string drAccount,
+        string crAccount,
+        decimal amount,
+        string? narration,
+        string? description,
+        CancellationToken cancellationToken)
+    {
         var gl = await _glRepository.GetAll()
             .IgnoreQueryFilters([GlobalQueryFilterConstants.SoftDelete])
-            .FirstOrDefaultAsync(x => x.VType == VType && x.VoucherNo == voucherNo && x.VSeq == 1, cancellationToken);
+            .FirstOrDefaultAsync(x => x.VType == VType && x.VoucherNo == voucherNo && x.VSeq == seq, cancellationToken);
 
         if (gl is null)
         {
@@ -418,9 +469,9 @@ internal class PurchaseService : IPurchaseService
                 VTime = TimeOnly.FromDateTime(DateTime.Now),
                 VoucherNo = voucherNo,
                 VType = VType,
-                VSeq = 1,
-                DrAccountId = purchaseAccount,
-                CrAccountId = account,
+                VSeq = seq,
+                DrAccountId = drAccount,
+                CrAccountId = crAccount,
                 Amount = amount,
                 NarrationId = narration,
                 Remarks = description,
@@ -433,8 +484,8 @@ internal class PurchaseService : IPurchaseService
             gl.DeletedBy = null;
             gl.VDate = date;
             gl.VTime = TimeOnly.FromDateTime(DateTime.Now);
-            gl.DrAccountId = purchaseAccount;
-            gl.CrAccountId = account;
+            gl.DrAccountId = drAccount;
+            gl.CrAccountId = crAccount;
             gl.Amount = amount;
             gl.NarrationId = narration;
             gl.Remarks = description;
