@@ -71,6 +71,7 @@ internal class SaleService : ISaleService
                 Date = x.Master.VDate,
                 VoucherNo = x.Master.VNo,
                 Account = x.Account != null ? x.Account.Title : x.Master.AccountId!,
+                Amount = x.Master.NetAmount ?? x.Master.Amount ?? 0,
                 CreatedBy = x.Master.CreatedBy,
                 CreatedOn = x.Master.CreatedOn,
                 LastModifiedBy = x.Master.LastModifiedBy,
