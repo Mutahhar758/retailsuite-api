@@ -44,7 +44,7 @@ public class GlEntryConfig : IEntityTypeConfiguration<GlEntry>
     {
         var mtBuilder = builder.IsMultiTenant();
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
-        builder.HasIndex(x => new { x.VType, x.VoucherNo, x.VSeq }).IsUnique();
+        builder.HasIndex(x => new { x.VType, x.VoucherNo, x.VSeq }).IsUnique().HasSoftDeleteFilter();
         mtBuilder.AdjustUniqueIndexes();
 
         builder.HasOne(x => x.DrAccount)
@@ -148,7 +148,7 @@ public class ItemTransactionConfig : IEntityTypeConfiguration<ItemTransaction>
     {
         var mtBuilder = builder.IsMultiTenant();
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
-        builder.HasIndex(x => new { x.VType, x.VNo, x.Seq }).IsUnique();
+        builder.HasIndex(x => new { x.VType, x.VNo, x.Seq }).IsUnique().HasSoftDeleteFilter();
         mtBuilder.AdjustUniqueIndexes();
 
         builder.HasOne(x => x.Account)
@@ -179,7 +179,7 @@ public class PayrollConfig : IEntityTypeConfiguration<Payroll>
     {
         var mtBuilder = builder.IsMultiTenant();
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
-        builder.HasIndex(x => new { x.VoucherNo, x.Seq }).IsUnique();
+        builder.HasIndex(x => new { x.VoucherNo, x.Seq }).IsUnique().HasSoftDeleteFilter();
         mtBuilder.AdjustUniqueIndexes();
 
         builder.HasOne(x => x.HrInfo)
@@ -205,7 +205,7 @@ public class PurchaseMasterConfig : IEntityTypeConfiguration<PurchaseMaster>
     {
         var mtBuilder = builder.IsMultiTenant();
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
-        builder.HasIndex(x => new { x.VType, x.VNo }).IsUnique();
+        builder.HasIndex(x => new { x.VType, x.VNo }).IsUnique().HasSoftDeleteFilter();
         mtBuilder.AdjustUniqueIndexes();
 
         builder.HasOne(x => x.Account)
@@ -226,7 +226,7 @@ public class PurchaseDetailConfig : IEntityTypeConfiguration<PurchaseDetail>
     {
         var mtBuilder = builder.IsMultiTenant();
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
-        builder.HasIndex(x => new { x.VType, x.VNo, x.Seq }).IsUnique();
+        builder.HasIndex(x => new { x.VType, x.VNo, x.Seq }).IsUnique().HasSoftDeleteFilter();
         mtBuilder.AdjustUniqueIndexes();
 
         builder.HasOne(x => x.PurchaseMaster)
@@ -257,7 +257,7 @@ public class PurchaseRetMasterConfig : IEntityTypeConfiguration<PurchaseRetMaste
     {
         var mtBuilder = builder.IsMultiTenant();
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
-        builder.HasIndex(x => new { x.VType, x.VNo }).IsUnique();
+        builder.HasIndex(x => new { x.VType, x.VNo }).IsUnique().HasSoftDeleteFilter();
         mtBuilder.AdjustUniqueIndexes();
 
         builder.HasOne(x => x.Account)
@@ -278,7 +278,7 @@ public class PurchaseRetDetailConfig : IEntityTypeConfiguration<PurchaseRetDetai
     {
         var mtBuilder = builder.IsMultiTenant();
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
-        builder.HasIndex(x => new { x.VType, x.VNo, x.Seq }).IsUnique();
+        builder.HasIndex(x => new { x.VType, x.VNo, x.Seq }).IsUnique().HasSoftDeleteFilter();
         mtBuilder.AdjustUniqueIndexes();
 
         builder.HasOne(x => x.PurchaseRetMaster)
@@ -309,7 +309,7 @@ public class SaleMasterConfig : IEntityTypeConfiguration<SaleMaster>
     {
         var mtBuilder = builder.IsMultiTenant();
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
-        builder.HasIndex(x => new { x.VType, x.VNo }).IsUnique();
+        builder.HasIndex(x => new { x.VType, x.VNo }).IsUnique().HasSoftDeleteFilter();
         mtBuilder.AdjustUniqueIndexes();
 
         builder.HasOne(x => x.Account)
@@ -330,7 +330,7 @@ public class SaleConfig : IEntityTypeConfiguration<Sale>
     {
         var mtBuilder = builder.IsMultiTenant();
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
-        builder.HasIndex(x => new { x.VType, x.VNo, x.Seq }).IsUnique();
+        builder.HasIndex(x => new { x.VType, x.VNo, x.Seq }).IsUnique().HasSoftDeleteFilter();
         mtBuilder.AdjustUniqueIndexes();
 
         builder.HasOne(x => x.SaleMaster)
@@ -361,7 +361,7 @@ public class SaleRetMasterConfig : IEntityTypeConfiguration<SaleRetMaster>
     {
         var mtBuilder = builder.IsMultiTenant();
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
-        builder.HasIndex(x => new { x.VType, x.VNo }).IsUnique();
+        builder.HasIndex(x => new { x.VType, x.VNo }).IsUnique().HasSoftDeleteFilter();
         mtBuilder.AdjustUniqueIndexes();
 
         builder.HasOne(x => x.Account)
@@ -382,7 +382,7 @@ public class SaleRetDetailConfig : IEntityTypeConfiguration<SaleRetDetail>
     {
         var mtBuilder = builder.IsMultiTenant();
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
-        builder.HasIndex(x => new { x.VType, x.VNo, x.Seq }).IsUnique();
+        builder.HasIndex(x => new { x.VType, x.VNo, x.Seq }).IsUnique().HasSoftDeleteFilter();
         mtBuilder.AdjustUniqueIndexes();
 
         builder.HasOne(x => x.SaleRetMaster)
@@ -413,7 +413,7 @@ public class SaleSupplyMasterConfig : IEntityTypeConfiguration<SaleSupplyMaster>
     {
         var mtBuilder = builder.IsMultiTenant();
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
-        builder.HasIndex(x => new { x.VType, x.VNo }).IsUnique();
+        builder.HasIndex(x => new { x.VType, x.VNo }).IsUnique().HasSoftDeleteFilter();
         mtBuilder.AdjustUniqueIndexes();
 
         builder.HasOne(x => x.Item)
@@ -439,7 +439,7 @@ public class SaleSupplyDetailConfig : IEntityTypeConfiguration<SaleSupplyDetail>
     {
         var mtBuilder = builder.IsMultiTenant();
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
-        builder.HasIndex(x => new { x.VType, x.VNo, x.Seq }).IsUnique();
+        builder.HasIndex(x => new { x.VType, x.VNo, x.Seq }).IsUnique().HasSoftDeleteFilter();
         mtBuilder.AdjustUniqueIndexes();
 
         builder.HasOne(x => x.SaleSupplyMaster)
@@ -470,7 +470,7 @@ public class StockAdjMasterConfig : IEntityTypeConfiguration<StockAdjMaster>
     {
         var mtBuilder = builder.IsMultiTenant();
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
-        builder.HasIndex(x => new { x.VType, x.VNo }).IsUnique();
+        builder.HasIndex(x => new { x.VType, x.VNo }).IsUnique().HasSoftDeleteFilter();
         mtBuilder.AdjustUniqueIndexes();
 
         builder.HasOne(x => x.Narration)
@@ -486,7 +486,7 @@ public class StockAdjDetailConfig : IEntityTypeConfiguration<StockAdjDetail>
     {
         var mtBuilder = builder.IsMultiTenant();
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
-        builder.HasIndex(x => new { x.VType, x.VNo, x.Seq }).IsUnique();
+        builder.HasIndex(x => new { x.VType, x.VNo, x.Seq }).IsUnique().HasSoftDeleteFilter();
         mtBuilder.AdjustUniqueIndexes();
 
         builder.HasOne(x => x.StockAdjMaster)
@@ -634,7 +634,7 @@ public class CustomerSupplyItemConfig : IEntityTypeConfiguration<CustomerSupplyI
     {
         var mtBuilder = builder.IsMultiTenant();
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
-        builder.HasIndex(x => new { x.CustomerAccountId, x.ItemId }).IsUnique();
+        builder.HasIndex(x => new { x.CustomerAccountId, x.ItemId }).IsUnique().HasSoftDeleteFilter();
         mtBuilder.AdjustUniqueIndexes();
 
         builder.Property(x => x.Qty).HasPrecision(18, 4);
@@ -665,7 +665,16 @@ public class SettingConfig : IEntityTypeConfiguration<Setting>
         builder.Property(x => x.Value).HasMaxLength(1000);
         builder.Property(x => x.Description).HasMaxLength(250);
         builder.Property(x => x.Category).HasMaxLength(50);
-        builder.HasIndex(x => x.Key).IsUnique();
+        builder.HasIndex(x => x.Key).IsUnique().HasSoftDeleteFilter();
         mtBuilder.AdjustUniqueIndexes();
     }
+}
+
+internal static class IndexBuilderExtensions
+{
+    /// <summary>
+    /// Filters out soft-deleted records from unique indexes (compatible with both SQL Server 2012+ and PostgreSQL).
+    /// </summary>
+    public static IndexBuilder HasSoftDeleteFilter(this IndexBuilder builder) =>
+        builder.HasFilter("deleted_on IS NULL");
 }

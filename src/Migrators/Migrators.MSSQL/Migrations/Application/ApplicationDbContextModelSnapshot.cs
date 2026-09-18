@@ -776,7 +776,8 @@ namespace Migrators.MSSQL.Migrations.Application
 
                     b.HasIndex("CustomerAccountId", "ItemId", "TenantId")
                         .IsUnique()
-                        .HasDatabaseName("ix_customer_supply_item_customer_account_id_item_id");
+                        .HasDatabaseName("ix_customer_supply_item_customer_account_id_item_id")
+                        .HasFilter("deleted_on IS NULL");
 
                     b.ToTable("CustomerSupplyItem");
 
@@ -1032,7 +1033,8 @@ namespace Migrators.MSSQL.Migrations.Application
 
                     b.HasIndex("VType", "VoucherNo", "VSeq", "TenantId")
                         .IsUnique()
-                        .HasDatabaseName("ix_gl1_v_type_voucher_no_v_seq");
+                        .HasDatabaseName("ix_gl1_v_type_voucher_no_v_seq")
+                        .HasFilter("deleted_on IS NULL");
 
                     b.ToTable("GL1");
 
@@ -1490,7 +1492,8 @@ namespace Migrators.MSSQL.Migrations.Application
 
                     b.HasIndex("VType", "VNo", "Seq", "TenantId")
                         .IsUnique()
-                        .HasDatabaseName("ix_item_transaction_v_type_v_no_seq");
+                        .HasDatabaseName("ix_item_transaction_v_type_v_no_seq")
+                        .HasFilter("deleted_on IS NULL");
 
                     b.ToTable("ItemTransaction");
 
@@ -1836,7 +1839,8 @@ namespace Migrators.MSSQL.Migrations.Application
 
                     b.HasIndex("VoucherNo", "Seq", "TenantId")
                         .IsUnique()
-                        .HasDatabaseName("ix_payroll_voucher_no_seq");
+                        .HasDatabaseName("ix_payroll_voucher_no_seq")
+                        .HasFilter("deleted_on IS NULL");
 
                     b.ToTable("Payroll");
 
@@ -2010,7 +2014,8 @@ namespace Migrators.MSSQL.Migrations.Application
 
                     b.HasIndex("VType", "VNo", "Seq", "TenantId")
                         .IsUnique()
-                        .HasDatabaseName("ix_purchase_detail_v_type_v_no_seq");
+                        .HasDatabaseName("ix_purchase_detail_v_type_v_no_seq")
+                        .HasFilter("deleted_on IS NULL");
 
                     b.ToTable("PurchaseDetail");
 
@@ -2113,7 +2118,8 @@ namespace Migrators.MSSQL.Migrations.Application
 
                     b.HasIndex("VType", "VNo", "TenantId")
                         .IsUnique()
-                        .HasDatabaseName("ix_purchase_master_v_type_v_no");
+                        .HasDatabaseName("ix_purchase_master_v_type_v_no")
+                        .HasFilter("deleted_on IS NULL");
 
                     b.ToTable("PurchaseMaster");
 
@@ -2230,7 +2236,8 @@ namespace Migrators.MSSQL.Migrations.Application
 
                     b.HasIndex("VType", "VNo", "Seq", "TenantId")
                         .IsUnique()
-                        .HasDatabaseName("ix_purchase_ret_detail_v_type_v_no_seq");
+                        .HasDatabaseName("ix_purchase_ret_detail_v_type_v_no_seq")
+                        .HasFilter("deleted_on IS NULL");
 
                     b.ToTable("PurchaseRetDetail");
 
@@ -2325,7 +2332,8 @@ namespace Migrators.MSSQL.Migrations.Application
 
                     b.HasIndex("VType", "VNo", "TenantId")
                         .IsUnique()
-                        .HasDatabaseName("ix_purchase_ret_master_v_type_v_no");
+                        .HasDatabaseName("ix_purchase_ret_master_v_type_v_no")
+                        .HasFilter("deleted_on IS NULL");
 
                     b.ToTable("PurchaseRetMaster");
 
@@ -2446,7 +2454,8 @@ namespace Migrators.MSSQL.Migrations.Application
 
                     b.HasIndex("VType", "VNo", "Seq", "TenantId")
                         .IsUnique()
-                        .HasDatabaseName("ix_sales_v_type_v_no_seq");
+                        .HasDatabaseName("ix_sales_v_type_v_no_seq")
+                        .HasFilter("deleted_on IS NULL");
 
                     b.ToTable("Sales");
 
@@ -2557,7 +2566,8 @@ namespace Migrators.MSSQL.Migrations.Application
 
                     b.HasIndex("VType", "VNo", "TenantId")
                         .IsUnique()
-                        .HasDatabaseName("ix_sale_master_v_type_v_no");
+                        .HasDatabaseName("ix_sale_master_v_type_v_no")
+                        .HasFilter("deleted_on IS NULL");
 
                     b.ToTable("SaleMaster");
 
@@ -2678,7 +2688,8 @@ namespace Migrators.MSSQL.Migrations.Application
 
                     b.HasIndex("VType", "VNo", "Seq", "TenantId")
                         .IsUnique()
-                        .HasDatabaseName("ix_sale_ret_detail_v_type_v_no_seq");
+                        .HasDatabaseName("ix_sale_ret_detail_v_type_v_no_seq")
+                        .HasFilter("deleted_on IS NULL");
 
                     b.ToTable("SaleRetDetail");
 
@@ -2789,7 +2800,8 @@ namespace Migrators.MSSQL.Migrations.Application
 
                     b.HasIndex("VType", "VNo", "TenantId")
                         .IsUnique()
-                        .HasDatabaseName("ix_sale_ret_master_v_type_v_no");
+                        .HasDatabaseName("ix_sale_ret_master_v_type_v_no")
+                        .HasFilter("deleted_on IS NULL");
 
                     b.ToTable("SaleRetMaster");
 
@@ -2914,7 +2926,8 @@ namespace Migrators.MSSQL.Migrations.Application
 
                     b.HasIndex("VType", "VNo", "Seq", "TenantId")
                         .IsUnique()
-                        .HasDatabaseName("ix_sale_supply_detail_v_type_v_no_seq");
+                        .HasDatabaseName("ix_sale_supply_detail_v_type_v_no_seq")
+                        .HasFilter("deleted_on IS NULL");
 
                     b.ToTable("SaleSupplyDetail");
 
@@ -3024,7 +3037,8 @@ namespace Migrators.MSSQL.Migrations.Application
 
                     b.HasIndex("VType", "VNo", "TenantId")
                         .IsUnique()
-                        .HasDatabaseName("ix_sale_supply_master_v_type_v_no");
+                        .HasDatabaseName("ix_sale_supply_master_v_type_v_no")
+                        .HasFilter("deleted_on IS NULL");
 
                     b.ToTable("SaleSupplyMaster");
 
@@ -3096,7 +3110,8 @@ namespace Migrators.MSSQL.Migrations.Application
 
                     b.HasIndex("Key", "TenantId")
                         .IsUnique()
-                        .HasDatabaseName("ix_settings_key");
+                        .HasDatabaseName("ix_settings_key")
+                        .HasFilter("deleted_on IS NULL");
 
                     b.ToTable("Settings");
 
@@ -3221,7 +3236,8 @@ namespace Migrators.MSSQL.Migrations.Application
 
                     b.HasIndex("VType", "VNo", "Seq", "TenantId")
                         .IsUnique()
-                        .HasDatabaseName("ix_stock_adj_detail_v_type_v_no_seq");
+                        .HasDatabaseName("ix_stock_adj_detail_v_type_v_no_seq")
+                        .HasFilter("deleted_on IS NULL");
 
                     b.ToTable("StockAdjDetail");
 
@@ -3305,7 +3321,8 @@ namespace Migrators.MSSQL.Migrations.Application
 
                     b.HasIndex("VType", "VNo", "TenantId")
                         .IsUnique()
-                        .HasDatabaseName("ix_stock_adj_master_v_type_v_no");
+                        .HasDatabaseName("ix_stock_adj_master_v_type_v_no")
+                        .HasFilter("deleted_on IS NULL");
 
                     b.ToTable("StockAdjMaster");
 
