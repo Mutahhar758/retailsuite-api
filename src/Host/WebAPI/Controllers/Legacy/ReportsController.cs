@@ -15,7 +15,7 @@ public class ReportsController : VersionNeutralApiController
     }
 
     [HttpGet("account-statement")]
-    [MustHavePermission(AppAction.View, AppResource.Reports)]
+    [MustHavePermission(AppAction.View, AppResource.AccountStatement)]
     [OpenApiOperation("Get account statement report data.", "")]
     public async Task<HttpResponseDto<List<AccountStatementLineResponse>>> GetAccountStatementAsync(
         [FromQuery] AccountStatementFilter filter,
@@ -26,7 +26,7 @@ public class ReportsController : VersionNeutralApiController
     }
 
     [HttpGet("account-statement-with-due")]
-    [MustHavePermission(AppAction.View, AppResource.Reports)]
+    [MustHavePermission(AppAction.View, AppResource.AccountStatementWithDue)]
     [OpenApiOperation("Get account statement with due days report data.", "")]
     public async Task<HttpResponseDto<List<AccountStatementWithDueLineResponse>>> GetAccountStatementWithDueAsync(
         [FromQuery] AccountStatementFilter filter,
@@ -37,7 +37,7 @@ public class ReportsController : VersionNeutralApiController
     }
 
     [HttpGet("balance-detail")]
-    [MustHavePermission(AppAction.View, AppResource.Reports)]
+    [MustHavePermission(AppAction.View, AppResource.AccountBalance)]
     [OpenApiOperation("Get balance detail report data.", "")]
     public async Task<HttpResponseDto<List<BalanceDetailLineResponse>>> GetBalanceDetailAsync(
         [FromQuery] BalanceDetailFilter filter,
@@ -48,7 +48,7 @@ public class ReportsController : VersionNeutralApiController
     }
 
     [HttpGet("trial-balance")]
-    [MustHavePermission(AppAction.View, AppResource.Reports)]
+    [MustHavePermission(AppAction.View, AppResource.TrialBalance)]
     [OpenApiOperation("Get trial balance report data.", "")]
     public async Task<HttpResponseDto<List<TrialBalanceLineResponse>>> GetTrialBalanceAsync(
         [FromQuery] TrialBalanceFilter filter,
@@ -59,7 +59,7 @@ public class ReportsController : VersionNeutralApiController
     }
 
     [HttpGet("stock-ledger")]
-    [MustHavePermission(AppAction.View, AppResource.Reports)]
+    [MustHavePermission(AppAction.View, AppResource.StockLedger)]
     [OpenApiOperation("Get stock ledger report data.", "")]
     public async Task<HttpResponseDto<List<StockLedgerLineResponse>>> GetStockLedgerAsync(
         [FromQuery] StockLedgerFilter filter,
@@ -70,7 +70,7 @@ public class ReportsController : VersionNeutralApiController
     }
 
     [HttpGet("stock-balance")]
-    [MustHavePermission(AppAction.View, AppResource.Reports)]
+    [MustHavePermission(AppAction.View, AppResource.StockBalance)]
     [OpenApiOperation("Get stock balance report data.", "")]
     public async Task<HttpResponseDto<List<StockBalanceLineResponse>>> GetStockBalanceAsync(
         [FromQuery] StockBalanceFilter filter,
@@ -81,7 +81,7 @@ public class ReportsController : VersionNeutralApiController
     }
 
     [HttpGet("balance-sheet")]
-    [MustHavePermission(AppAction.View, AppResource.Reports)]
+    [MustHavePermission(AppAction.View, AppResource.BalanceSheet)]
     [OpenApiOperation("Get balance sheet report data.", "")]
     public async Task<HttpResponseDto<List<BalanceSheetLineResponse>>> GetBalanceSheetAsync(
         [FromQuery] BalanceSheetFilter filter,
@@ -92,7 +92,7 @@ public class ReportsController : VersionNeutralApiController
     }
 
     [HttpGet("income-summary")]
-    [MustHavePermission(AppAction.View, AppResource.Reports)]
+    [MustHavePermission(AppAction.View, AppResource.IncomeSummary)]
     [OpenApiOperation("Get income summary report data.", "")]
     public async Task<HttpResponseDto<List<IncomeSummaryLineResponse>>> GetIncomeSummaryAsync(
         [FromQuery] IncomeSummaryFilter filter,
@@ -103,7 +103,7 @@ public class ReportsController : VersionNeutralApiController
     }
 
     [HttpGet("customer-bill")]
-    [MustHavePermission(AppAction.View, AppResource.Reports)]
+    [MustHavePermission(AppAction.View, AppResource.CustomerBill)]
     [OpenApiOperation("Get customer bill report data.", "")]
     public async Task<HttpResponseDto<CustomerBillResponse>> GetCustomerBillAsync(
         [FromQuery] CustomerBillFilter filter,
@@ -114,7 +114,7 @@ public class ReportsController : VersionNeutralApiController
     }
 
     [HttpGet("envelope")]
-    [MustHavePermission(AppAction.View, AppResource.Reports)]
+    [MustHavePermission(AppAction.View, AppResource.EnvelopeReport)]
     [OpenApiOperation("Get envelope report data.", "")]
     public async Task<HttpResponseDto<List<EnvelopeLineResponse>>> GetEnvelopeAsync(
         [FromQuery] EnvelopeFilter filter,
@@ -125,7 +125,7 @@ public class ReportsController : VersionNeutralApiController
     }
 
     [HttpGet("sale-bill")]
-    [MustHavePermission(AppAction.View, AppResource.Reports)]
+    [MustHavePermission(AppAction.View, AppResource.Sales)]
     [OpenApiOperation("Get sale bill report data.", "")]
     public async Task<HttpResponseDto<SaleBillResponse>> GetSaleBillAsync(
         [FromQuery] SaleBillFilter filter,
@@ -136,7 +136,7 @@ public class ReportsController : VersionNeutralApiController
     }
 
     [HttpGet("purchase-bill")]
-    [MustHavePermission(AppAction.View, AppResource.Reports)]
+    [MustHavePermission(AppAction.View, AppResource.Purchases)]
     [OpenApiOperation("Get purchase bill report data.", "")]
     public async Task<HttpResponseDto<PurchaseBillResponse>> GetPurchaseBillAsync(
         [FromQuery] PurchaseBillFilter filter,
@@ -147,7 +147,7 @@ public class ReportsController : VersionNeutralApiController
     }
 
     [HttpGet("purchase-ret-bill")]
-    [MustHavePermission(AppAction.View, AppResource.Reports)]
+    [MustHavePermission(AppAction.View, AppResource.PurchaseReturns)]
     [OpenApiOperation("Get purchase return bill report data.", "")]
     public async Task<HttpResponseDto<PurchaseBillResponse>> GetPurchaseRetBillAsync(
         [FromQuery] PurchaseBillFilter filter,
@@ -158,7 +158,7 @@ public class ReportsController : VersionNeutralApiController
     }
 
     [HttpGet("sale-ret-bill")]
-    [MustHavePermission(AppAction.View, AppResource.Reports)]
+    [MustHavePermission(AppAction.View, AppResource.SaleReturns)]
     [OpenApiOperation("Get sale return bill report data.", "")]
     public async Task<HttpResponseDto<SaleRetBillResponse>> GetSaleRetBillAsync(
         [FromQuery] SaleRetBillFilter filter,
@@ -169,7 +169,7 @@ public class ReportsController : VersionNeutralApiController
     }
 
     [HttpGet("purchase-supply-comparison")]
-    [MustHavePermission(AppAction.View, AppResource.Reports)]
+    [MustHavePermission(AppAction.View, AppResource.MilkComparison)]
     [OpenApiOperation("Get purchase vs sale supply comparison report data.", "")]
     public async Task<HttpResponseDto<PurchaseSupplyComparisonResponse>> GetPurchaseSupplyComparisonAsync(
         [FromQuery] PurchaseSupplyComparisonFilter filter,
@@ -180,7 +180,7 @@ public class ReportsController : VersionNeutralApiController
     }
 
     [HttpGet("customer-balance-recovery")]
-    [MustHavePermission(AppAction.View, AppResource.Reports)]
+    [MustHavePermission(AppAction.View, AppResource.CustomerBalanceRecovery)]
     [OpenApiOperation("Get customer balance and recovery report data (clearing date reconciled).", "")]
     public async Task<HttpResponseDto<CustomerBalanceRecoveryResponse>> GetCustomerBalanceRecoveryAsync(
         [FromQuery] CustomerBalanceRecoveryFilter filter,

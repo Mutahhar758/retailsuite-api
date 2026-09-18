@@ -18,7 +18,6 @@ public static class AppResource
     public const string Users = nameof(Users);
     public const string Roles = nameof(Roles);
     public const string Dashboard = nameof(Dashboard);
-    public const string Reports = nameof(Reports);
     public const string PrinterSettings = nameof(PrinterSettings);
     public const string Settings = nameof(Settings);
     public const string ChartOfAccounts = nameof(ChartOfAccounts);
@@ -47,6 +46,20 @@ public static class AppResource
     public const string KotOrders = nameof(KotOrders);
     public const string DiningTables = nameof(DiningTables);
     public const string PrepStations = nameof(PrepStations);
+    public const string AccountStatement = nameof(AccountStatement);
+    public const string AccountStatementWithDue = nameof(AccountStatementWithDue);
+    public const string AccountBalance = nameof(AccountBalance);
+    public const string TrialBalance = nameof(TrialBalance);
+    public const string StockBalance = nameof(StockBalance);
+    public const string StockLedger = nameof(StockLedger);
+    public const string IncomeSummary = nameof(IncomeSummary);
+    public const string BalanceSheet = nameof(BalanceSheet);
+    public const string CustomerBill = nameof(CustomerBill);
+    public const string MilkComparison = nameof(MilkComparison);
+    public const string CustomerBalanceRecovery = nameof(CustomerBalanceRecovery);
+    public const string EnvelopeReport = nameof(EnvelopeReport);
+    public const string BarcodeReport = nameof(BarcodeReport);
+    public const string ShipmentLabelReport = nameof(ShipmentLabelReport);
 }
 
 public static class AppPermissions
@@ -70,9 +83,60 @@ public static class AppPermissions
         // Dashboard
         new("View Dashboard", AppAction.View, AppResource.Dashboard, IsBasic: true),
 
-        // Reports
-        new("View Reports", AppAction.View, AppResource.Reports),
-        new("Export Reports", AppAction.Export, AppResource.Reports),
+
+        // Account Statement
+        new("View Account Statement", AppAction.View, AppResource.AccountStatement),
+        new("Export Account Statement", AppAction.Export, AppResource.AccountStatement),
+
+        // Account Statement With Due
+        new("View Account Statement With Due", AppAction.View, AppResource.AccountStatementWithDue),
+        new("Export Account Statement With Due", AppAction.Export, AppResource.AccountStatementWithDue),
+
+        // Account Balance
+        new("View Account Balance", AppAction.View, AppResource.AccountBalance),
+        new("Export Account Balance", AppAction.Export, AppResource.AccountBalance),
+
+        // Trial Balance
+        new("View Trial Balance", AppAction.View, AppResource.TrialBalance),
+        new("Export Trial Balance", AppAction.Export, AppResource.TrialBalance),
+
+        // Stock Balance
+        new("View Stock Balance", AppAction.View, AppResource.StockBalance),
+        new("Export Stock Balance", AppAction.Export, AppResource.StockBalance),
+
+        // Stock Ledger
+        new("View Stock Ledger", AppAction.View, AppResource.StockLedger),
+        new("Export Stock Ledger", AppAction.Export, AppResource.StockLedger),
+
+        // Income Summary
+        new("View Income Summary", AppAction.View, AppResource.IncomeSummary),
+        new("Export Income Summary", AppAction.Export, AppResource.IncomeSummary),
+
+        // Balance Sheet
+        new("View Balance Sheet", AppAction.View, AppResource.BalanceSheet),
+        new("Export Balance Sheet", AppAction.Export, AppResource.BalanceSheet),
+
+        // Customer Bill
+        new("View Customer Bill", AppAction.View, AppResource.CustomerBill),
+        new("Export Customer Bill", AppAction.Export, AppResource.CustomerBill),
+
+        // Milk Comparison
+        new("View Milk Comparison", AppAction.View, AppResource.MilkComparison),
+        new("Export Milk Comparison", AppAction.Export, AppResource.MilkComparison),
+
+        // Customer Balance Recovery
+        new("View Customer Balance Recovery", AppAction.View, AppResource.CustomerBalanceRecovery),
+        new("Export Customer Balance Recovery", AppAction.Export, AppResource.CustomerBalanceRecovery),
+
+        // Desktop Miscellaneous Reports
+        new("View Envelope Report", AppAction.View, AppResource.EnvelopeReport),
+        new("Export Envelope Report", AppAction.Export, AppResource.EnvelopeReport),
+
+        new("View Barcode Report", AppAction.View, AppResource.BarcodeReport),
+        new("Export Barcode Report", AppAction.Export, AppResource.BarcodeReport),
+
+        new("View Shipment Label Report", AppAction.View, AppResource.ShipmentLabelReport),
+        new("Export Shipment Label Report", AppAction.Export, AppResource.ShipmentLabelReport),
 
         // PrinterSettings
         new("View PrinterSettings", AppAction.View, AppResource.PrinterSettings),
@@ -314,7 +378,20 @@ public static class AppPermissions
         p.Resource == AppResource.JournalVouchers ||
         p.Resource == AppResource.BankReconciliations ||
         p.Resource == AppResource.OpeningBalances ||
-        p.Resource == AppResource.Reports
+        p.Resource == AppResource.AccountStatement ||
+        p.Resource == AppResource.AccountStatementWithDue ||
+        p.Resource == AppResource.AccountBalance ||
+        p.Resource == AppResource.TrialBalance ||
+        p.Resource == AppResource.StockBalance ||
+        p.Resource == AppResource.StockLedger ||
+        p.Resource == AppResource.IncomeSummary ||
+        p.Resource == AppResource.BalanceSheet ||
+        p.Resource == AppResource.CustomerBill ||
+        p.Resource == AppResource.MilkComparison ||
+        p.Resource == AppResource.CustomerBalanceRecovery ||
+        p.Resource == AppResource.EnvelopeReport ||
+        p.Resource == AppResource.BarcodeReport ||
+        p.Resource == AppResource.ShipmentLabelReport
     ).ToArray());
 
     public static IReadOnlyList<AppPermission> PayrollManager { get; } = new ReadOnlyCollection<AppPermission>(_all.Where(p =>

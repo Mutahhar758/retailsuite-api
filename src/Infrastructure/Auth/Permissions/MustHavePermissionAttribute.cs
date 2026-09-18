@@ -11,4 +11,7 @@ public class MustHavePermissionAttribute : AuthorizeAttribute
 
     public MustHavePermissionAttribute(string[] actions, string resource) =>
         Policy = string.Join("||", actions.Select(a => AppPermission.NameFor(a, resource)));
+
+    public MustHavePermissionAttribute(string action, string resource, params string[] additionalResources) =>
+        Policy = string.Join("||", new[] { resource }.Concat(additionalResources).Select(r => AppPermission.NameFor(action, r)));
 }
