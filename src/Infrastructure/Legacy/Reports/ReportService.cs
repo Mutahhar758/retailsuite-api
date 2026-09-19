@@ -1010,6 +1010,58 @@ internal class ReportService : IReportService
         return grouped;
     }
 
+    public async Task<byte[]> GetBalanceSheetPdfAsync(BalanceSheetFilter filter, CancellationToken cancellationToken)
+    {
+        var rawLines = await GetBalanceSheetAsync(filter, cancellationToken);
+
+        var companyName = await _companyDetailRepository.GetAll()
+            .AsNoTracking()
+            .Select(x => x.CompanyName)
+            .FirstOrDefaultAsync(cancellationToken) ?? "Retail Suite Enterprise";
+
+        var assetItems = new List<BalanceSheetReportItem>();
+        var liabilityItems = new List<BalanceSheetReportItem>();
+        var equityItems = new List<BalanceSheetReportItem>();
+
+        foreach (var line in rawLines)
+        {
+            var item = new BalanceSheetReportItem
+            {
+                Level1 = line.Lvl1 ?? string.Empty,
+                Level2 = line.Lvl2 ?? string.Empty,
+                Level3 = line.Lvl3 ?? string.Empty,
+                Level4 = line.Lvl4 ?? string.Empty,
+                Title = line.Title,
+                RawBalance = line.CurBal,
+                Amount = Math.Abs(line.CurBal)
+            };
+
+            if (line.Lvl1.Contains("Asset", StringComparison.OrdinalIgnoreCase))
+                assetItems.Add(item);
+            else if (line.Lvl1.Contains("Liabilit", StringComparison.OrdinalIgnoreCase))
+                liabilityItems.Add(item);
+            else
+                equityItems.Add(item);
+        }
+
+        var totalAssets = assetItems.Sum(x => x.Amount);
+        var totalLiab = liabilityItems.Sum(x => x.Amount);
+        var totalEq = equityItems.Sum(x => x.Amount);
+
+        var header = new BalanceSheetHeader
+        {
+            CompanyName = companyName,
+            AsOnDate = filter.ToDate,
+            TotalAssets = totalAssets,
+            TotalLiabilities = totalLiab,
+            TotalEquity = totalEq,
+            GeneratedAt = DateTime.Now
+        };
+
+        var document = new BalanceSheetDocument(header, assetItems, liabilityItems, equityItems);
+        return document.GeneratePdf();
+    }
+
     public async Task<List<IncomeSummaryLineResponse>> GetIncomeSummaryAsync(IncomeSummaryFilter filter, CancellationToken cancellationToken)
     {
         if (filter.ToDate < filter.FromDate)
@@ -1138,6 +1190,57 @@ internal class ReportService : IReportService
         return result;
     }
 
+    public async Task<byte[]> GetIncomeSummaryPdfAsync(IncomeSummaryFilter filter, CancellationToken cancellationToken)
+    {
+        var rawLines = await GetIncomeSummaryAsync(filter, cancellationToken);
+
+        var companyName = await _companyDetailRepository.GetAll()
+            .AsNoTracking()
+            .Select(x => x.CompanyName)
+            .FirstOrDefaultAsync(cancellationToken) ?? "Retail Suite Enterprise";
+
+        var salesItems = new List<IncomeSummaryLineItem>();
+        var cogsItems = new List<IncomeSummaryLineItem>();
+        var expenseItems = new List<IncomeSummaryLineItem>();
+
+        foreach (var line in rawLines)
+        {
+            var item = new IncomeSummaryLineItem
+            {
+                Category = line.VType,
+                Title = line.Title,
+                Debit = line.Dr,
+                Credit = line.Cr,
+                Amount = line.Bal
+            };
+
+            if (string.Equals(line.VType, "Sales", StringComparison.OrdinalIgnoreCase))
+                salesItems.Add(item);
+            else if (string.Equals(line.VType, "Cost of Goods Sold", StringComparison.OrdinalIgnoreCase))
+                cogsItems.Add(item);
+            else
+                expenseItems.Add(item);
+        }
+
+        decimal totalSales = salesItems.Sum(x => Math.Abs(x.Amount));
+        decimal totalCogs = cogsItems.Sum(x => x.Amount);
+        decimal totalExpenses = expenseItems.Sum(x => Math.Abs(x.Amount));
+
+        var header = new IncomeSummaryHeader
+        {
+            CompanyName = companyName,
+            FromDate = filter.FromDate,
+            ToDate = filter.ToDate,
+            TotalSales = totalSales,
+            TotalCogs = totalCogs,
+            TotalExpenses = totalExpenses,
+            GeneratedAt = DateTime.Now
+        };
+
+        var document = new IncomeSummaryDocument(header, salesItems, cogsItems, expenseItems);
+        return document.GeneratePdf();
+    }
+
     public async Task<CustomerBillResponse> GetCustomerBillAsync(CustomerBillFilter filter, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(filter.Account))
@@ -1240,6 +1343,48 @@ internal class ReportService : IReportService
                 Balance = balance
             }
         };
+    }
+
+    public async Task<byte[]> GetCustomerBillPdfAsync(CustomerBillFilter filter, CancellationToken cancellationToken)
+    {
+        var billResponse = await GetCustomerBillAsync(filter, cancellationToken);
+
+        var company = await _companyDetailRepository.GetAll()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var customer = await (from c in _chartOfAccountRepository.GetAll().AsNoTracking()
+                              join cd in _customerDetailRepository.GetAll().AsNoTracking() on c.Id equals cd.Id into cdj
+                              from cd in cdj.DefaultIfEmpty()
+                              where c.Id == filter.Account
+                              select new
+                              {
+                                  Title = c.Title,
+                                  Phone = cd != null ? (cd.Phone1 ?? cd.SmsNumber) : null,
+                                  Address = cd != null ? cd.Address : null
+                              }).FirstOrDefaultAsync(cancellationToken);
+
+        var header = new CustomerBillHeader
+        {
+            CompanyName = company?.CompanyName ?? "Retail Suite Enterprise",
+            CompanyAddress = company?.Address,
+            CompanyPhone = company?.Phone,
+            CustomerAccount = filter.Account,
+            CustomerTitle = customer?.Title ?? filter.Account,
+            CustomerPhone = customer?.Phone,
+            CustomerAddress = customer?.Address,
+            FromDate = filter.FromDate,
+            ToDate = filter.ToDate,
+            DateBasis = filter.DateBasis == "VoucherDate" ? "Voucher Date" : "Clearing Date",
+            GeneratedAt = DateTime.Now,
+            PreviousBalance = billResponse.Summary.PreviousBalance,
+            TotalBilling = billResponse.Lines.Sum(x => x.Amount),
+            Payment = billResponse.Summary.Payment,
+            ClosingBalance = billResponse.Summary.Balance
+        };
+
+        var document = new CustomerBillDocument(header, billResponse.Lines);
+        return document.GeneratePdf();
     }
 
     public async Task<List<EnvelopeLineResponse>> GetEnvelopeAsync(EnvelopeFilter filter, CancellationToken cancellationToken)
@@ -1923,5 +2068,30 @@ internal class ReportService : IReportService
             Lines = lines,
             Summary = summary
         };
+    }
+
+    public async Task<byte[]> GetCustomerBalanceRecoveryPdfAsync(CustomerBalanceRecoveryFilter filter, CancellationToken cancellationToken)
+    {
+        var response = await GetCustomerBalanceRecoveryAsync(filter, cancellationToken);
+
+        var company = await _companyDetailRepository.GetAll()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var header = new CustomerBalanceRecoveryHeader
+        {
+            CompanyName = company?.CompanyName ?? "Retail Suite Enterprise",
+            CompanyAddress = company?.Address,
+            CompanyPhone = company?.Phone,
+            FromDate = filter.FromDate,
+            ToDate = filter.ToDate,
+            DateBasis = filter.DateBasis == "VoucherDate" ? "Voucher Date" : "Clearing Date",
+            BalanceFilter = filter.BalanceFilter ?? "All",
+            GeneratedAt = DateTime.Now,
+            Summary = response.Summary
+        };
+
+        var document = new CustomerBalanceRecoveryDocument(header, response.Lines);
+        return document.GeneratePdf();
     }
 }

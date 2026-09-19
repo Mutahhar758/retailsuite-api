@@ -15,8 +15,11 @@ public interface IReportService : ITransientService
     Task<List<StockBalanceLineResponse>> GetStockBalanceAsync(StockBalanceFilter filter, CancellationToken cancellationToken);
     Task<byte[]> GetStockBalancePdfAsync(StockBalanceFilter filter, CancellationToken cancellationToken);
     Task<List<BalanceSheetLineResponse>> GetBalanceSheetAsync(BalanceSheetFilter filter, CancellationToken cancellationToken);
+    Task<byte[]> GetBalanceSheetPdfAsync(BalanceSheetFilter filter, CancellationToken cancellationToken);
     Task<List<IncomeSummaryLineResponse>> GetIncomeSummaryAsync(IncomeSummaryFilter filter, CancellationToken cancellationToken);
+    Task<byte[]> GetIncomeSummaryPdfAsync(IncomeSummaryFilter filter, CancellationToken cancellationToken);
     Task<CustomerBillResponse> GetCustomerBillAsync(CustomerBillFilter filter, CancellationToken cancellationToken);
+    Task<byte[]> GetCustomerBillPdfAsync(CustomerBillFilter filter, CancellationToken cancellationToken);
     Task<List<EnvelopeLineResponse>> GetEnvelopeAsync(EnvelopeFilter filter, CancellationToken cancellationToken);
     Task<SaleBillResponse> GetSaleBillAsync(SaleBillFilter filter, CancellationToken cancellationToken);
     Task<PurchaseBillResponse> GetPurchaseBillAsync(PurchaseBillFilter filter, CancellationToken cancellationToken);
@@ -24,4 +27,5 @@ public interface IReportService : ITransientService
     Task<SaleRetBillResponse> GetSaleRetBillAsync(SaleRetBillFilter filter, CancellationToken cancellationToken);
     Task<PurchaseSupplyComparisonResponse> GetPurchaseSupplyComparisonAsync(PurchaseSupplyComparisonFilter filter, CancellationToken cancellationToken);
     Task<CustomerBalanceRecoveryResponse> GetCustomerBalanceRecoveryAsync(CustomerBalanceRecoveryFilter filter, CancellationToken cancellationToken);
+    Task<byte[]> GetCustomerBalanceRecoveryPdfAsync(CustomerBalanceRecoveryFilter filter, CancellationToken cancellationToken);
 }

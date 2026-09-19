@@ -169,6 +169,19 @@ public class ReportsController : VersionNeutralApiController
         return result.ToInformationResponse();
     }
 
+    [HttpGet("balance-sheet/pdf")]
+    [MustHavePermission(AppAction.View, AppResource.BalanceSheet)]
+    [OpenApiOperation("Get balance sheet report as a vector PDF document.", "")]
+    public async Task<IActionResult> GetBalanceSheetPdfAsync(
+        [FromQuery] BalanceSheetFilter filter,
+        CancellationToken cancellationToken)
+    {
+        var pdfBytes = await _reportService.GetBalanceSheetPdfAsync(filter, cancellationToken);
+        string fileName = $"BalanceSheet_{filter.ToDate:yyyyMMdd}.pdf";
+        Response.Headers.Append("Content-Disposition", $"inline; filename=\"{fileName}\"");
+        return File(pdfBytes, "application/pdf", fileName);
+    }
+
     [HttpGet("income-summary")]
     [MustHavePermission(AppAction.View, AppResource.IncomeSummary)]
     [OpenApiOperation("Get income summary report data.", "")]
@@ -180,6 +193,19 @@ public class ReportsController : VersionNeutralApiController
         return result.ToInformationResponse();
     }
 
+    [HttpGet("income-summary/pdf")]
+    [MustHavePermission(AppAction.View, AppResource.IncomeSummary)]
+    [OpenApiOperation("Get income summary report as a vector PDF document.", "")]
+    public async Task<IActionResult> GetIncomeSummaryPdfAsync(
+        [FromQuery] IncomeSummaryFilter filter,
+        CancellationToken cancellationToken)
+    {
+        var pdfBytes = await _reportService.GetIncomeSummaryPdfAsync(filter, cancellationToken);
+        string fileName = $"IncomeSummary_{filter.FromDate:yyyyMMdd}_{filter.ToDate:yyyyMMdd}.pdf";
+        Response.Headers.Append("Content-Disposition", $"inline; filename=\"{fileName}\"");
+        return File(pdfBytes, "application/pdf", fileName);
+    }
+
     [HttpGet("customer-bill")]
     [MustHavePermission(AppAction.View, AppResource.CustomerBill)]
     [OpenApiOperation("Get customer bill report data.", "")]
@@ -189,6 +215,19 @@ public class ReportsController : VersionNeutralApiController
     {
         var result = await _reportService.GetCustomerBillAsync(filter, cancellationToken);
         return result.ToInformationResponse();
+    }
+
+    [HttpGet("customer-bill/pdf")]
+    [MustHavePermission(AppAction.View, AppResource.CustomerBill)]
+    [OpenApiOperation("Get customer bill report as a vector PDF document.", "")]
+    public async Task<IActionResult> GetCustomerBillPdfAsync(
+        [FromQuery] CustomerBillFilter filter,
+        CancellationToken cancellationToken)
+    {
+        var pdfBytes = await _reportService.GetCustomerBillPdfAsync(filter, cancellationToken);
+        string fileName = $"CustomerBill_{filter.Account}_{filter.FromDate:yyyyMMdd}_{filter.ToDate:yyyyMMdd}.pdf";
+        Response.Headers.Append("Content-Disposition", $"inline; filename=\"{fileName}\"");
+        return File(pdfBytes, "application/pdf", fileName);
     }
 
     [HttpGet("envelope")]
@@ -266,5 +305,18 @@ public class ReportsController : VersionNeutralApiController
     {
         var result = await _reportService.GetCustomerBalanceRecoveryAsync(filter, cancellationToken);
         return result.ToInformationResponse();
+    }
+
+    [HttpGet("customer-balance-recovery/pdf")]
+    [MustHavePermission(AppAction.View, AppResource.CustomerBalanceRecovery)]
+    [OpenApiOperation("Get customer balance and recovery report as a vector PDF document.", "")]
+    public async Task<IActionResult> GetCustomerBalanceRecoveryPdfAsync(
+        [FromQuery] CustomerBalanceRecoveryFilter filter,
+        CancellationToken cancellationToken)
+    {
+        var pdfBytes = await _reportService.GetCustomerBalanceRecoveryPdfAsync(filter, cancellationToken);
+        string fileName = $"CustomerBalanceRecovery_{filter.FromDate:yyyyMMdd}_{filter.ToDate:yyyyMMdd}.pdf";
+        Response.Headers.Append("Content-Disposition", $"inline; filename=\"{fileName}\"");
+        return File(pdfBytes, "application/pdf", fileName);
     }
 }
