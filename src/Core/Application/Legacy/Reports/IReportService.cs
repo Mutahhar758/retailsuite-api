@@ -11,7 +11,9 @@ public interface IReportService : ITransientService
     Task<List<TrialBalanceLineResponse>> GetTrialBalanceAsync(TrialBalanceFilter filter, CancellationToken cancellationToken);
     Task<byte[]> GetTrialBalancePdfAsync(TrialBalanceFilter filter, CancellationToken cancellationToken);
     Task<List<StockLedgerLineResponse>> GetStockLedgerAsync(StockLedgerFilter filter, CancellationToken cancellationToken);
+    Task<byte[]> GetStockLedgerPdfAsync(StockLedgerFilter filter, CancellationToken cancellationToken);
     Task<List<StockBalanceLineResponse>> GetStockBalanceAsync(StockBalanceFilter filter, CancellationToken cancellationToken);
+    Task<byte[]> GetStockBalancePdfAsync(StockBalanceFilter filter, CancellationToken cancellationToken);
     Task<List<BalanceSheetLineResponse>> GetBalanceSheetAsync(BalanceSheetFilter filter, CancellationToken cancellationToken);
     Task<List<IncomeSummaryLineResponse>> GetIncomeSummaryAsync(IncomeSummaryFilter filter, CancellationToken cancellationToken);
     Task<CustomerBillResponse> GetCustomerBillAsync(CustomerBillFilter filter, CancellationToken cancellationToken);

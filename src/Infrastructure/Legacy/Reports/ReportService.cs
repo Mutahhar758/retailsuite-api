@@ -730,6 +730,62 @@ internal class ReportService : IReportService
         return result;
     }
 
+    public async Task<byte[]> GetStockLedgerPdfAsync(StockLedgerFilter filter, CancellationToken cancellationToken)
+    {
+        var rawLines = await GetStockLedgerAsync(filter, cancellationToken);
+
+        var companyName = await _companyDetailRepository.GetAll()
+            .AsNoTracking()
+            .Select(x => x.CompanyName)
+            .FirstOrDefaultAsync(cancellationToken) ?? "Retail Suite Enterprise";
+
+        var item = await _itemTransactionRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => x.ItemId == filter.FkItem && x.Item != null)
+            .Select(x => x.Item!.Title)
+            .FirstOrDefaultAsync(cancellationToken) ?? filter.FkItem;
+
+        decimal runningBalance = 0m;
+        var items = new List<StockLedgerReportItem>();
+        for (int i = 0; i < rawLines.Count; i++)
+        {
+            var line = rawLines[i];
+            runningBalance += (line.QtyIn - line.QtyOut);
+
+            items.Add(new StockLedgerReportItem
+            {
+                Date = line.Vdate,
+                VoucherNo = line.Vno ?? "-",
+                Particular = line.Particular,
+                Rate = line.Rate,
+                QtyIn = line.QtyIn,
+                QtyOut = line.QtyOut,
+                Balance = runningBalance
+            });
+        }
+
+        decimal openingBal = items.Count > 0 && items[0].VoucherNo == "-" ? (items[0].QtyIn - items[0].QtyOut) : 0m;
+        decimal totalIn = items.Where(x => x.VoucherNo != "-").Sum(x => x.QtyIn);
+        decimal totalOut = items.Where(x => x.VoucherNo != "-").Sum(x => x.QtyOut);
+
+        var header = new StockLedgerHeader
+        {
+            CompanyName = companyName,
+            ItemId = filter.FkItem,
+            ItemTitle = item,
+            FromDate = filter.FromDate,
+            ToDate = filter.ToDate,
+            OpeningBalance = openingBal,
+            TotalIn = totalIn,
+            TotalOut = totalOut,
+            ClosingBalance = runningBalance,
+            GeneratedAt = DateTime.Now
+        };
+
+        var document = new StockLedgerDocument(header, items);
+        return document.GeneratePdf();
+    }
+
     public async Task<List<StockBalanceLineResponse>> GetStockBalanceAsync(StockBalanceFilter filter, CancellationToken cancellationToken)
     {
         if (filter.ToDate < filter.FromDate)
@@ -807,6 +863,57 @@ internal class ReportService : IReportService
         return data
             .OrderBy(x => x.Item)
             .ToList();
+    }
+
+    public async Task<byte[]> GetStockBalancePdfAsync(StockBalanceFilter filter, CancellationToken cancellationToken)
+    {
+        var rawLines = await GetStockBalanceAsync(filter, cancellationToken);
+
+        var companyName = await _companyDetailRepository.GetAll()
+            .AsNoTracking()
+            .Select(x => x.CompanyName)
+            .FirstOrDefaultAsync(cancellationToken) ?? "Retail Suite Enterprise";
+
+        string categoryName = "All Categories";
+        if (!string.IsNullOrWhiteSpace(filter.Catagory))
+        {
+            categoryName = filter.Catagory;
+        }
+
+        var items = new List<StockBalanceReportItem>();
+        int index = 1;
+        foreach (var line in rawLines)
+        {
+            items.Add(new StockBalanceReportItem
+            {
+                Index = index++,
+                ItemName = line.Item,
+                Unit = line.Unit,
+                OpeningQty = line.PriQty,
+                QtyIn = line.QtyIn,
+                QtyOut = line.QtyOut,
+                ClosingQty = line.QtyBal,
+                Rate = line.Rate
+            });
+        }
+
+        var header = new StockBalanceHeader
+        {
+            CompanyName = companyName,
+            CategoryName = categoryName,
+            FromDate = filter.FromDate,
+            ToDate = filter.ToDate,
+            TotalItems = items.Count,
+            TotalOpeningQty = items.Sum(x => x.OpeningQty),
+            TotalQtyIn = items.Sum(x => x.QtyIn),
+            TotalQtyOut = items.Sum(x => x.QtyOut),
+            TotalClosingQty = items.Sum(x => x.ClosingQty),
+            TotalStockValue = items.Sum(x => x.TotalValue),
+            GeneratedAt = DateTime.Now
+        };
+
+        var document = new StockBalanceDocument(header, items);
+        return document.GeneratePdf();
     }
 
     public async Task<List<BalanceSheetLineResponse>> GetBalanceSheetAsync(BalanceSheetFilter filter, CancellationToken cancellationToken)

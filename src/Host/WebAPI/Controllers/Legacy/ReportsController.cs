@@ -121,6 +121,19 @@ public class ReportsController : VersionNeutralApiController
         return result.ToInformationResponse();
     }
 
+    [HttpGet("stock-ledger/pdf")]
+    [MustHavePermission(AppAction.View, AppResource.StockLedger)]
+    [OpenApiOperation("Get stock ledger report as a vector PDF document.", "")]
+    public async Task<IActionResult> GetStockLedgerPdfAsync(
+        [FromQuery] StockLedgerFilter filter,
+        CancellationToken cancellationToken)
+    {
+        var pdfBytes = await _reportService.GetStockLedgerPdfAsync(filter, cancellationToken);
+        string fileName = $"StockLedger_{filter.FkItem}_{filter.FromDate:yyyyMMdd}_{filter.ToDate:yyyyMMdd}.pdf";
+        Response.Headers.Append("Content-Disposition", $"inline; filename=\"{fileName}\"");
+        return File(pdfBytes, "application/pdf", fileName);
+    }
+
     [HttpGet("stock-balance")]
     [MustHavePermission(AppAction.View, AppResource.StockBalance)]
     [OpenApiOperation("Get stock balance report data.", "")]
@@ -130,6 +143,19 @@ public class ReportsController : VersionNeutralApiController
     {
         var result = await _reportService.GetStockBalanceAsync(filter, cancellationToken);
         return result.ToInformationResponse();
+    }
+
+    [HttpGet("stock-balance/pdf")]
+    [MustHavePermission(AppAction.View, AppResource.StockBalance)]
+    [OpenApiOperation("Get stock balance report as a vector PDF document.", "")]
+    public async Task<IActionResult> GetStockBalancePdfAsync(
+        [FromQuery] StockBalanceFilter filter,
+        CancellationToken cancellationToken)
+    {
+        var pdfBytes = await _reportService.GetStockBalancePdfAsync(filter, cancellationToken);
+        string fileName = $"StockBalance_{filter.FromDate:yyyyMMdd}_{filter.ToDate:yyyyMMdd}.pdf";
+        Response.Headers.Append("Content-Disposition", $"inline; filename=\"{fileName}\"");
+        return File(pdfBytes, "application/pdf", fileName);
     }
 
     [HttpGet("balance-sheet")]
