@@ -29,6 +29,7 @@ internal class ReportService : IReportService
     private readonly IRepository<SaleRetDetail> _saleRetDetailRepository;
     private readonly IRepository<SaleRetMaster> _saleRetMasterRepository;
     private readonly IRepository<DefaultAccount> _defaultAccountRepository;
+    private readonly IRepository<Setting> _settingRepository;
 
     public ReportService(
         IRepository<GlEntry> glRepository,
@@ -47,7 +48,8 @@ internal class ReportService : IReportService
         IRepository<PurchaseRetMaster> purchaseRetMasterRepository,
         IRepository<SaleRetDetail> saleRetDetailRepository,
         IRepository<SaleRetMaster> saleRetMasterRepository,
-        IRepository<DefaultAccount> defaultAccountRepository)
+        IRepository<DefaultAccount> defaultAccountRepository,
+        IRepository<Setting> settingRepository)
     {
         _glRepository = glRepository;
         _chartOfAccountRepository = chartOfAccountRepository;
@@ -66,6 +68,7 @@ internal class ReportService : IReportService
         _saleRetDetailRepository = saleRetDetailRepository;
         _saleRetMasterRepository = saleRetMasterRepository;
         _defaultAccountRepository = defaultAccountRepository;
+        _settingRepository = settingRepository;
     }
 
     public async Task<List<AccountStatementLineResponse>> GetAccountStatementAsync(AccountStatementFilter filter, CancellationToken cancellationToken)
@@ -1364,6 +1367,21 @@ internal class ReportService : IReportService
                                   Address = cd != null ? cd.Address : null
                               }).FirstOrDefaultAsync(cancellationToken);
 
+        var settings = await _settingRepository.GetAll()
+            .AsNoTracking()
+            .Where(s => s.Key.StartsWith("Bill."))
+            .ToDictionaryAsync(s => s.Key, s => s.Value, cancellationToken);
+
+        bool qrEnabled = filter.QrEnabled ?? (settings.TryGetValue("Bill.QrPayment.Enabled", out var qe) && string.Equals(qe, "true", StringComparison.OrdinalIgnoreCase));
+        string qrTitle = !string.IsNullOrWhiteSpace(filter.QrAccountTitle) ? filter.QrAccountTitle : (settings.TryGetValue("Bill.QrPayment.AccountTitle", out var qt) ? (qt ?? string.Empty) : string.Empty);
+        string qrAcc = !string.IsNullOrWhiteSpace(filter.QrAccountNumber) ? filter.QrAccountNumber : (settings.TryGetValue("Bill.QrPayment.AccountNumber", out var qa) ? (qa ?? string.Empty) : string.Empty);
+        string qrBank = !string.IsNullOrWhiteSpace(filter.QrBankName) ? filter.QrBankName : (settings.TryGetValue("Bill.QrPayment.BankName", out var qb) ? (qb ?? string.Empty) : string.Empty);
+        string thankYou = !string.IsNullOrWhiteSpace(filter.ThankyouLine) ? filter.ThankyouLine : (settings.TryGetValue("Bill.ThankYouMessage", out var ty) ? (ty ?? "Thank you for shopping with us!") : "Thank you for shopping with us!");
+
+        var layout = string.Equals(filter.Layout, "Thermal", StringComparison.OrdinalIgnoreCase)
+            ? CustomerBillPrintLayout.Thermal80mm
+            : CustomerBillPrintLayout.A4Sheet;
+
         var header = new CustomerBillHeader
         {
             CompanyName = company?.CompanyName ?? "Retail Suite Enterprise",
@@ -1380,7 +1398,16 @@ internal class ReportService : IReportService
             PreviousBalance = billResponse.Summary.PreviousBalance,
             TotalBilling = billResponse.Lines.Sum(x => x.Amount),
             Payment = billResponse.Summary.Payment,
-            ClosingBalance = billResponse.Summary.Balance
+            ClosingBalance = billResponse.Summary.Balance,
+            Layout = layout,
+            ThankyouLine = thankYou,
+            QrPayment = new QrPaymentInfo
+            {
+                IsEnabled = qrEnabled,
+                AccountTitle = qrTitle,
+                AccountNumber = qrAcc,
+                BankName = qrBank
+            }
         };
 
         var document = new CustomerBillDocument(header, billResponse.Lines);

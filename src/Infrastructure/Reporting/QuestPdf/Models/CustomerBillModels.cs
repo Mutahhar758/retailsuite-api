@@ -2,6 +2,12 @@ using Retailer.Application.Legacy.Reports;
 
 namespace Retailer.Infrastructure.Reporting.QuestPdf.Models;
 
+public enum CustomerBillPrintLayout
+{
+    A4Sheet,
+    Thermal80mm
+}
+
 public class CustomerBillHeader
 {
     public string CompanyName { get; set; } = "Company";
@@ -19,4 +25,8 @@ public class CustomerBillHeader
     public decimal TotalBilling { get; set; }
     public decimal Payment { get; set; }
     public decimal ClosingBalance { get; set; }
+    public string? ThankyouLine { get; set; }
+    public CustomerBillPrintLayout Layout { get; set; } = CustomerBillPrintLayout.A4Sheet;
+    public QrPaymentInfo? QrPayment { get; set; }
+    public bool ShowQrPayment => QrPayment != null && QrPayment.IsEnabled && ClosingBalance > 0;
 }
