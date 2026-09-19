@@ -43,8 +43,9 @@ public class CustomerBillDocument : IDocument
     {
         container.Page(page =>
         {
-            page.ContinuousSize(72, Unit.Millimetre);
-            page.Margin(2, Unit.Millimetre);
+            page.ContinuousSize(80, Unit.Millimetre);
+            page.MarginVertical(2, Unit.Millimetre);
+            page.MarginHorizontal(4, Unit.Millimetre);
             page.PageColor(Colors.White);
             page.DefaultTextStyle(x => x.FontSize(8f).FontFamily("Arial").FontColor(Colors.Black));
 
