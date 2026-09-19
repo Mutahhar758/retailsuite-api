@@ -1868,6 +1868,31 @@ internal class ReportService : IReportService
         };
     }
 
+    public async Task<byte[]> GetPurchaseSupplyComparisonPdfAsync(PurchaseSupplyComparisonFilter filter, CancellationToken cancellationToken)
+    {
+        var response = await GetPurchaseSupplyComparisonAsync(filter, cancellationToken);
+
+        var company = await _companyDetailRepository.GetAll()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var header = new MilkComparisonHeader
+        {
+            CompanyName = company?.CompanyName ?? "Retail Suite Enterprise",
+            CompanyAddress = company?.Address,
+            CompanyPhone = company?.Phone,
+            ItemTitle = response.ItemTitle,
+            UnitTitle = response.UnitTitle,
+            FromDate = filter.FromDate,
+            ToDate = filter.ToDate,
+            GeneratedAt = DateTime.Now,
+            Summary = response.Summary
+        };
+
+        var document = new MilkComparisonDocument(header, response.Lines);
+        return document.GeneratePdf();
+    }
+
     public async Task<CustomerBalanceRecoveryResponse> GetCustomerBalanceRecoveryAsync(CustomerBalanceRecoveryFilter filter, CancellationToken cancellationToken)
     {
         if (filter.ToDate < filter.FromDate)

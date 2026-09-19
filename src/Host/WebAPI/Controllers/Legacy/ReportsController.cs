@@ -296,6 +296,19 @@ public class ReportsController : VersionNeutralApiController
         return result.ToInformationResponse();
     }
 
+    [HttpGet("purchase-supply-comparison/pdf")]
+    [MustHavePermission(AppAction.View, AppResource.MilkComparison)]
+    [OpenApiOperation("Get purchase vs sale supply comparison report as a vector PDF document.", "")]
+    public async Task<IActionResult> GetPurchaseSupplyComparisonPdfAsync(
+        [FromQuery] PurchaseSupplyComparisonFilter filter,
+        CancellationToken cancellationToken)
+    {
+        var pdfBytes = await _reportService.GetPurchaseSupplyComparisonPdfAsync(filter, cancellationToken);
+        string fileName = $"MilkComparison_{filter.FromDate:yyyyMMdd}_{filter.ToDate:yyyyMMdd}.pdf";
+        Response.Headers.Append("Content-Disposition", $"inline; filename=\"{fileName}\"");
+        return File(pdfBytes, "application/pdf", fileName);
+    }
+
     [HttpGet("customer-balance-recovery")]
     [MustHavePermission(AppAction.View, AppResource.CustomerBalanceRecovery)]
     [OpenApiOperation("Get customer balance and recovery report data (clearing date reconciled).", "")]
