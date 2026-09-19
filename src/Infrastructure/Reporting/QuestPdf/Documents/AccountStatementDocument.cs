@@ -33,7 +33,7 @@ public class AccountStatementDocument : IDocument
             page.Size(PageSizes.A4);
             page.Margin(30, Unit.Point);
             page.PageColor(Colors.White);
-            page.DefaultTextStyle(x => x.FontSize(8.5f).FontFamily("Segoe UI").FontColor(Colors.Grey.Darken4));
+            page.DefaultTextStyle(x => x.FontSize(8.5f).FontFamily(Fonts.Lato).FontColor(Colors.Grey.Darken4));
 
             page.Header().Element(ComposeHeader);
             page.Content().Element(ComposeContent);
