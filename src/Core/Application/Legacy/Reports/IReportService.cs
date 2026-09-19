@@ -5,6 +5,7 @@ public interface IReportService : ITransientService
     Task<List<AccountStatementLineResponse>> GetAccountStatementAsync(AccountStatementFilter filter, CancellationToken cancellationToken);
     Task<byte[]> GetAccountStatementPdfAsync(AccountStatementFilter filter, CancellationToken cancellationToken);
     Task<List<AccountStatementWithDueLineResponse>> GetAccountStatementWithDueAsync(AccountStatementFilter filter, CancellationToken cancellationToken);
+    Task<byte[]> GetAccountStatementWithDuePdfAsync(AccountStatementFilter filter, CancellationToken cancellationToken);
     Task<List<BalanceDetailLineResponse>> GetBalanceDetailAsync(BalanceDetailFilter filter, CancellationToken cancellationToken);
     Task<List<TrialBalanceLineResponse>> GetTrialBalanceAsync(TrialBalanceFilter filter, CancellationToken cancellationToken);
     Task<List<StockLedgerLineResponse>> GetStockLedgerAsync(StockLedgerFilter filter, CancellationToken cancellationToken);

@@ -355,6 +355,59 @@ internal class ReportService : IReportService
             .ToList();
     }
 
+    public async Task<byte[]> GetAccountStatementWithDuePdfAsync(AccountStatementFilter filter, CancellationToken cancellationToken)
+    {
+        var lines = await GetAccountStatementWithDueAsync(filter, cancellationToken);
+
+        var companyName = await _companyDetailRepository.GetAll()
+            .AsNoTracking()
+            .Select(x => x.CompanyName)
+            .FirstOrDefaultAsync(cancellationToken) ?? "Retail Suite Enterprise";
+
+        var accountTitle = await _chartOfAccountRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => x.Id == filter.Account)
+            .Select(x => x.Title)
+            .FirstOrDefaultAsync(cancellationToken) ?? filter.Account;
+
+        decimal runningBalance = 0;
+        var items = new List<AccountStatementWithDueReportItem>();
+        foreach (var line in lines)
+        {
+            runningBalance += (line.Dr - line.Cr);
+            DateOnly? dueDate = line.DueDays.HasValue ? line.VDate.AddDays(line.DueDays.Value) : null;
+            items.Add(new AccountStatementWithDueReportItem
+            {
+                Date = line.VDate,
+                VoucherNo = line.VNo ?? string.Empty,
+                Particular = line.Particular ?? string.Empty,
+                Debit = line.Dr,
+                Credit = line.Cr,
+                Balance = runningBalance,
+                DueDays = line.DueDays,
+                DueDate = dueDate
+            });
+        }
+
+        var header = new AccountStatementWithDueHeader
+        {
+            CompanyName = companyName,
+            AccountTitle = accountTitle,
+            AccountCode = filter.Account,
+            FromDate = filter.FromDate,
+            ToDate = filter.ToDate,
+            DateBasis = string.Equals(filter.DateBasis, "ClearingDate", StringComparison.OrdinalIgnoreCase) ? "Clearing Date" : "Voucher Date",
+            OpeningBalance = lines.Count > 0 ? (lines[0].Dr - lines[0].Cr) : 0,
+            TotalDebit = items.Sum(x => x.Debit),
+            TotalCredit = items.Sum(x => x.Credit),
+            ClosingBalance = runningBalance,
+            GeneratedAt = DateTime.Now
+        };
+
+        var document = new AccountStatementWithDueDocument(header, items);
+        return document.GeneratePdf();
+    }
+
     public async Task<List<BalanceDetailLineResponse>> GetBalanceDetailAsync(BalanceDetailFilter filter, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(filter.Account))

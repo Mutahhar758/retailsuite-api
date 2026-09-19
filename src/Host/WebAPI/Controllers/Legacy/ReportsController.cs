@@ -49,6 +49,19 @@ public class ReportsController : VersionNeutralApiController
         return result.ToInformationResponse();
     }
 
+    [HttpGet("account-statement-with-due/pdf")]
+    [MustHavePermission(AppAction.View, AppResource.AccountStatementWithDue)]
+    [OpenApiOperation("Get account statement with due days report as a vector PDF document.", "")]
+    public async Task<IActionResult> GetAccountStatementWithDuePdfAsync(
+        [FromQuery] AccountStatementFilter filter,
+        CancellationToken cancellationToken)
+    {
+        var pdfBytes = await _reportService.GetAccountStatementWithDuePdfAsync(filter, cancellationToken);
+        string fileName = $"AccountStatementWithDue_{filter.Account}_{filter.FromDate:yyyyMMdd}_{filter.ToDate:yyyyMMdd}.pdf";
+        Response.Headers.Append("Content-Disposition", $"inline; filename=\"{fileName}\"");
+        return File(pdfBytes, "application/pdf", fileName);
+    }
+
     [HttpGet("balance-detail")]
     [MustHavePermission(AppAction.View, AppResource.AccountBalance)]
     [OpenApiOperation("Get balance detail report data.", "")]
