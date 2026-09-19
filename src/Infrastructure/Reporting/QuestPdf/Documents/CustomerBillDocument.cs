@@ -207,7 +207,7 @@ public class CustomerBillDocument : IDocument
                     : "Thank you for your valued business!";
 
                 col.Item().AlignCenter().PaddingTop(2).Text(thankLine).Italic().FontSize(6.5f);
-                col.Item().AlignCenter().PaddingTop(1).Text("Software powered by Bizgrip Solutions contact 03228258734").FontSize(5.5f).FontColor(Colors.Grey.Darken1);
+                col.Item().AlignCenter().PaddingTop(1).Text("Software powered by Bizgrip Solutions (Contact: 03228258734)").FontSize(5.5f).FontColor(Colors.Grey.Darken1);
             });
         });
     }
@@ -518,7 +518,7 @@ public class CustomerBillDocument : IDocument
             col.Item().LineHorizontal(0.5f).LineColor(Colors.Grey.Lighten2);
             col.Item().PaddingTop(4).Row(row =>
             {
-                row.RelativeItem().Text("Software powered by Bizgrip Solutions contact 03228258734")
+                row.RelativeItem().Text("Software powered by Bizgrip Solutions (Contact: 03228258734)")
                     .FontSize(7.5f)
                     .FontColor(Colors.Grey.Darken1);
 

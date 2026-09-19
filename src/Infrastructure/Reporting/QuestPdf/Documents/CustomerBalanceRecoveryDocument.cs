@@ -256,7 +256,7 @@ public class CustomerBalanceRecoveryDocument : IDocument
     {
         container.Row(row =>
         {
-            row.RelativeItem().Text("Software powered by Bizgrip Solutions contact 03228258734")
+            row.RelativeItem().Text("Software powered by Bizgrip Solutions (Contact: 03228258734)")
                 .FontSize(7.5f)
                 .FontColor(Colors.Grey.Darken1);
 
