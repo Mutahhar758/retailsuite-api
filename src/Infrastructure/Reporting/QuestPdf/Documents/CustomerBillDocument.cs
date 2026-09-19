@@ -44,142 +44,140 @@ public class CustomerBillDocument : IDocument
         container.Page(page =>
         {
             page.ContinuousSize(72, Unit.Millimetre);
-            page.Margin(3, Unit.Millimetre);
+            page.Margin(2, Unit.Millimetre);
             page.PageColor(Colors.White);
-            page.DefaultTextStyle(x => x.FontSize(7.5f).FontFamily(Fonts.Lato).FontColor(Colors.Black));
+            page.DefaultTextStyle(x => x.FontSize(8f).FontFamily("Arial").FontColor(Colors.Black));
 
             page.Content().Column(col =>
             {
-                // 1. Store Header
-                col.Item().AlignCenter().Text(_header.CompanyName).FontSize(11f).Bold();
+                // 1. Store Header (Bold for emphasis)
+                col.Item().AlignCenter().Text(_header.CompanyName).FontSize(12f).Bold();
 
                 if (!string.IsNullOrWhiteSpace(_header.CompanyAddress))
                 {
-                    col.Item().AlignCenter().PaddingTop(1).Text(_header.CompanyAddress).FontSize(6.5f);
+                    col.Item().AlignCenter().PaddingTop(1).Text(_header.CompanyAddress).FontSize(8f).SemiBold();
                 }
 
                 if (!string.IsNullOrWhiteSpace(_header.CompanyPhone))
                 {
-                    col.Item().AlignCenter().PaddingTop(1).Text($"Tel: {_header.CompanyPhone}").FontSize(6.5f);
+                    col.Item().AlignCenter().PaddingTop(1).Text($"Tel: {_header.CompanyPhone}").FontSize(8f).SemiBold();
                 }
 
-                col.Item().PaddingVertical(2).LineHorizontal(0.5f).LineColor(Colors.Grey.Medium);
+                col.Item().PaddingVertical(2).LineHorizontal(1f).LineColor(Colors.Black);
 
                 // 2. Receipt Title
-                col.Item().AlignCenter().Text("CUSTOMER BILL / RECEIPT").FontSize(8.5f).Bold();
+                col.Item().AlignCenter().Text("CUSTOMER BILL / RECEIPT").FontSize(9f).Bold();
 
                 // 3. Customer & Meta
                 col.Item().PaddingTop(2).Row(r =>
                 {
-                    r.AutoItem().Text("Customer: ").Bold().FontSize(7f);
-                    r.RelativeItem().Text(_header.CustomerTitle).Bold().FontSize(7f);
-                });
-
-
-                col.Item().Row(r =>
-                {
-                    r.AutoItem().Text("Period: ").FontSize(6.5f);
-                    r.RelativeItem().Text($"{_header.FromDate:dd/MM/yy} to {_header.ToDate:dd/MM/yy}").FontSize(6.5f);
+                    r.AutoItem().Text("Customer: ").Bold().FontSize(8.5f);
+                    r.RelativeItem().Text(_header.CustomerTitle).Bold().FontSize(8.5f);
                 });
 
                 col.Item().Row(r =>
                 {
-                    r.AutoItem().Text("Printed: ").FontSize(6.5f);
-                    r.RelativeItem().Text($"{_header.GeneratedAt:dd-MMM-yy HH:mm}").FontSize(6.5f);
+                    r.AutoItem().Text("Period: ").FontSize(8f).SemiBold();
+                    r.RelativeItem().Text($"{_header.FromDate:dd/MM/yy} to {_header.ToDate:dd/MM/yy}").FontSize(8f).SemiBold();
                 });
 
-                col.Item().PaddingVertical(2).LineHorizontal(0.5f).LineColor(Colors.Grey.Medium);
+                col.Item().Row(r =>
+                {
+                    r.AutoItem().Text("Printed: ").FontSize(8f).SemiBold();
+                    r.RelativeItem().Text($"{_header.GeneratedAt:dd-MMM-yy HH:mm}").FontSize(8f).SemiBold();
+                });
 
-                // 4. Line Items Table
+                col.Item().PaddingVertical(2).LineHorizontal(1f).LineColor(Colors.Black);
+
+                // 4. Line Items Table with Adj Column (Clean, sharp SemiBold weight)
                 col.Item().Table(table =>
                 {
                     table.ColumnsDefinition(columns =>
                     {
-                        columns.RelativeColumn(3.2f); // Item & Date
+                        columns.RelativeColumn(2.6f); // Item & Date
                         columns.RelativeColumn(0.9f); // Qty
-                        columns.RelativeColumn(1.1f); // Rate
+                        columns.RelativeColumn(1.0f); // Rate
+                        columns.RelativeColumn(1.0f); // Adj
                         columns.RelativeColumn(1.3f); // Total
                     });
 
                     table.Header(header =>
                     {
-                        header.Cell().Text("ITEM").Bold().FontSize(6.5f);
-                        header.Cell().AlignRight().Text("QTY").Bold().FontSize(6.5f);
-                        header.Cell().AlignRight().Text("RATE").Bold().FontSize(6.5f);
-                        header.Cell().AlignRight().Text("TOTAL").Bold().FontSize(6.5f);
+                        header.Cell().Text("ITEM").Bold().FontSize(8f);
+                        header.Cell().AlignRight().Text("QTY").Bold().FontSize(8f);
+                        header.Cell().AlignRight().Text("RATE").Bold().FontSize(8f);
+                        header.Cell().AlignRight().Text("ADJ").Bold().FontSize(8f);
+                        header.Cell().AlignRight().Text("TOTAL").Bold().FontSize(8.5f);
 
-                        header.Cell().ColumnSpan(4).PaddingVertical(1).LineHorizontal(0.5f).LineColor(Colors.Grey.Lighten1);
+                        header.Cell().ColumnSpan(5).PaddingVertical(1).LineHorizontal(0.75f).LineColor(Colors.Black);
                     });
 
                     if (_items.Count > 0)
                     {
                         foreach (var line in _items)
                         {
-                            table.Cell().PaddingVertical(1).Text(t =>
+                            table.Cell().PaddingVertical(1.2f).Text(t =>
                             {
-                                t.Span($"{line.Date:dd/MM} ").FontSize(6f).FontColor(Colors.Grey.Darken1);
-                                t.Span(line.Item).FontSize(6.5f);
+                                t.Span($"{line.Date:dd/MM} ").FontSize(8.5f).SemiBold().FontColor(Colors.Black);
+                                t.Span(line.Item).FontSize(8.5f).SemiBold();
                             });
-                            table.Cell().AlignRight().PaddingVertical(1).Text($"{line.Qty:N0}").FontSize(6.5f);
-                            table.Cell().AlignRight().PaddingVertical(1).Text($"{line.Rate:N1}").FontSize(6.5f);
-                            table.Cell().AlignRight().PaddingVertical(1).Text($"{line.Amount:N0}").FontSize(6.5f);
-
-                            if (line.AddLess != 0)
-                            {
-                                table.Cell().ColumnSpan(4).AlignRight().Text($"Add/Less: {line.AddLess:N0}").FontSize(5.5f).FontColor(Colors.Grey.Darken2);
-                            }
+                            table.Cell().AlignRight().PaddingVertical(1.2f).Text(line.Qty.ToString("#,##0.##")).FontSize(9f).SemiBold();
+                            table.Cell().AlignRight().PaddingVertical(1.2f).Text($"{line.Rate:N0}").FontSize(9f).SemiBold();
+                            table.Cell().AlignRight().PaddingVertical(1.2f).Text(line.AddLess != 0 ? $"{line.AddLess:N0}" : "-").FontSize(9f).SemiBold();
+                            table.Cell().AlignRight().PaddingVertical(1.2f).Text($"{line.Amount:N0}").FontSize(9.5f).SemiBold();
                         }
                     }
                     else
                     {
-                        table.Cell().ColumnSpan(4).AlignCenter().PaddingVertical(3).Text("No line transactions in period.").FontSize(6.5f);
+                        table.Cell().ColumnSpan(5).AlignCenter().PaddingVertical(3).Text("No line transactions in period.").FontSize(8.5f).SemiBold();
                     }
                 });
 
-                col.Item().PaddingVertical(2).LineHorizontal(0.5f).LineColor(Colors.Grey.Medium);
+                col.Item().PaddingVertical(2).LineHorizontal(1f).LineColor(Colors.Black);
 
                 // 5. Financial Summary
                 col.Item().Row(r =>
                 {
-                    r.RelativeItem().Text("Previous Balance:").FontSize(7f);
-                    r.AutoItem().Text($"{_header.PreviousBalance:N0}").FontSize(7f);
+                    r.RelativeItem().Text("Previous Balance:").FontSize(9f).SemiBold();
+                    r.AutoItem().Text($"{_header.PreviousBalance:N0}").FontSize(9.5f).SemiBold();
                 });
 
                 col.Item().Row(r =>
                 {
-                    r.RelativeItem().Text("Current Invoiced:").FontSize(7f);
-                    r.AutoItem().Text($"{_header.TotalBilling:N0}").FontSize(7f);
+                    r.RelativeItem().Text("Current Invoiced:").FontSize(9f).SemiBold();
+                    r.AutoItem().Text($"{_header.TotalBilling:N0}").FontSize(9.5f).SemiBold();
                 });
 
                 if (_header.Payment != 0)
                 {
                     col.Item().Row(r =>
                     {
-                        r.RelativeItem().Text("Payment / Recovery:").FontSize(7f);
-                        r.AutoItem().Text($"({_header.Payment:N0})").FontSize(7f);
+                        r.RelativeItem().Text("Payment / Recovery:").FontSize(9f).SemiBold();
+                        r.AutoItem().Text($"({_header.Payment:N0})").FontSize(9.5f).SemiBold();
                     });
                 }
 
-                col.Item().PaddingTop(1).LineHorizontal(0.5f).LineColor(Colors.Grey.Lighten1);
+                col.Item().PaddingTop(1).LineHorizontal(0.75f).LineColor(Colors.Black);
 
+                // Major focal point: NET DUE BALANCE in Bold
                 col.Item().PaddingTop(2).Row(r =>
                 {
-                    r.RelativeItem().Text("NET DUE BALANCE:").Bold().FontSize(8.5f);
-                    r.AutoItem().Text($"Rs. {_header.ClosingBalance:N0}").Bold().FontSize(8.5f);
+                    r.RelativeItem().Text("NET DUE BALANCE:").Bold().FontSize(11f);
+                    r.AutoItem().Text($"Rs. {_header.ClosingBalance:N0}").Bold().FontSize(12f);
                 });
 
                 // 6. QR Code Payment
                 if (_header.ShowQrPayment && _header.QrPayment != null)
                 {
-                    col.Item().PaddingTop(3).LineHorizontal(0.5f).LineColor(Colors.Grey.Lighten1);
-                    col.Item().AlignCenter().Text("SCAN TO PAY (ALL BANKS / RAAST)").FontSize(6.5f).Bold();
+                    col.Item().PaddingTop(3).LineHorizontal(0.75f).LineColor(Colors.Black);
+                    col.Item().AlignCenter().Text("SCAN TO PAY (ALL BANKS / RAAST)").FontSize(8f).Bold();
 
                     try
                     {
-                        byte[] qrBytes = QrCodeHelper.GeneratePng(_header.QrPayment.BuildEmvCoPayload(_header.ClosingBalance), 3);
+                        byte[] qrBytes = QrCodeHelper.GeneratePng(_header.QrPayment.BuildEmvCoPayload(_header.ClosingBalance), 4);
                         if (qrBytes != null && qrBytes.Length > 0)
                         {
-                            col.Item().AlignCenter().PaddingVertical(2).Width(95).Image(qrBytes);
+                            col.Item().AlignCenter().PaddingVertical(2).Width(100).Image(qrBytes);
                         }
                     }
                     catch
@@ -188,26 +186,26 @@ public class CustomerBillDocument : IDocument
                     }
 
                     if (!string.IsNullOrWhiteSpace(_header.QrPayment.BankName))
-                        col.Item().AlignCenter().Text(_header.QrPayment.BankName).FontSize(6f).SemiBold();
+                        col.Item().AlignCenter().Text(_header.QrPayment.BankName).FontSize(7.5f).Bold();
                     if (!string.IsNullOrWhiteSpace(_header.QrPayment.AccountTitle))
-                        col.Item().AlignCenter().Text(_header.QrPayment.AccountTitle).FontSize(6f);
+                        col.Item().AlignCenter().Text(_header.QrPayment.AccountTitle).FontSize(7.5f).SemiBold();
                     if (!string.IsNullOrWhiteSpace(_header.QrPayment.AccountNumber))
                     {
                         string dispIban = QrPaymentInfo.FormatIban(QrPaymentInfo.NormalizeToIban(_header.QrPayment.AccountNumber, _header.QrPayment.BankName));
-                        col.Item().AlignCenter().Text(dispIban).FontSize(6f).Bold();
+                        col.Item().AlignCenter().Text(dispIban).FontSize(7.5f).Bold();
                     }
-                    col.Item().AlignCenter().Text($"Amount: PKR {_header.ClosingBalance:N0}").FontSize(6.5f).Bold();
+                    col.Item().AlignCenter().Text($"Amount: PKR {_header.ClosingBalance:N0}").FontSize(9.5f).Bold();
                 }
 
-                col.Item().PaddingVertical(2).LineHorizontal(0.5f).LineColor(Colors.Grey.Medium);
+                col.Item().PaddingVertical(2).LineHorizontal(1f).LineColor(Colors.Black);
 
                 // 7. Thank You Note
                 string thankLine = !string.IsNullOrWhiteSpace(_header.ThankyouLine)
                     ? _header.ThankyouLine
                     : "Thank you for your valued business!";
 
-                col.Item().AlignCenter().PaddingTop(2).Text(thankLine).Italic().FontSize(6.5f);
-                col.Item().AlignCenter().PaddingTop(1).Text("Software powered by Bizgrip Solutions (Contact: 03228258734)").FontSize(5.5f).FontColor(Colors.Grey.Darken1);
+                col.Item().AlignCenter().PaddingTop(2).Text(thankLine).Italic().FontSize(8f);
+                col.Item().AlignCenter().PaddingTop(1).Text("Software powered by Bizgrip Solutions (Contact: 03228258734)").FontSize(5.8f).SemiBold().FontColor(Colors.Black);
             });
         });
     }
@@ -377,8 +375,8 @@ public class CustomerBillDocument : IDocument
                         table.Cell().Element(c => BodyCell(c, bg)).Text(line.VNo).FontSize(7.5f).FontColor(Colors.Grey.Darken2);
                         table.Cell().Element(c => BodyCell(c, bg)).Text(line.Item).SemiBold();
                         table.Cell().Element(c => BodyCell(c, bg)).AlignCenter().Text(line.UnitTitle).FontSize(7.5f);
-                        table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text($"{line.Qty:N0}");
-                        table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text($"{line.Rate:N2}");
+                        table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text(line.Qty.ToString("#,##0.##"));
+                        table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text($"{line.Rate:N0}");
                         table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text(line.AddLess != 0 ? $"{line.AddLess:N0}" : "-");
                         table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text($"{line.Amount:N0}").SemiBold();
                     }
