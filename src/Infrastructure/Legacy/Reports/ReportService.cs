@@ -469,6 +469,54 @@ internal class ReportService : IReportService
             .ToList();
     }
 
+    public async Task<byte[]> GetBalanceDetailPdfAsync(BalanceDetailFilter filter, CancellationToken cancellationToken)
+    {
+        var rawLines = await GetBalanceDetailAsync(filter, cancellationToken);
+
+        var companyName = await _companyDetailRepository.GetAll()
+            .AsNoTracking()
+            .Select(x => x.CompanyName)
+            .FirstOrDefaultAsync(cancellationToken) ?? "Retail Suite Enterprise";
+
+        string headTitle = filter.Account;
+        var parentAcc = await _chartOfAccountRepository.GetAll()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == filter.Account, cancellationToken);
+        if (parentAcc != null && !string.IsNullOrWhiteSpace(parentAcc.Title))
+            headTitle = parentAcc.Title;
+
+        var items = new List<AccountBalanceReportItem>();
+        int index = 1;
+        foreach (var line in rawLines)
+        {
+            decimal debit = line.Balance > 0 ? line.Balance : 0m;
+            decimal credit = line.Balance < 0 ? Math.Abs(line.Balance) : 0m;
+            items.Add(new AccountBalanceReportItem
+            {
+                Index = index++,
+                AccountTitle = line.Account,
+                Debit = debit,
+                Credit = credit,
+                Balance = line.Balance
+            });
+        }
+
+        var header = new AccountBalanceHeader
+        {
+            CompanyName = companyName,
+            AccountHeadTitle = headTitle,
+            AccountHeadId = filter.Account,
+            AsOnDate = filter.ToDate,
+            TotalAccounts = items.Count,
+            TotalDebit = items.Sum(x => x.Debit),
+            TotalCredit = items.Sum(x => x.Credit),
+            GeneratedAt = DateTime.Now
+        };
+
+        var document = new AccountBalanceDocument(header, items);
+        return document.GeneratePdf();
+    }
+
     public async Task<List<TrialBalanceLineResponse>> GetTrialBalanceAsync(TrialBalanceFilter filter, CancellationToken cancellationToken)
     {
         if (filter.ToDate < filter.FromDate)
@@ -581,6 +629,45 @@ internal class ReportService : IReportService
             .OrderBy(x => x.Lvl4)
             .ThenBy(x => x.Title)
             .ToList();
+    }
+
+    public async Task<byte[]> GetTrialBalancePdfAsync(TrialBalanceFilter filter, CancellationToken cancellationToken)
+    {
+        var rawLines = await GetTrialBalanceAsync(filter, cancellationToken);
+
+        var companyName = await _companyDetailRepository.GetAll()
+            .AsNoTracking()
+            .Select(x => x.CompanyName)
+            .FirstOrDefaultAsync(cancellationToken) ?? "Retail Suite Enterprise";
+
+        var items = rawLines.Select(x => new TrialBalanceReportItem
+        {
+            AccountCode = x.Lvl4 ?? string.Empty,
+            AccountTitle = x.Title,
+            Level1 = x.Lvl1 ?? string.Empty,
+            Level2 = x.Lvl2 ?? string.Empty,
+            OpeningBalance = x.PriBal,
+            Debit = x.Dr,
+            Credit = x.Cr,
+            ClosingBalance = x.CurBal
+        }).ToList();
+
+        var header = new TrialBalanceHeader
+        {
+            CompanyName = companyName,
+            FromDate = filter.FromDate,
+            ToDate = filter.ToDate,
+            TotalAccounts = items.Count,
+            TotalOpeningBalance = items.Sum(x => x.OpeningBalance),
+            TotalDebit = items.Sum(x => x.Debit),
+            TotalCredit = items.Sum(x => x.Credit),
+            TotalClosingDebit = items.Sum(x => x.ClosingDebit),
+            TotalClosingCredit = items.Sum(x => x.ClosingCredit),
+            GeneratedAt = DateTime.Now
+        };
+
+        var document = new TrialBalanceDocument(header, items);
+        return document.GeneratePdf();
     }
 
     public async Task<List<StockLedgerLineResponse>> GetStockLedgerAsync(StockLedgerFilter filter, CancellationToken cancellationToken)

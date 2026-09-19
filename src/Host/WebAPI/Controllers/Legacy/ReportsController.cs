@@ -73,6 +73,19 @@ public class ReportsController : VersionNeutralApiController
         return result.ToInformationResponse();
     }
 
+    [HttpGet("balance-detail/pdf")]
+    [MustHavePermission(AppAction.View, AppResource.AccountBalance)]
+    [OpenApiOperation("Get balance detail report as a vector PDF document.", "")]
+    public async Task<IActionResult> GetBalanceDetailPdfAsync(
+        [FromQuery] BalanceDetailFilter filter,
+        CancellationToken cancellationToken)
+    {
+        var pdfBytes = await _reportService.GetBalanceDetailPdfAsync(filter, cancellationToken);
+        string fileName = $"AccountBalance_{filter.Account}_{filter.ToDate:yyyyMMdd}.pdf";
+        Response.Headers.Append("Content-Disposition", $"inline; filename=\"{fileName}\"");
+        return File(pdfBytes, "application/pdf", fileName);
+    }
+
     [HttpGet("trial-balance")]
     [MustHavePermission(AppAction.View, AppResource.TrialBalance)]
     [OpenApiOperation("Get trial balance report data.", "")]
@@ -82,6 +95,19 @@ public class ReportsController : VersionNeutralApiController
     {
         var result = await _reportService.GetTrialBalanceAsync(filter, cancellationToken);
         return result.ToInformationResponse();
+    }
+
+    [HttpGet("trial-balance/pdf")]
+    [MustHavePermission(AppAction.View, AppResource.TrialBalance)]
+    [OpenApiOperation("Get trial balance report as a vector PDF document.", "")]
+    public async Task<IActionResult> GetTrialBalancePdfAsync(
+        [FromQuery] TrialBalanceFilter filter,
+        CancellationToken cancellationToken)
+    {
+        var pdfBytes = await _reportService.GetTrialBalancePdfAsync(filter, cancellationToken);
+        string fileName = $"TrialBalance_{filter.FromDate:yyyyMMdd}_{filter.ToDate:yyyyMMdd}.pdf";
+        Response.Headers.Append("Content-Disposition", $"inline; filename=\"{fileName}\"");
+        return File(pdfBytes, "application/pdf", fileName);
     }
 
     [HttpGet("stock-ledger")]
