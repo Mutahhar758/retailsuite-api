@@ -1,9 +1,12 @@
 using Microsoft.EntityFrameworkCore;
+using QuestPDF.Fluent;
 using Retailer.Application.Common.Exceptions;
 using Retailer.Application.Common.Persistence;
 using Retailer.Application.Legacy.Reports;
 using Retailer.Domain.Legacy;
 using Retailer.Domain.Common.Enums;
+using Retailer.Infrastructure.Reporting.QuestPdf.Documents;
+using Retailer.Infrastructure.Reporting.QuestPdf.Models;
 
 namespace Retailer.Infrastructure.Legacy.Reports;
 
@@ -164,6 +167,56 @@ internal class ReportService : IReportService
 
         result.AddRange(movementLines);
         return result;
+    }
+
+    public async Task<byte[]> GetAccountStatementPdfAsync(AccountStatementFilter filter, CancellationToken cancellationToken)
+    {
+        var lines = await GetAccountStatementAsync(filter, cancellationToken);
+
+        var companyName = await _companyDetailRepository.GetAll()
+            .AsNoTracking()
+            .Select(x => x.CompanyName)
+            .FirstOrDefaultAsync(cancellationToken) ?? "Retail Suite Enterprise";
+
+        var accountTitle = await _chartOfAccountRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => x.Id == filter.Account)
+            .Select(x => x.Title)
+            .FirstOrDefaultAsync(cancellationToken) ?? filter.Account;
+
+        decimal runningBalance = 0;
+        var items = new List<AccountStatementReportItem>();
+        foreach (var line in lines)
+        {
+            runningBalance += (line.Dr - line.Cr);
+            items.Add(new AccountStatementReportItem
+            {
+                Date = line.VDate,
+                VoucherNo = line.VNo ?? string.Empty,
+                Particular = line.Particular ?? string.Empty,
+                Debit = line.Dr,
+                Credit = line.Cr,
+                Balance = runningBalance
+            });
+        }
+
+        var header = new AccountStatementHeader
+        {
+            CompanyName = companyName,
+            AccountTitle = accountTitle,
+            AccountCode = filter.Account,
+            FromDate = filter.FromDate,
+            ToDate = filter.ToDate,
+            DateBasis = string.Equals(filter.DateBasis, "ClearingDate", StringComparison.OrdinalIgnoreCase) ? "Clearing Date" : "Voucher Date",
+            OpeningBalance = lines.Count > 0 ? (lines[0].Dr - lines[0].Cr) : 0,
+            TotalDebit = items.Sum(x => x.Debit),
+            TotalCredit = items.Sum(x => x.Credit),
+            ClosingBalance = runningBalance,
+            GeneratedAt = DateTime.Now
+        };
+
+        var document = new AccountStatementDocument(header, items);
+        return document.GeneratePdf();
     }
 
     public async Task<List<AccountStatementWithDueLineResponse>> GetAccountStatementWithDueAsync(AccountStatementFilter filter, CancellationToken cancellationToken)

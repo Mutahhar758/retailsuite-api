@@ -25,6 +25,19 @@ public class ReportsController : VersionNeutralApiController
         return result.ToInformationResponse();
     }
 
+    [HttpGet("account-statement/pdf")]
+    [MustHavePermission(AppAction.View, AppResource.AccountStatement)]
+    [OpenApiOperation("Get account statement report as a vector PDF document.", "")]
+    public async Task<IActionResult> GetAccountStatementPdfAsync(
+        [FromQuery] AccountStatementFilter filter,
+        CancellationToken cancellationToken)
+    {
+        var pdfBytes = await _reportService.GetAccountStatementPdfAsync(filter, cancellationToken);
+        string fileName = $"AccountStatement_{filter.Account}_{filter.FromDate:yyyyMMdd}_{filter.ToDate:yyyyMMdd}.pdf";
+        Response.Headers.Append("Content-Disposition", $"inline; filename=\"{fileName}\"");
+        return File(pdfBytes, "application/pdf", fileName);
+    }
+
     [HttpGet("account-statement-with-due")]
     [MustHavePermission(AppAction.View, AppResource.AccountStatementWithDue)]
     [OpenApiOperation("Get account statement with due days report data.", "")]
