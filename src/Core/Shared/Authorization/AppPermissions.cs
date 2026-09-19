@@ -60,6 +60,7 @@ public static class AppResource
     public const string EnvelopeReport = nameof(EnvelopeReport);
     public const string BarcodeReport = nameof(BarcodeReport);
     public const string ShipmentLabelReport = nameof(ShipmentLabelReport);
+    public const string MiscReports = nameof(MiscReports);
 }
 
 public static class AppPermissions
@@ -129,6 +130,9 @@ public static class AppPermissions
         new("Export Customer Balance Recovery", AppAction.Export, AppResource.CustomerBalanceRecovery),
 
         // Desktop Miscellaneous Reports
+        new("View Misc Reports", AppAction.View, AppResource.MiscReports),
+        new("Export Misc Reports", AppAction.Export, AppResource.MiscReports),
+
         new("View Envelope Report", AppAction.View, AppResource.EnvelopeReport),
         new("Export Envelope Report", AppAction.Export, AppResource.EnvelopeReport),
 
@@ -391,7 +395,8 @@ public static class AppPermissions
         p.Resource == AppResource.CustomerBalanceRecovery ||
         p.Resource == AppResource.EnvelopeReport ||
         p.Resource == AppResource.BarcodeReport ||
-        p.Resource == AppResource.ShipmentLabelReport
+        p.Resource == AppResource.ShipmentLabelReport ||
+        p.Resource == AppResource.MiscReports
     ).ToArray());
 
     public static IReadOnlyList<AppPermission> PayrollManager { get; } = new ReadOnlyCollection<AppPermission>(_all.Where(p =>

@@ -114,7 +114,7 @@ public class ReportsController : VersionNeutralApiController
     }
 
     [HttpGet("envelope")]
-    [MustHavePermission(AppAction.View, AppResource.EnvelopeReport)]
+    [MustHavePermission(AppAction.View, AppResource.MiscReports, AppResource.EnvelopeReport)]
     [OpenApiOperation("Get envelope report data.", "")]
     public async Task<HttpResponseDto<List<EnvelopeLineResponse>>> GetEnvelopeAsync(
         [FromQuery] EnvelopeFilter filter,
