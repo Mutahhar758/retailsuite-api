@@ -81,13 +81,7 @@ public class StockLedgerDocument : IDocument
                         .FontSize(7.5f)
                         .FontColor(Colors.Grey.Darken1);
 
-                    if (!string.IsNullOrWhiteSpace(_header.ItemId))
-                    {
-                        metaCol.Item().PaddingTop(2).Text("Code: " + _header.ItemId)
-                            .FontSize(8f)
-                            .SemiBold()
-                            .FontColor(Colors.Grey.Darken2);
-                    }
+
                 });
             });
 
@@ -208,7 +202,7 @@ public class StockLedgerDocument : IDocument
             col.Item().LineHorizontal(0.5f).LineColor(Colors.Grey.Lighten2);
             col.Item().PaddingTop(4).Row(row =>
             {
-                row.RelativeItem().Text("Confidential • Retail Suite Inventory Intelligence")
+                row.RelativeItem().Text("Software powered by Bizgrip Solutions contact 03228258734")
                     .FontSize(7.5f)
                     .FontColor(Colors.Grey.Darken1);
 

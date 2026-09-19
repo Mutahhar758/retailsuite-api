@@ -237,11 +237,9 @@ public class MilkComparisonDocument : IDocument
     {
         container.Row(row =>
         {
-            row.RelativeItem().Text(x =>
-            {
-                x.Span("RetailSuite").SemiBold().FontColor(Colors.Grey.Darken1);
-                x.Span(" • Purchase vs Supply Comparison (Milk)").FontColor(Colors.Grey.Darken1);
-            });
+            row.RelativeItem().Text("Software powered by Bizgrip Solutions contact 03228258734")
+                .FontSize(7.5f)
+                .FontColor(Colors.Grey.Darken1);
 
             row.RelativeItem().AlignRight().Text(x =>
             {

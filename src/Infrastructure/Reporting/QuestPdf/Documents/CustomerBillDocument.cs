@@ -75,11 +75,6 @@ public class CustomerBillDocument : IDocument
                     r.RelativeItem().Text(_header.CustomerTitle).Bold().FontSize(7f);
                 });
 
-                col.Item().Row(r =>
-                {
-                    r.AutoItem().Text("Account: ").FontSize(6.5f);
-                    r.RelativeItem().Text(_header.CustomerAccount).FontSize(6.5f);
-                });
 
                 col.Item().Row(r =>
                 {
@@ -212,7 +207,7 @@ public class CustomerBillDocument : IDocument
                     : "Thank you for your valued business!";
 
                 col.Item().AlignCenter().PaddingTop(2).Text(thankLine).Italic().FontSize(6.5f);
-                col.Item().AlignCenter().PaddingTop(1).Text("Software Powered by Retail Suite").FontSize(5.5f).FontColor(Colors.Grey.Darken1);
+                col.Item().AlignCenter().PaddingTop(1).Text("Software powered by Bizgrip Solutions contact 03228258734").FontSize(5.5f).FontColor(Colors.Grey.Darken1);
             });
         });
     }
@@ -299,11 +294,8 @@ public class CustomerBillDocument : IDocument
                             .Bold()
                             .FontColor(Colors.Grey.Darken1);
 
-                        infoCol.Item().PaddingTop(2).Text(x =>
-                        {
-                            x.Span(_header.CustomerTitle).FontSize(11f).Bold().FontColor(Colors.Grey.Darken4);
-                            x.Span($" ({_header.CustomerAccount})").FontSize(9f).FontColor(Colors.Grey.Darken1);
-                        });
+                        infoCol.Item().PaddingTop(2).Text(_header.CustomerTitle)
+                            .FontSize(11f).Bold().FontColor(Colors.Grey.Darken4);
 
                         if (!string.IsNullOrWhiteSpace(_header.CustomerAddress))
                         {
@@ -526,7 +518,7 @@ public class CustomerBillDocument : IDocument
             col.Item().LineHorizontal(0.5f).LineColor(Colors.Grey.Lighten2);
             col.Item().PaddingTop(4).Row(row =>
             {
-                row.RelativeItem().Text("Commercial Customer Bill • Generated electronically by Retail Suite")
+                row.RelativeItem().Text("Software powered by Bizgrip Solutions contact 03228258734")
                     .FontSize(7.5f)
                     .FontColor(Colors.Grey.Darken1);
 

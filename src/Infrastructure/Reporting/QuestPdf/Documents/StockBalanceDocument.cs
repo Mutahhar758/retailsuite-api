@@ -240,12 +240,9 @@ public class StockBalanceDocument : IDocument
             col.Item().LineHorizontal(0.5f).LineColor(Colors.Grey.Lighten2);
             col.Item().PaddingTop(4).Row(row =>
             {
-                row.RelativeItem().Text(x =>
-                {
-                    x.Span("Confidential • RetailSuite Inventory Valuation • Computer-Generated Report")
-                        .FontSize(7f)
-                        .FontColor(Colors.Grey.Darken1);
-                });
+                row.RelativeItem().Text("Software powered by Bizgrip Solutions contact 03228258734")
+                    .FontSize(7.5f)
+                    .FontColor(Colors.Grey.Darken1);
 
                 row.RelativeItem().AlignRight().Text(x =>
                 {

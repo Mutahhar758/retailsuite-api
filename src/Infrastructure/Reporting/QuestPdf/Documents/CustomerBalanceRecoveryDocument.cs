@@ -137,7 +137,7 @@ public class CustomerBalanceRecoveryDocument : IDocument
             // Table Header
             table.Header(header =>
             {
-                header.Cell().Element(BlockHeader).Text("Customer Account / Name").SemiBold();
+                header.Cell().Element(BlockHeader).Text("Customer Name").SemiBold();
                 header.Cell().Element(BlockHeader).AlignRight().Text("Prev Bal").SemiBold();
                 header.Cell().Element(BlockHeader).AlignRight().Text("Billing").SemiBold();
                 header.Cell().Element(BlockHeader).AlignRight().Text("Total Due").SemiBold();
@@ -157,14 +157,7 @@ public class CustomerBalanceRecoveryDocument : IDocument
 
                 table.Cell().Element(c => BlockCell(c, isAlt)).Column(custCol =>
                 {
-                    custCol.Item().Text(x =>
-                    {
-                        x.Span(item.CustomerTitle).SemiBold().FontColor(Colors.Grey.Darken4);
-                        if (!string.IsNullOrWhiteSpace(item.CustomerAccountId))
-                        {
-                            x.Span($" ({item.CustomerAccountId})").FontSize(7.5f).FontColor(Colors.Grey.Darken1);
-                        }
-                    });
+                    custCol.Item().Text(item.CustomerTitle).SemiBold().FontColor(Colors.Grey.Darken4);
 
                     if (!string.IsNullOrWhiteSpace(item.Phone) || !string.IsNullOrWhiteSpace(item.Address))
                     {
@@ -263,11 +256,9 @@ public class CustomerBalanceRecoveryDocument : IDocument
     {
         container.Row(row =>
         {
-            row.RelativeItem().Text(x =>
-            {
-                x.Span("RetailSuite").SemiBold().FontColor(Colors.Grey.Darken1);
-                x.Span(" • Customer Balance & Recovery").FontColor(Colors.Grey.Darken1);
-            });
+            row.RelativeItem().Text("Software powered by Bizgrip Solutions contact 03228258734")
+                .FontSize(7.5f)
+                .FontColor(Colors.Grey.Darken1);
 
             row.RelativeItem().AlignRight().Text(x =>
             {
