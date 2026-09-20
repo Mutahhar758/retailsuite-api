@@ -1,7 +1,9 @@
+using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Retailer.Application.Common.Exceptions;
 using Retailer.Application.Common.Interfaces;
 using Retailer.Application.Common.Persistence;
+using Retailer.Application.Legacy.Inventory;
 using Retailer.Application.Legacy.Sales;
 using Retailer.Domain.Legacy;
 using Retailer.Shared.Common.Constants;
@@ -20,6 +22,7 @@ internal class SaleService : ISaleService
     private readonly IRepository<DefaultAccount> _defaultAccountRepository;
     private readonly IRepository<ChartOfAccount> _chartOfAccountRepository;
     private readonly IRepository<ItemDetail> _itemRepository;
+    private readonly IFifoCostingService _fifoCostingService;
     private readonly ICurrentTenant _currentTenant;
 
     public SaleService(
@@ -30,6 +33,7 @@ internal class SaleService : ISaleService
         IRepository<DefaultAccount> defaultAccountRepository,
         IRepository<ChartOfAccount> chartOfAccountRepository,
         IRepository<ItemDetail> itemRepository,
+        IFifoCostingService fifoCostingService,
         ICurrentTenant currentTenant)
     {
         _saleMasterRepository = saleMasterRepository;
@@ -39,6 +43,7 @@ internal class SaleService : ISaleService
         _defaultAccountRepository = defaultAccountRepository;
         _chartOfAccountRepository = chartOfAccountRepository;
         _itemRepository = itemRepository;
+        _fifoCostingService = fifoCostingService;
         _currentTenant = currentTenant;
     }
 
@@ -197,6 +202,18 @@ internal class SaleService : ISaleService
         await UpsertGlEntriesAsync(voucherNo, request, netAmount, cancellationToken);
 
         await _saleMasterRepository.SaveChangesAsync(cancellationToken);
+
+        var createdTxs = await _itemTransactionRepository.GetAll()
+            .Where(x => x.VType == VType && x.VNo == voucherNo)
+            .ToListAsync(cancellationToken);
+
+        foreach (var tx in createdTxs)
+        {
+            await _fifoCostingService.AllocateFifoCostAsync(tx, cancellationToken);
+        }
+
+        await _itemTransactionRepository.SaveChangesAsync(cancellationToken);
+
         return voucherNo;
     }
 
@@ -207,6 +224,14 @@ internal class SaleService : ISaleService
 
         if (master is null)
             throw new NotFoundException($"Sale voucher '{voucherNo}' not found.");
+
+        var oldDate = master.VDate;
+        var oldItemIds = await _itemTransactionRepository.GetAll()
+            .Where(x => x.VType == VType && x.VNo == voucherNo)
+            .Select(x => x.ItemId)
+            .Where(x => !string.IsNullOrEmpty(x))
+            .Distinct()
+            .ToListAsync(cancellationToken);
 
         var isWanda = _currentTenant.HasVariablePackFeature;
         var grossAmount = request.Lines.Sum(x => isWanda
@@ -290,6 +315,15 @@ internal class SaleService : ISaleService
         await UpsertGlEntriesAsync(voucherNo, request, netAmount, cancellationToken);
 
         await _saleMasterRepository.SaveChangesAsync(cancellationToken);
+
+        var earliestDate = request.Date < oldDate ? request.Date : oldDate;
+        var affectedItemIds = oldItemIds.Union(request.Lines.Select(x => x.ItemId)).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct();
+
+        foreach (var affectedItemId in affectedItemIds)
+        {
+            BackgroundJob.Enqueue<IFifoCostingService>(x =>
+                x.RebuildItemFifoAsync(_currentTenant.Id, affectedItemId!, earliestDate, CancellationToken.None));
+        }
     }
 
     public async Task DeleteAsync(string voucherNo, CancellationToken cancellationToken)
@@ -310,10 +344,21 @@ internal class SaleService : ISaleService
             .Where(x => x.VType == VType && x.VNo == voucherNo)
             .ToListAsync(cancellationToken);
 
+        var oldDate = masters.FirstOrDefault()?.VDate ?? DateOnly.FromDateTime(DateTime.Today);
+        var affectedItemIds = itemTransactions.Select(x => x.ItemId).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
         await _saleRepository.DeleteRangeAsync(details, true);
         await _saleMasterRepository.DeleteRangeAsync(masters, true);
         await _glRepository.DeleteRangeAsync(glEntries, true);
         await _itemTransactionRepository.DeleteRangeAsync(itemTransactions, true);
+
+        await _saleMasterRepository.SaveChangesAsync(cancellationToken);
+
+        foreach (var affectedItemId in affectedItemIds)
+        {
+            BackgroundJob.Enqueue<IFifoCostingService>(x =>
+                x.RebuildItemFifoAsync(_currentTenant.Id, affectedItemId!, oldDate, CancellationToken.None));
+        }
     }
 
     public async Task DeleteLineAsync(string voucherNo, int seq, CancellationToken cancellationToken)
@@ -368,7 +413,16 @@ internal class SaleService : ISaleService
             await UpsertGlEntriesAsync(voucherNo, glRequest, netAmount, cancellationToken);
         }
 
+        var affectedItemId = itemTransaction?.ItemId;
+        var affectedDate = master?.VDate ?? DateOnly.FromDateTime(DateTime.Today);
+
         await _saleMasterRepository.SaveChangesAsync(cancellationToken);
+
+        if (!string.IsNullOrEmpty(affectedItemId))
+        {
+            BackgroundJob.Enqueue<IFifoCostingService>(x =>
+                x.RebuildItemFifoAsync(_currentTenant.Id, affectedItemId, affectedDate, CancellationToken.None));
+        }
     }
 
     private async Task UpsertGlEntriesAsync(string voucherNo, SaleCreateRequest request, decimal netAmount, CancellationToken cancellationToken)

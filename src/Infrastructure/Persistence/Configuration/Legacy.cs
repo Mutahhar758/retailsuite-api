@@ -148,7 +148,12 @@ public class ItemTransactionConfig : IEntityTypeConfiguration<ItemTransaction>
     {
         var mtBuilder = builder.IsMultiTenant();
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
+        builder.Property(x => x.CostPrice).HasPrecision(18, 4);
+        builder.Property(x => x.CostAmount).HasPrecision(18, 2);
+        builder.Property(x => x.RemainingQty).HasPrecision(18, 4).HasDefaultValue(0m);
+
         builder.HasIndex(x => new { x.VType, x.VNo, x.Seq }).IsUnique().HasSoftDeleteFilter();
+        builder.HasIndex(x => new { x.ItemId, x.TranType, x.VDate, x.Id });
         mtBuilder.AdjustUniqueIndexes();
 
         builder.HasOne(x => x.Account)
@@ -169,6 +174,31 @@ public class ItemTransactionConfig : IEntityTypeConfiguration<ItemTransaction>
         builder.HasOne(x => x.SecUnit)
             .WithMany()
             .HasForeignKey(x => x.SecUnitId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+public class TransactionFifoMappingConfig : IEntityTypeConfiguration<TransactionFifoMapping>
+{
+    public void Configure(EntityTypeBuilder<TransactionFifoMapping> builder)
+    {
+        var mtBuilder = builder.IsMultiTenant();
+        builder.Property(x => x.Id).ValueGeneratedOnAdd();
+        builder.Property(x => x.QtyConsumed).HasPrecision(18, 4);
+        builder.Property(x => x.CostRate).HasPrecision(18, 4);
+        builder.Property(x => x.CostAmount).HasPrecision(18, 2);
+
+        builder.HasIndex(x => x.OutTransactionId);
+        builder.HasIndex(x => x.InTransactionId);
+
+        builder.HasOne(x => x.OutTransaction)
+            .WithMany(x => x.OutFifoMappings)
+            .HasForeignKey(x => x.OutTransactionId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne(x => x.InTransaction)
+            .WithMany(x => x.InFifoMappings)
+            .HasForeignKey(x => x.InTransactionId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

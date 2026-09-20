@@ -405,6 +405,7 @@ internal class SaleReturnService : ISaleReturnService
                     UnitId = resolvedUnitId,
                     QtyIn = line.Qty,
                     QtyOut = 0,
+                    RemainingQty = line.Qty,
                     Rate = line.Rate,
                     Amount = amount,
                     Counter = counter,
@@ -426,6 +427,7 @@ internal class SaleReturnService : ISaleReturnService
                 tx.UnitId = resolvedUnitId;
                 tx.QtyIn = line.Qty;
                 tx.QtyOut = 0;
+                tx.RemainingQty = line.Qty;
                 tx.Rate = line.Rate;
                 tx.Amount = amount;
                 tx.Counter = counter;

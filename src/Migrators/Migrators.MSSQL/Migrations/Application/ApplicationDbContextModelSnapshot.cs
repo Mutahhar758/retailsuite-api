@@ -1382,6 +1382,16 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasColumnType("decimal(18,2)")
                         .HasColumnName("amount");
 
+                    b.Property<decimal?>("CostAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("cost_amount");
+
+                    b.Property<decimal?>("CostPrice")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
+                        .HasColumnName("cost_price");
+
                     b.Property<string>("Counter")
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("counter");
@@ -1428,6 +1438,13 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasColumnType("decimal(18,2)")
                         .HasColumnName("rate");
 
+                    b.Property<decimal>("RemainingQty")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
+                        .HasDefaultValue(0m)
+                        .HasColumnName("remaining_qty");
+
                     b.Property<decimal?>("SecQtyIn")
                         .HasColumnType("decimal(18,2)")
                         .HasColumnName("sec_qty_in");
@@ -1450,7 +1467,7 @@ namespace Migrators.MSSQL.Migrations.Application
 
                     b.Property<string>("TranType")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("tran_type");
 
                     b.Property<string>("UnitId")
@@ -1489,6 +1506,9 @@ namespace Migrators.MSSQL.Migrations.Application
 
                     b.HasIndex("UnitId", "TenantId")
                         .HasDatabaseName("ix_item_transaction_unit_id_tenant_id");
+
+                    b.HasIndex("ItemId", "TranType", "VDate", "Id")
+                        .HasDatabaseName("ix_item_transaction_item_id_tran_type_v_date_id");
 
                     b.HasIndex("VType", "VNo", "Seq", "TenantId")
                         .IsUnique()
@@ -3549,6 +3569,88 @@ namespace Migrators.MSSQL.Migrations.Application
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
 
+            modelBuilder.Entity("Retailer.Domain.Legacy.TransactionFifoMapping", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("TenantId")
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<decimal>("CostAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("cost_amount");
+
+                    b.Property<decimal>("CostRate")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
+                        .HasColumnName("cost_rate");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_on");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("deleted_on");
+
+                    b.Property<int>("InTransactionId")
+                        .HasColumnType("int")
+                        .HasColumnName("in_transaction_id");
+
+                    b.Property<string>("LastModifiedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("last_modified_by");
+
+                    b.Property<DateTime?>("LastModifiedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("last_modified_on");
+
+                    b.Property<int>("OutTransactionId")
+                        .HasColumnType("int")
+                        .HasColumnName("out_transaction_id");
+
+                    b.Property<decimal>("QtyConsumed")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
+                        .HasColumnName("qty_consumed");
+
+                    b.HasKey("Id", "TenantId")
+                        .HasName("ak_transaction_fifo_mapping_id_tenant_id");
+
+                    b.HasIndex("InTransactionId")
+                        .HasDatabaseName("ix_transaction_fifo_mapping_in_transaction_id");
+
+                    b.HasIndex("OutTransactionId")
+                        .HasDatabaseName("ix_transaction_fifo_mapping_out_transaction_id");
+
+                    b.HasIndex("InTransactionId", "TenantId")
+                        .HasDatabaseName("ix_transaction_fifo_mapping_in_transaction_id_tenant_id");
+
+                    b.HasIndex("OutTransactionId", "TenantId")
+                        .HasDatabaseName("ix_transaction_fifo_mapping_out_transaction_id_tenant_id");
+
+                    b.ToTable("transaction_fifo_mapping", (string)null);
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
             modelBuilder.Entity("Retailer.Domain.Legacy.Unit", b =>
                 {
                     b.Property<string>("Id")
@@ -4363,6 +4465,27 @@ namespace Migrators.MSSQL.Migrations.Application
                     b.Navigation("SupplyOrderMaster");
                 });
 
+            modelBuilder.Entity("Retailer.Domain.Legacy.TransactionFifoMapping", b =>
+                {
+                    b.HasOne("Retailer.Domain.Legacy.ItemTransaction", "InTransaction")
+                        .WithMany("InFifoMappings")
+                        .HasForeignKey("InTransactionId", "TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_transaction_fifo_mapping_item_transaction_in_transaction_id_tenant_id");
+
+                    b.HasOne("Retailer.Domain.Legacy.ItemTransaction", "OutTransaction")
+                        .WithMany("OutFifoMappings")
+                        .HasForeignKey("OutTransactionId", "TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_transaction_fifo_mapping_item_transaction_out_transaction_id_tenant_id");
+
+                    b.Navigation("InTransaction");
+
+                    b.Navigation("OutTransaction");
+                });
+
             modelBuilder.Entity("Retailer.Domain.Identity.ApplicationUser", b =>
                 {
                     b.Navigation("UserSessions");
@@ -4371,6 +4494,13 @@ namespace Migrators.MSSQL.Migrations.Application
             modelBuilder.Entity("Retailer.Domain.Legacy.ChartOfAccount", b =>
                 {
                     b.Navigation("ChildAccounts");
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Legacy.ItemTransaction", b =>
+                {
+                    b.Navigation("InFifoMappings");
+
+                    b.Navigation("OutFifoMappings");
                 });
 
             modelBuilder.Entity("Retailer.Domain.Legacy.KotOrder", b =>

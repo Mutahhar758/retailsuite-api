@@ -327,6 +327,7 @@ internal class StockAdjustmentService : IStockAdjustmentService
                     UnitId = resolvedUnitId,
                     QtyIn = line.QtyIn,
                     QtyOut = line.QtyOut,
+                    RemainingQty = line.QtyIn > 0 ? line.QtyIn : 0,
                     Rate = line.Rate,
                     Amount = amount,
                     Counter = counter,

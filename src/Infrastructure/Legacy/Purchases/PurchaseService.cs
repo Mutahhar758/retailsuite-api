@@ -1,7 +1,9 @@
+using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Retailer.Application.Common.Exceptions;
 using Retailer.Application.Common.Interfaces;
 using Retailer.Application.Common.Persistence;
+using Retailer.Application.Legacy.Inventory;
 using Retailer.Application.Legacy.Purchases;
 using Retailer.Domain.Legacy;
 using Retailer.Shared.Common.Constants;
@@ -191,6 +193,13 @@ internal class PurchaseService : IPurchaseService
         await UpsertGlEntriesAsync(voucherNo, request, totalAmount, cancellationToken);
 
         await _purchaseMasterRepository.SaveChangesAsync(cancellationToken);
+
+        foreach (var line in request.Lines.Where(l => !string.IsNullOrWhiteSpace(l.ItemId)).DistinctBy(l => l.ItemId))
+        {
+            BackgroundJob.Enqueue<IFifoCostingService>(x =>
+                x.RebuildItemFifoAsync(_currentTenant.Id, line.ItemId, request.Date, CancellationToken.None));
+        }
+
         return voucherNo;
     }
 
@@ -201,6 +210,14 @@ internal class PurchaseService : IPurchaseService
 
         if (master is null)
             throw new NotFoundException($"Purchase voucher '{voucherNo}' not found.");
+
+        var oldDate = master.VDate;
+        var oldItemIds = await _itemTransactionRepository.GetAll()
+            .Where(x => x.VType == VType && x.VNo == voucherNo)
+            .Select(x => x.ItemId)
+            .Where(x => !string.IsNullOrEmpty(x))
+            .Distinct()
+            .ToListAsync(cancellationToken);
 
         var isWanda = _currentTenant.HasVariablePackFeature;
         var totalAmount = request.Lines.Sum(x => isWanda
@@ -278,6 +295,15 @@ internal class PurchaseService : IPurchaseService
         await UpsertGlEntriesAsync(voucherNo, request, totalAmount, cancellationToken);
 
         await _purchaseMasterRepository.SaveChangesAsync(cancellationToken);
+
+        var earliestDate = request.Date < oldDate ? request.Date : oldDate;
+        var affectedItemIds = oldItemIds.Union(request.Lines.Select(x => x.ItemId)).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct();
+
+        foreach (var affectedItemId in affectedItemIds)
+        {
+            BackgroundJob.Enqueue<IFifoCostingService>(x =>
+                x.RebuildItemFifoAsync(_currentTenant.Id, affectedItemId!, earliestDate, CancellationToken.None));
+        }
     }
 
     public async Task DeleteAsync(string voucherNo, CancellationToken cancellationToken)
@@ -298,10 +324,21 @@ internal class PurchaseService : IPurchaseService
             .Where(x => x.VType == VType && x.VNo == voucherNo)
             .ToListAsync(cancellationToken);
 
+        var oldDate = masters.FirstOrDefault()?.VDate ?? DateOnly.FromDateTime(DateTime.Today);
+        var affectedItemIds = itemTransactions.Select(x => x.ItemId).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
         await _purchaseDetailRepository.DeleteRangeAsync(details, true);
         await _purchaseMasterRepository.DeleteRangeAsync(masters, true);
         await _glRepository.DeleteRangeAsync(glEntries, true);
         await _itemTransactionRepository.DeleteRangeAsync(itemTransactions, true);
+
+        await _purchaseMasterRepository.SaveChangesAsync(cancellationToken);
+
+        foreach (var affectedItemId in affectedItemIds)
+        {
+            BackgroundJob.Enqueue<IFifoCostingService>(x =>
+                x.RebuildItemFifoAsync(_currentTenant.Id, affectedItemId!, oldDate, CancellationToken.None));
+        }
     }
 
     public async Task DeleteLineAsync(string voucherNo, int seq, CancellationToken cancellationToken)
@@ -343,7 +380,16 @@ internal class PurchaseService : IPurchaseService
             await UpsertGlEntriesAsync(voucherNo, glRequest, amount, cancellationToken);
         }
 
+        var affectedItemId = itemTransaction?.ItemId;
+        var affectedDate = master?.VDate ?? DateOnly.FromDateTime(DateTime.Today);
+
         await _purchaseMasterRepository.SaveChangesAsync(cancellationToken);
+
+        if (!string.IsNullOrEmpty(affectedItemId))
+        {
+            BackgroundJob.Enqueue<IFifoCostingService>(x =>
+                x.RebuildItemFifoAsync(_currentTenant.Id, affectedItemId, affectedDate, CancellationToken.None));
+        }
     }
 
     private async Task UpsertItemTransactionsAsync(
@@ -381,6 +427,7 @@ internal class PurchaseService : IPurchaseService
                     UnitId = resolvedUnitId,
                     QtyIn = line.Qty,
                     QtyOut = 0,
+                    RemainingQty = line.Qty,
                     Rate = line.Rate,
                     Amount = amount,
                     Counter = counter,
@@ -402,6 +449,7 @@ internal class PurchaseService : IPurchaseService
                 tx.UnitId = resolvedUnitId;
                 tx.QtyIn = line.Qty;
                 tx.QtyOut = 0;
+                tx.RemainingQty = line.Qty;
                 tx.Rate = line.Rate;
                 tx.Amount = amount;
                 tx.Counter = counter;

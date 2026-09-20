@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using Retailer.Infrastructure.Auth;
 using Retailer.Infrastructure.Auth.InternalServiceAuthorization;
+using Retailer.Infrastructure.BackgroundJobs;
 using Retailer.Infrastructure.Caching;
 using Retailer.Infrastructure.Common;
 using Retailer.Infrastructure.Cors;
@@ -51,6 +52,7 @@ public static class Startup
             .AddPersistence()
             .AddRouting(options => options.LowercaseUrls = true)
             .AddServices()
+            .AddBackgroundJobs(config)
             .AddMailing(config)
             .AddInternalServicesKey(config)
             .AddExternalLinks(config);
@@ -93,6 +95,7 @@ public static class Startup
             .UseCurrentUser()
             .UseAuthorization()
             .UseEfTransaction()
+            .UseBackgroundJobs()
             .UseOpenApiDocumentation(config);
 
     public static IEndpointRouteBuilder MapEndpoints(this IEndpointRouteBuilder builder)

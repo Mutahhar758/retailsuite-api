@@ -24,8 +24,15 @@ public class ItemTransaction : AuditableEntity, IAggregateRoot
     public decimal? SecQtyOut { get; set; }
     public decimal? SecRate { get; set; }
 
+    public decimal? CostPrice { get; set; }
+    public decimal? CostAmount { get; set; }
+    public decimal RemainingQty { get; set; }
+
     public ChartOfAccount? Account { get; set; }
     public ItemDetail? Item { get; set; }
     public Unit? Unit { get; set; }
     public Unit? SecUnit { get; set; }
+
+    public ICollection<TransactionFifoMapping> OutFifoMappings { get; set; } = new List<TransactionFifoMapping>();
+    public ICollection<TransactionFifoMapping> InFifoMappings { get; set; } = new List<TransactionFifoMapping>();
 }

@@ -284,6 +284,7 @@ internal class InventoryService : IInventoryService
             UnitId = unit,
             QtyIn = qty,
             QtyOut = 0,
+            RemainingQty = qty,
             Rate = rate,
             Amount = qty * rate,
             Counter = "001"
@@ -312,6 +313,7 @@ internal class InventoryService : IInventoryService
             tx.UnitId = unit;
             tx.QtyIn = qty;
             tx.QtyOut = 0;
+            tx.RemainingQty = qty;
             tx.Rate = rate;
             tx.Amount = qty * rate;
 
