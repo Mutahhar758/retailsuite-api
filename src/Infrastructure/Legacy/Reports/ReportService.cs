@@ -1414,6 +1414,125 @@ internal class ReportService : IReportService
         return document.GeneratePdf();
     }
 
+    public async Task<byte[]> GetCustomerBillBatchPdfAsync(CustomerBillBatchFilter filter, CancellationToken cancellationToken)
+    {
+        if (filter.Accounts == null || filter.Accounts.Count == 0)
+            throw new BadRequestException("At least one customer account is required for batch generation.");
+
+        if (filter.ToDate < filter.FromDate)
+            throw new BadRequestException("To date must be greater than or equal to from date.");
+
+        var company = await _companyDetailRepository.GetAll()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var accountIds = filter.Accounts
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var customerMap = await (from c in _chartOfAccountRepository.GetAll().AsNoTracking()
+                                 join cd in _customerDetailRepository.GetAll().AsNoTracking() on c.Id equals cd.Id into cdj
+                                 from cd in cdj.DefaultIfEmpty()
+                                 where accountIds.Contains(c.Id)
+                                 select new
+                                 {
+                                     c.Id,
+                                     Title = c.Title,
+                                     Phone = cd != null ? (cd.Phone1 ?? cd.SmsNumber) : null,
+                                     Address = cd != null ? cd.Address : null
+                                 }).ToDictionaryAsync(x => x.Id, x => x, cancellationToken);
+
+        var settings = await _settingRepository.GetAll()
+            .AsNoTracking()
+            .Where(s => s.Key.StartsWith("Bill."))
+            .ToDictionaryAsync(s => s.Key, s => s.Value, cancellationToken);
+
+        bool qrEnabled = filter.QrEnabled ?? (settings.TryGetValue("Bill.QrPayment.Enabled", out var qe) && string.Equals(qe, "true", StringComparison.OrdinalIgnoreCase));
+        string qrTitle = !string.IsNullOrWhiteSpace(filter.QrAccountTitle) ? filter.QrAccountTitle : (settings.TryGetValue("Bill.QrPayment.AccountTitle", out var qt) ? (qt ?? string.Empty) : string.Empty);
+        string qrAcc = !string.IsNullOrWhiteSpace(filter.QrAccountNumber) ? filter.QrAccountNumber : (settings.TryGetValue("Bill.QrPayment.AccountNumber", out var qa) ? (qa ?? string.Empty) : string.Empty);
+        string qrBank = !string.IsNullOrWhiteSpace(filter.QrBankName) ? filter.QrBankName : (settings.TryGetValue("Bill.QrPayment.BankName", out var qb) ? (qb ?? string.Empty) : string.Empty);
+        string thankYou = !string.IsNullOrWhiteSpace(filter.ThankyouLine) ? filter.ThankyouLine : (settings.TryGetValue("Bill.ThankYouMessage", out var ty) ? (ty ?? "Thank you for shopping with us!") : "Thank you for shopping with us!");
+
+        var layout = string.Equals(filter.Layout, "Thermal", StringComparison.OrdinalIgnoreCase)
+            ? CustomerBillPrintLayout.Thermal80mm
+            : CustomerBillPrintLayout.A4Sheet;
+
+        var batchList = new List<(CustomerBillHeader Header, List<CustomerBillLineResponse> Lines)>();
+
+        foreach (var accountId in accountIds)
+        {
+            try
+            {
+                var billFilter = new CustomerBillFilter
+                {
+                    Account = accountId,
+                    FromDate = filter.FromDate,
+                    ToDate = filter.ToDate,
+                    DateBasis = filter.DateBasis,
+                    Layout = filter.Layout,
+                    QrEnabled = qrEnabled,
+                    QrAccountTitle = qrTitle,
+                    QrAccountNumber = qrAcc,
+                    QrBankName = qrBank,
+                    ThankyouLine = thankYou
+                };
+
+                var billResponse = await GetCustomerBillAsync(billFilter, cancellationToken);
+
+                // If OnlyWithActivity is enabled, skip accounts with zero lines and zero balances
+                if (filter.OnlyWithActivity)
+                {
+                    bool hasTransactions = billResponse.Lines.Count > 0;
+                    bool hasBalance = Math.Abs(billResponse.Summary.Balance) > 0.01m || Math.Abs(billResponse.Summary.PreviousBalance) > 0.01m;
+                    if (!hasTransactions && !hasBalance)
+                    {
+                        continue;
+                    }
+                }
+
+                customerMap.TryGetValue(accountId, out var custInfo);
+
+                var header = new CustomerBillHeader
+                {
+                    CompanyName = company?.CompanyName ?? "Retail Suite Enterprise",
+                    CompanyAddress = company?.Address,
+                    CompanyPhone = company?.Phone,
+                    CustomerAccount = accountId,
+                    CustomerTitle = custInfo?.Title ?? accountId,
+                    CustomerPhone = custInfo?.Phone,
+                    CustomerAddress = custInfo?.Address,
+                    FromDate = filter.FromDate,
+                    ToDate = filter.ToDate,
+                    DateBasis = filter.DateBasis == "VoucherDate" ? "Voucher Date" : "Clearing Date",
+                    GeneratedAt = DateTime.Now,
+                    PreviousBalance = billResponse.Summary.PreviousBalance,
+                    TotalBilling = billResponse.Lines.Sum(x => x.Amount),
+                    Payment = billResponse.Summary.Payment,
+                    ClosingBalance = billResponse.Summary.Balance,
+                    Layout = layout,
+                    ThankyouLine = thankYou,
+                    QrPayment = new QrPaymentInfo
+                    {
+                        IsEnabled = qrEnabled,
+                        AccountTitle = qrTitle,
+                        AccountNumber = qrAcc,
+                        BankName = qrBank
+                    }
+                };
+
+                batchList.Add((header, billResponse.Lines));
+            }
+            catch
+            {
+                // Skip customer on query failure
+            }
+        }
+
+        var batchDoc = new CustomerBillBatchDocument(batchList);
+        return batchDoc.GeneratePdf();
+    }
+
     public async Task<List<EnvelopeLineResponse>> GetEnvelopeAsync(EnvelopeFilter filter, CancellationToken cancellationToken)
     {
         var accountIds = (filter.Accounts ?? string.Empty)

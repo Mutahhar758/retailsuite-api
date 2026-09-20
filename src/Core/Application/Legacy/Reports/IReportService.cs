@@ -20,6 +20,7 @@ public interface IReportService : ITransientService
     Task<byte[]> GetIncomeSummaryPdfAsync(IncomeSummaryFilter filter, CancellationToken cancellationToken);
     Task<CustomerBillResponse> GetCustomerBillAsync(CustomerBillFilter filter, CancellationToken cancellationToken);
     Task<byte[]> GetCustomerBillPdfAsync(CustomerBillFilter filter, CancellationToken cancellationToken);
+    Task<byte[]> GetCustomerBillBatchPdfAsync(CustomerBillBatchFilter filter, CancellationToken cancellationToken);
     Task<List<EnvelopeLineResponse>> GetEnvelopeAsync(EnvelopeFilter filter, CancellationToken cancellationToken);
     Task<SaleBillResponse> GetSaleBillAsync(SaleBillFilter filter, CancellationToken cancellationToken);
     Task<PurchaseBillResponse> GetPurchaseBillAsync(PurchaseBillFilter filter, CancellationToken cancellationToken);

@@ -230,6 +230,19 @@ public class ReportsController : VersionNeutralApiController
         return File(pdfBytes, "application/pdf", fileName);
     }
 
+    [HttpPost("customer-bill/batch/pdf")]
+    [MustHavePermission(AppAction.View, AppResource.CustomerBill)]
+    [OpenApiOperation("Get batch/bulk customer bills compiled into a single vector PDF document.", "")]
+    public async Task<IActionResult> GetCustomerBillBatchPdfAsync(
+        [FromBody] CustomerBillBatchFilter filter,
+        CancellationToken cancellationToken)
+    {
+        var pdfBytes = await _reportService.GetCustomerBillBatchPdfAsync(filter, cancellationToken);
+        string fileName = $"CustomerBillBatch_{filter.FromDate:yyyyMMdd}_{filter.ToDate:yyyyMMdd}.pdf";
+        Response.Headers.Append("Content-Disposition", $"inline; filename=\"{fileName}\"");
+        return File(pdfBytes, "application/pdf", fileName);
+    }
+
     [HttpGet("envelope")]
     [MustHavePermission(AppAction.View, AppResource.MiscReports, AppResource.EnvelopeReport)]
     [OpenApiOperation("Get envelope report data.", "")]
