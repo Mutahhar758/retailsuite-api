@@ -112,9 +112,16 @@ public class FifoCostingService : IFifoCostingService
 
         using var scope = _serviceProvider.CreateScope();
 
+        if (string.IsNullOrWhiteSpace(tenantId))
+        {
+            _logger.LogWarning("TenantId is null or empty. Aborting FIFO rebuild for Item {ItemId}.", itemId);
+            return;
+        }
+
         // 1. Establish tenant context inside background worker
         var tenantDbContext = scope.ServiceProvider.GetRequiredService<TenantDbContext>();
-        var tenantInfo = await tenantDbContext.TenantInfo.FirstOrDefaultAsync(t => t.Id == tenantId, cancellationToken);
+        var tenantInfo = await tenantDbContext.TenantInfo.FirstOrDefaultAsync(
+            t => t.Id == tenantId || t.Identifier == tenantId, cancellationToken);
         if (tenantInfo is null)
         {
             _logger.LogWarning("Tenant {TenantId} not found. Aborting FIFO rebuild.", tenantId);
@@ -186,16 +193,18 @@ public class FifoCostingService : IFifoCostingService
             await dbContext.SaveChangesAsync(cancellationToken);
 
             // 5. Chronological sequential replay of all transactions from fromDate forward
+            // Purchases ('in') ordered before sales ('out') on the same timestamp
             var replayTransactions = await txRepo.GetAll()
                 .Where(x => x.ItemId == itemId && x.VDate >= fromDate)
                 .OrderBy(x => x.VDate)
                 .ThenBy(x => x.VTime)
+                .ThenBy(x => x.TranType == "in" ? 0 : 1)
                 .ThenBy(x => x.Id)
                 .ToListAsync(cancellationToken);
 
-            // Fetch available batches (including pre-fromDate batches that still have RemainingQty > 0)
+            // Fetch surviving available batches received strictly before fromDate
             var activePool = await txRepo.GetAll()
-                .Where(x => x.ItemId == itemId && x.TranType == "in" && x.RemainingQty > 0)
+                .Where(x => x.ItemId == itemId && x.TranType == "in" && x.VDate < fromDate && x.RemainingQty > 0)
                 .OrderBy(x => x.VDate)
                 .ThenBy(x => x.VTime)
                 .ThenBy(x => x.Id)
@@ -205,11 +214,15 @@ public class FifoCostingService : IFifoCostingService
             {
                 if (tx.TranType == "in")
                 {
-                    // If it's not already in the active pool, add it
+                    // As we step forward in time, incoming batches become available
                     if (!activePool.Any(b => b.Id == tx.Id))
                     {
                         activePool.Add(tx);
-                        activePool = activePool.OrderBy(x => x.VDate).ThenBy(x => x.VTime).ThenBy(x => x.Id).ToList();
+                        activePool = activePool
+                            .OrderBy(x => x.VDate)
+                            .ThenBy(x => x.VTime)
+                            .ThenBy(x => x.Id)
+                            .ToList();
                     }
                 }
                 else if (tx.TranType == "out" && tx.QtyOut > 0)
@@ -217,7 +230,12 @@ public class FifoCostingService : IFifoCostingService
                     decimal neededQty = tx.QtyOut;
                     decimal totalCost = 0m;
 
-                    foreach (var batch in activePool.Where(b => b.RemainingQty > 0).ToList())
+                    // Only consume from batches received on or before this sale date/time
+                    var eligibleBatches = activePool
+                        .Where(b => b.RemainingQty > 0 && (b.VDate < tx.VDate || (b.VDate == tx.VDate && b.VTime <= tx.VTime)))
+                        .ToList();
+
+                    foreach (var batch in eligibleBatches)
                     {
                         if (neededQty <= 0)
                         {
