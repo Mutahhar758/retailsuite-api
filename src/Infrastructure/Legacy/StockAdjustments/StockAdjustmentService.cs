@@ -96,7 +96,7 @@ internal class StockAdjustmentService : IStockAdjustmentService
                 ItemCategoryCode = d.CategoryId!,
                 ItemId = d.ItemId!,
                 ItemKey = i != null ? i.ItemKey : null,
-                Unit = d.SecUnitId,
+                Unit = i != null ? (i.DefaultUnitId ?? i.PrimaryUnitId) : null,
                 QtyIn = d.QtyIn,
                 QtyOut = d.QtyOut,
                 Rate = d.Rate,
@@ -138,8 +138,17 @@ internal class StockAdjustmentService : IStockAdjustmentService
 
         await _stockAdjMasterRepository.AddAsync(master, false);
 
+        var itemIds = request.Lines.Select(x => x.ItemId).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().ToList();
+        var itemMap = await _itemRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => itemIds.Contains(x.Id))
+            .ToDictionaryAsync(x => x.Id, cancellationToken);
+
         foreach (var line in request.Lines)
         {
+            var item = itemMap.GetValueOrDefault(line.ItemId);
+            var resolvedSecUnitId = !string.IsNullOrWhiteSpace(line.SecUnit) ? line.SecUnit : item?.SecondaryUnitId;
+
             await _stockAdjDetailRepository.AddAsync(new StockAdjDetail
             {
                 VType = VType,
@@ -150,7 +159,7 @@ internal class StockAdjustmentService : IStockAdjustmentService
                 QtyIn = line.QtyIn,
                 QtyOut = line.QtyOut,
                 Rate = line.Rate,
-                SecUnitId = string.IsNullOrWhiteSpace(line.SecUnit) ? null : line.SecUnit,
+                SecUnitId = resolvedSecUnitId,
                 SecQtyIn = line.SecQtyIn,
                 SecQtyOut = line.SecQtyOut,
                 SecRate = line.SecRate,
@@ -159,7 +168,7 @@ internal class StockAdjustmentService : IStockAdjustmentService
             }, false);
         }
 
-        await UpsertItemTransactionsAsync(voucherNo, request.Date, request.Lines, "001", cancellationToken);
+        await UpsertItemTransactionsAsync(voucherNo, request.Date, request.Lines, "001", itemMap, cancellationToken);
         await _stockAdjMasterRepository.SaveChangesAsync(cancellationToken);
         return voucherNo;
     }
@@ -179,8 +188,17 @@ internal class StockAdjustmentService : IStockAdjustmentService
 
         await _stockAdjMasterRepository.UpdateAsync(master, false);
 
+        var itemIds = request.Lines.Select(x => x.ItemId).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().ToList();
+        var itemMap = await _itemRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => itemIds.Contains(x.Id))
+            .ToDictionaryAsync(x => x.Id, cancellationToken);
+
         foreach (var line in request.Lines)
         {
+            var item = itemMap.GetValueOrDefault(line.ItemId);
+            var resolvedSecUnitId = !string.IsNullOrWhiteSpace(line.SecUnit) ? line.SecUnit : item?.SecondaryUnitId;
+
             var existing = await _stockAdjDetailRepository.GetAll()
                 .IgnoreQueryFilters([GlobalQueryFilterConstants.SoftDelete])
                 .FirstOrDefaultAsync(
@@ -199,7 +217,7 @@ internal class StockAdjustmentService : IStockAdjustmentService
                     QtyIn = line.QtyIn,
                     QtyOut = line.QtyOut,
                     Rate = line.Rate,
-                    SecUnitId = string.IsNullOrWhiteSpace(line.SecUnit) ? null : line.SecUnit,
+                    SecUnitId = resolvedSecUnitId,
                     SecQtyIn = line.SecQtyIn,
                     SecQtyOut = line.SecQtyOut,
                     SecRate = line.SecRate,
@@ -216,7 +234,7 @@ internal class StockAdjustmentService : IStockAdjustmentService
                 existing.QtyIn = line.QtyIn;
                 existing.QtyOut = line.QtyOut;
                 existing.Rate = line.Rate;
-                existing.SecUnitId = string.IsNullOrWhiteSpace(line.SecUnit) ? null : line.SecUnit;
+                existing.SecUnitId = resolvedSecUnitId;
                 existing.SecQtyIn = line.SecQtyIn;
                 existing.SecQtyOut = line.SecQtyOut;
                 existing.SecRate = line.SecRate;
@@ -235,7 +253,7 @@ internal class StockAdjustmentService : IStockAdjustmentService
         if (staleDetails.Count > 0)
             await _stockAdjDetailRepository.DeleteRangeAsync(staleDetails, false);
 
-        await UpsertItemTransactionsAsync(voucherNo, request.Date, request.Lines, master.Terminal, cancellationToken);
+        await UpsertItemTransactionsAsync(voucherNo, request.Date, request.Lines, master.Terminal, itemMap, cancellationToken);
         await _stockAdjMasterRepository.SaveChangesAsync(cancellationToken);
     }
 
@@ -278,10 +296,15 @@ internal class StockAdjustmentService : IStockAdjustmentService
         DateOnly date,
         List<StockAdjustmentLineRequest> lines,
         string? counter,
+        Dictionary<string, ItemDetail> itemMap,
         CancellationToken cancellationToken)
     {
         foreach (var line in lines)
         {
+            var item = itemMap.GetValueOrDefault(line.ItemId);
+            var resolvedUnitId = item?.DefaultUnitId ?? item?.PrimaryUnitId;
+            var resolvedSecUnitId = !string.IsNullOrWhiteSpace(line.SecUnit) ? line.SecUnit : item?.SecondaryUnitId;
+
             var netQty = line.QtyIn - line.QtyOut;
             var amount = (netQty * line.Rate) + (((line.SecQtyIn ?? 0) - (line.SecQtyOut ?? 0)) * (line.SecRate ?? 0));
             var tranType = (netQty + ((line.SecQtyIn ?? 0) - (line.SecQtyOut ?? 0))) >= 0 ? "in" : "out";
@@ -301,13 +324,13 @@ internal class StockAdjustmentService : IStockAdjustmentService
                     TranType = tranType,
                     AccountId = null,
                     ItemId = line.ItemId,
-                    UnitId = string.IsNullOrWhiteSpace(line.Unit) ? null : line.Unit,
+                    UnitId = resolvedUnitId,
                     QtyIn = line.QtyIn,
                     QtyOut = line.QtyOut,
                     Rate = line.Rate,
                     Amount = amount,
                     Counter = counter,
-                    SecUnitId = string.IsNullOrWhiteSpace(line.SecUnit) ? null : line.SecUnit,
+                    SecUnitId = resolvedSecUnitId,
                     SecQtyIn = line.SecQtyIn,
                     SecQtyOut = line.SecQtyOut,
                     SecRate = line.SecRate
@@ -322,13 +345,13 @@ internal class StockAdjustmentService : IStockAdjustmentService
                 tx.TranType = tranType;
                 tx.AccountId = null;
                 tx.ItemId = line.ItemId;
-                tx.UnitId = string.IsNullOrWhiteSpace(line.Unit) ? null : line.Unit;
+                tx.UnitId = resolvedUnitId;
                 tx.QtyIn = line.QtyIn;
                 tx.QtyOut = line.QtyOut;
                 tx.Rate = line.Rate;
                 tx.Amount = amount;
                 tx.Counter = counter;
-                tx.SecUnitId = string.IsNullOrWhiteSpace(line.SecUnit) ? null : line.SecUnit;
+                tx.SecUnitId = resolvedSecUnitId;
                 tx.SecQtyIn = line.SecQtyIn;
                 tx.SecQtyOut = line.SecQtyOut;
                 tx.SecRate = line.SecRate;

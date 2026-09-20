@@ -163,19 +163,29 @@ internal class SaleService : ISaleService
 
         await _saleMasterRepository.AddAsync(master, false);
 
+        var itemIds = request.Lines.Select(x => x.ItemId).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().ToList();
+        var itemMap = await _itemRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => itemIds.Contains(x.Id))
+            .ToDictionaryAsync(x => x.Id, cancellationToken);
+
         foreach (var line in request.Lines)
         {
+            var item = itemMap.GetValueOrDefault(line.ItemId);
+            var resolvedUnitId = item?.DefaultUnitId ?? item?.PrimaryUnitId;
+            var resolvedSecUnitId = !string.IsNullOrWhiteSpace(line.SecUnit) ? line.SecUnit : item?.SecondaryUnitId;
+
             await _saleRepository.AddAsync(new Sale
             {
                 VType = VType,
                 VNo = voucherNo,
                 Seq = line.Seq,
                 ItemId = line.ItemId,
-                UnitId = string.IsNullOrWhiteSpace(line.Unit) ? null : line.Unit,
+                UnitId = resolvedUnitId,
                 Qty = line.Qty,
                 GrossRate = line.Rate,
                 Discount = line.Discount,
-                SecUnitId = string.IsNullOrWhiteSpace(line.SecUnit) ? null : line.SecUnit,
+                SecUnitId = resolvedSecUnitId,
                 SecQty = line.SecQty,
                 SecRate = line.SecRate,
                 QtyInPack = line.QtyInPack,
@@ -183,7 +193,7 @@ internal class SaleService : ISaleService
             }, false);
         }
 
-        await UpsertItemTransactionsAsync(voucherNo, request.Date, request.Account, request.Lines, "001", cancellationToken);
+        await UpsertItemTransactionsAsync(voucherNo, request.Date, request.Account, request.Lines, "001", itemMap, cancellationToken);
         await UpsertGlEntriesAsync(voucherNo, request, netAmount, cancellationToken);
 
         await _saleMasterRepository.SaveChangesAsync(cancellationToken);
@@ -220,8 +230,18 @@ internal class SaleService : ISaleService
 
         await _saleMasterRepository.UpdateAsync(master, false);
 
+        var itemIds = request.Lines.Select(x => x.ItemId).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().ToList();
+        var itemMap = await _itemRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => itemIds.Contains(x.Id))
+            .ToDictionaryAsync(x => x.Id, cancellationToken);
+
         foreach (var line in request.Lines)
         {
+            var item = itemMap.GetValueOrDefault(line.ItemId);
+            var resolvedUnitId = item?.DefaultUnitId ?? item?.PrimaryUnitId;
+            var resolvedSecUnitId = !string.IsNullOrWhiteSpace(line.SecUnit) ? line.SecUnit : item?.SecondaryUnitId;
+
             var existing = await _saleRepository.GetAll()
                 .IgnoreQueryFilters([GlobalQueryFilterConstants.SoftDelete])
                 .FirstOrDefaultAsync(
@@ -236,11 +256,11 @@ internal class SaleService : ISaleService
                     VNo = voucherNo,
                     Seq = line.Seq,
                     ItemId = line.ItemId,
-                    UnitId = string.IsNullOrWhiteSpace(line.Unit) ? null : line.Unit,
+                    UnitId = resolvedUnitId,
                     Qty = line.Qty,
                     GrossRate = line.Rate,
                     Discount = line.Discount,
-                    SecUnitId = string.IsNullOrWhiteSpace(line.SecUnit) ? null : line.SecUnit,
+                    SecUnitId = resolvedSecUnitId,
                     SecQty = line.SecQty,
                     SecRate = line.SecRate,
                     QtyInPack = line.QtyInPack,
@@ -252,11 +272,11 @@ internal class SaleService : ISaleService
                 existing.DeletedOn = null;
                 existing.DeletedBy = null;
                 existing.ItemId = line.ItemId;
-                existing.UnitId = string.IsNullOrWhiteSpace(line.Unit) ? null : line.Unit;
+                existing.UnitId = resolvedUnitId;
                 existing.Qty = line.Qty;
                 existing.GrossRate = line.Rate;
                 existing.Discount = line.Discount;
-                existing.SecUnitId = string.IsNullOrWhiteSpace(line.SecUnit) ? null : line.SecUnit;
+                existing.SecUnitId = resolvedSecUnitId;
                 existing.SecQty = line.SecQty;
                 existing.SecRate = line.SecRate;
                 existing.QtyInPack = line.QtyInPack;
@@ -266,7 +286,7 @@ internal class SaleService : ISaleService
             }
         }
 
-        await UpsertItemTransactionsAsync(voucherNo, request.Date, request.Account, request.Lines, master.Counter, cancellationToken);
+        await UpsertItemTransactionsAsync(voucherNo, request.Date, request.Account, request.Lines, master.Counter, itemMap, cancellationToken);
         await UpsertGlEntriesAsync(voucherNo, request, netAmount, cancellationToken);
 
         await _saleMasterRepository.SaveChangesAsync(cancellationToken);
@@ -453,10 +473,15 @@ internal class SaleService : ISaleService
         string accountId,
         List<SaleLineRequest> lines,
         string? counter,
+        Dictionary<string, ItemDetail> itemMap,
         CancellationToken cancellationToken)
     {
         foreach (var line in lines)
         {
+            var item = itemMap.GetValueOrDefault(line.ItemId);
+            var resolvedUnitId = item?.DefaultUnitId ?? item?.PrimaryUnitId;
+            var resolvedSecUnitId = !string.IsNullOrWhiteSpace(line.SecUnit) ? line.SecUnit : item?.SecondaryUnitId;
+
             var amount = (line.Qty * (line.Rate - line.Discount)) + ((line.SecQty ?? 0) * (line.SecRate ?? 0));
             var tx = await _itemTransactionRepository.GetAll()
                 .IgnoreQueryFilters([GlobalQueryFilterConstants.SoftDelete])
@@ -474,13 +499,13 @@ internal class SaleService : ISaleService
                     TranType = "out",
                     AccountId = accountId,
                     ItemId = line.ItemId,
-                    UnitId = string.IsNullOrWhiteSpace(line.Unit) ? null : line.Unit,
+                    UnitId = resolvedUnitId,
                     QtyIn = 0,
                     QtyOut = line.Qty,
                     Rate = line.Rate,
                     Amount = amount,
                     Counter = counter,
-                    SecUnitId = string.IsNullOrWhiteSpace(line.SecUnit) ? null : line.SecUnit,
+                    SecUnitId = resolvedSecUnitId,
                     SecQtyIn = 0,
                     SecQtyOut = line.SecQty,
                     SecRate = line.SecRate
@@ -495,13 +520,13 @@ internal class SaleService : ISaleService
                 tx.TranType = "out";
                 tx.AccountId = accountId;
                 tx.ItemId = line.ItemId;
-                tx.UnitId = string.IsNullOrWhiteSpace(line.Unit) ? null : line.Unit;
+                tx.UnitId = resolvedUnitId;
                 tx.QtyIn = 0;
                 tx.QtyOut = line.Qty;
                 tx.Rate = line.Rate;
                 tx.Amount = amount;
                 tx.Counter = counter;
-                tx.SecUnitId = string.IsNullOrWhiteSpace(line.SecUnit) ? null : line.SecUnit;
+                tx.SecUnitId = resolvedSecUnitId;
                 tx.SecQtyIn = 0;
                 tx.SecQtyOut = line.SecQty;
                 tx.SecRate = line.SecRate;

@@ -1271,7 +1271,7 @@ internal class ReportService : IReportService
                 VNo = sd.VType + "-" + sd.VNo,
                 Item = sd.Item != null ? sd.Item.Title : (sd.ItemId ?? string.Empty),
                 UnitId = sd.UnitId ?? string.Empty,
-                UnitTitle = !string.IsNullOrWhiteSpace(sd.UnitId) && unitMap.ContainsKey(sd.UnitId) ? unitMap[sd.UnitId] : (sd.UnitId ?? string.Empty),
+                UnitTitle = sd.Unit != null ? sd.Unit.Title : (!string.IsNullOrWhiteSpace(sd.UnitId) && unitMap.ContainsKey(sd.UnitId) ? unitMap[sd.UnitId] : (sd.Item != null && sd.Item.DefaultUnit != null ? sd.Item.DefaultUnit.Title : (sd.Item != null && sd.Item.PrimaryUnit != null ? sd.Item.PrimaryUnit.Title : (sd.UnitId ?? string.Empty)))),
                 Qty = sd.Qty,
                 Rate = (sd.GrossRate ?? 0m) - (sd.Discount ?? 0m),
                 AddLess = 0m,
@@ -1279,7 +1279,7 @@ internal class ReportService : IReportService
                 SecQty = sd.SecQty,
                 SecRate = sd.SecRate,
                 QtyInPack = sd.QtyInPack,
-                SecUnitTitle = !string.IsNullOrWhiteSpace(sd.SecUnitId) && unitMap.ContainsKey(sd.SecUnitId) ? unitMap[sd.SecUnitId] : (sd.SecUnitId ?? string.Empty)
+                SecUnitTitle = sd.SecUnit != null ? sd.SecUnit.Title : (!string.IsNullOrWhiteSpace(sd.SecUnitId) && unitMap.ContainsKey(sd.SecUnitId) ? unitMap[sd.SecUnitId] : (sd.Item != null && sd.Item.SecondaryUnit != null ? sd.Item.SecondaryUnit.Title : (sd.SecUnitId ?? string.Empty)))
             }).ToListAsync(cancellationToken);
 
         var supplyLines = await (
@@ -1294,7 +1294,7 @@ internal class ReportService : IReportService
                 VNo = ssd.VType + "-" + ssd.VNo,
                 Item = ssm.Item != null ? ssm.Item.Title : (ssm.ItemId ?? string.Empty),
                 UnitId = ssd.UnitId ?? string.Empty,
-                UnitTitle = ssd.Unit != null ? ssd.Unit.Title : (ssd.UnitId ?? string.Empty),
+                UnitTitle = ssd.Unit != null ? ssd.Unit.Title : (!string.IsNullOrWhiteSpace(ssd.UnitId) && unitMap.ContainsKey(ssd.UnitId) ? unitMap[ssd.UnitId] : (ssm.Item != null && ssm.Item.DefaultUnit != null ? ssm.Item.DefaultUnit.Title : (ssm.Item != null && ssm.Item.PrimaryUnit != null ? ssm.Item.PrimaryUnit.Title : (ssd.UnitId ?? string.Empty)))),
                 Qty = ssd.Qty,
                 Rate = (ssd.GrossRate ?? 0m) - (ssd.Discount ?? 0m),
                 AddLess = ssd.AddLess ?? 0m,
@@ -1302,7 +1302,7 @@ internal class ReportService : IReportService
                 SecQty = ssd.SecQty,
                 SecRate = ssd.SecRate,
                 QtyInPack = ssd.QtyInPack,
-                SecUnitTitle = ssd.SecUnit != null ? ssd.SecUnit.Title : (!string.IsNullOrWhiteSpace(ssd.SecUnitId) && unitMap.ContainsKey(ssd.SecUnitId) ? unitMap[ssd.SecUnitId] : (ssd.SecUnitId ?? string.Empty))
+                SecUnitTitle = ssd.SecUnit != null ? ssd.SecUnit.Title : (!string.IsNullOrWhiteSpace(ssd.SecUnitId) && unitMap.ContainsKey(ssd.SecUnitId) ? unitMap[ssd.SecUnitId] : (ssm.Item != null && ssm.Item.SecondaryUnit != null ? ssm.Item.SecondaryUnit.Title : (ssd.SecUnitId ?? string.Empty)))
             }).ToListAsync(cancellationToken);
 
         var lines = saleLines
@@ -1578,7 +1578,7 @@ internal class ReportService : IReportService
                 ItemName = sd.Item != null ? sd.Item.Title : string.Empty,
                 Qty = sd.Qty,
                 UnitId = sd.UnitId ?? string.Empty,
-                UnitTitle = sd.Unit != null ? sd.Unit.Title : (sd.UnitId ?? string.Empty),
+                UnitTitle = sd.Unit != null ? sd.Unit.Title : (sd.Item != null && sd.Item.DefaultUnit != null ? sd.Item.DefaultUnit.Title : (sd.Item != null && sd.Item.PrimaryUnit != null ? sd.Item.PrimaryUnit.Title : (sd.UnitId ?? string.Empty))),
                 Rate = (sd.GrossRate ?? 0m) - (sd.Discount ?? 0m),
                 GrossRate = sd.GrossRate ?? 0m,
                 Disc = sd.Discount ?? 0m,
@@ -1651,7 +1651,7 @@ internal class ReportService : IReportService
                 Qty = pd.Qty,
                 QtyInPack = pd.QtyInPack ?? 0m,
                 UnitId = pd.UnitId ?? string.Empty,
-                UnitTitle = pd.Unit != null ? pd.Unit.Title : (pd.UnitId ?? string.Empty),
+                UnitTitle = pd.Unit != null ? pd.Unit.Title : (pd.Item != null && pd.Item.DefaultUnit != null ? pd.Item.DefaultUnit.Title : (pd.Item != null && pd.Item.PrimaryUnit != null ? pd.Item.PrimaryUnit.Title : (pd.UnitId ?? string.Empty))),
                 Rate = pd.Rate,
                 TAmount = pd.Qty * pd.Rate
             }).ToListAsync(cancellationToken);
@@ -1706,7 +1706,7 @@ internal class ReportService : IReportService
                 Qty = pd.Qty,
                 QtyInPack = pd.QtyInPack ?? 0m,
                 UnitId = pd.UnitId ?? string.Empty,
-                UnitTitle = pd.Unit != null ? pd.Unit.Title : (pd.UnitId ?? string.Empty),
+                UnitTitle = pd.Unit != null ? pd.Unit.Title : (pd.Item != null && pd.Item.DefaultUnit != null ? pd.Item.DefaultUnit.Title : (pd.Item != null && pd.Item.PrimaryUnit != null ? pd.Item.PrimaryUnit.Title : (pd.UnitId ?? string.Empty))),
                 Rate = pd.Rate,
                 TAmount = pd.Qty * pd.Rate
             }).ToListAsync(cancellationToken);
@@ -1761,7 +1761,7 @@ internal class ReportService : IReportService
                 Qty = sd.Qty,
                 QtyInPack = sd.QtyInPack ?? 0m,
                 UnitId = sd.UnitId ?? string.Empty,
-                UnitTitle = sd.Unit != null ? sd.Unit.Title : (sd.UnitId ?? string.Empty),
+                UnitTitle = sd.Unit != null ? sd.Unit.Title : (sd.Item != null && sd.Item.DefaultUnit != null ? sd.Item.DefaultUnit.Title : (sd.Item != null && sd.Item.PrimaryUnit != null ? sd.Item.PrimaryUnit.Title : (sd.UnitId ?? string.Empty))),
                 Rate = (sd.GrossRate ?? 0m) - (sd.Discount ?? 0m),
                 GrossRate = sd.GrossRate ?? 0m,
                 TAmount = sd.Qty * (sd.GrossRate ?? 0m)
