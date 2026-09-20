@@ -27,7 +27,7 @@ internal class SupplyOrderService : ISupplyOrderService
 
     public async Task<List<SupplyOrderResponse>> GetAsync(CancellationToken cancellationToken)
     {
-        return await _masterRepository.GetAll()
+        var masters = await _masterRepository.GetAll()
             .AsNoTracking()
             .OrderBy(x => x.Id)
             .Select(x => new SupplyOrderResponse
@@ -36,6 +36,45 @@ internal class SupplyOrderService : ISupplyOrderService
                 Title = x.Title
             })
             .ToListAsync(cancellationToken);
+
+        if (masters.Count == 0)
+            return masters;
+
+        var detailsQuery = from d in _detailRepository.GetAll().AsNoTracking()
+                           join c in _customerDetailRepository.GetAll().AsNoTracking()
+                               on d.CustomerAccountId equals c.Id into custDetails
+                           from cd in custDetails.DefaultIfEmpty()
+                           where !string.IsNullOrEmpty(d.CustomerAccountId) && (cd == null || cd.Active != false)
+                           orderby d.SortOrder, d.CustomerAccountId
+                           select new
+                           {
+                               d.SupplyOrderMasterId,
+                               CustomerId = d.CustomerAccountId,
+                               SortOrder = d.SortOrder ?? 0
+                           };
+
+        var allDetails = await detailsQuery.ToListAsync(cancellationToken);
+        var detailsByMaster = allDetails
+            .Where(x => x.SupplyOrderMasterId.HasValue)
+            .GroupBy(x => x.SupplyOrderMasterId!.Value)
+            .ToDictionary(
+                g => g.Key,
+                g => g.Select(d => new SupplyOrderDetailResponse
+                {
+                    CustomerId = d.CustomerId,
+                    SortOrder = d.SortOrder
+                }).ToList()
+            );
+
+        foreach (var master in masters)
+        {
+            if (detailsByMaster.TryGetValue(master.Id, out var details))
+            {
+                master.Details = details;
+            }
+        }
+
+        return masters;
     }
 
     public async Task<SupplyOrderResponse?> GetByIdAsync(int id, CancellationToken cancellationToken)
