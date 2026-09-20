@@ -20,8 +20,9 @@ internal static class Startup
         var isPostgreSql = dbProvider is DbProviderKeys.Npgsql or "postgres" or "npgsql";
         var isSqlServer = dbProvider is DbProviderKeys.SqlServer or "sqlserver" or "mssql";
 
-        var connectionString = isPostgreSql
-            ? multitenancySettings?.DefaultConnectionString ?? dbSettings?.ConnectionString
+        // Hangfire should live centrally in the Root Tenant Registry Database (RetailSuiteMain)
+        var connectionString = !string.IsNullOrWhiteSpace(multitenancySettings?.DefaultConnectionString)
+            ? multitenancySettings.DefaultConnectionString
             : dbSettings?.ConnectionString;
 
         if (string.IsNullOrWhiteSpace(connectionString))
@@ -36,11 +37,13 @@ internal static class Startup
                 .UseSimpleAssemblyNameTypeSerializer()
                 .UseRecommendedSerializerSettings();
 
-            if (isPostgreSql)
+            var isPgConnection = isPostgreSql || connectionString.Contains("Host=", StringComparison.OrdinalIgnoreCase) || connectionString.Contains("Username=", StringComparison.OrdinalIgnoreCase);
+
+            if (isPgConnection)
             {
                 configuration.UsePostgreSqlStorage(c => c.UseNpgsqlConnection(connectionString));
             }
-            else if (isSqlServer)
+            else
             {
                 configuration.UseSqlServerStorage(connectionString);
             }
