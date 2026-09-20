@@ -692,13 +692,13 @@ internal class ReportService : IReportService
             .Select(x => (x.SecQtyIn ?? 0) - (x.SecQtyOut ?? 0))
             .SumAsync(cancellationToken);
 
-        var movement = await _itemTransactionRepository.GetAll()
+        var rawMovements = await _itemTransactionRepository.GetAll()
             .AsNoTracking()
             .Where(x => x.ItemId == filter.FkItem
                 && x.VType != "Op"
                 && x.VDate >= filter.FromDate
                 && x.VDate <= filter.ToDate)
-            .Select(x => new StockLedgerLineResponse
+            .Select(x => new
             {
                 Vdate = x.VDate,
                 Vno = x.VType + "-" + x.VNo,
@@ -706,6 +706,10 @@ internal class ReportService : IReportService
                 QtyIn = x.QtyIn,
                 QtyOut = x.QtyOut,
                 Rate = x.Rate,
+                Amount = x.Amount,
+                TranType = x.TranType,
+                CostPrice = x.CostPrice,
+                CostAmount = x.CostAmount,
                 SecUnit = x.SecUnit != null ? x.SecUnit.Title : x.SecUnitId,
                 SecQtyIn = x.SecQtyIn ?? 0,
                 SecQtyOut = x.SecQtyOut ?? 0
@@ -713,6 +717,41 @@ internal class ReportService : IReportService
             .OrderBy(x => x.Vdate)
             .ThenBy(x => x.Vno)
             .ToListAsync(cancellationToken);
+
+        var movement = rawMovements.Select(x =>
+        {
+            decimal? costPrice = null;
+            decimal? costAmount = null;
+
+            if (filter.ShowCostPrice)
+            {
+                if (x.QtyIn > 0 || x.TranType == "in")
+                {
+                    costPrice = x.Rate;
+                    costAmount = x.Amount != 0 ? x.Amount : (x.QtyIn * x.Rate);
+                }
+                else
+                {
+                    costPrice = x.CostPrice ?? 0m;
+                    costAmount = x.CostAmount ?? ((x.CostPrice ?? 0m) * x.QtyOut);
+                }
+            }
+
+            return new StockLedgerLineResponse
+            {
+                Vdate = x.Vdate,
+                Vno = x.Vno,
+                Particular = x.Particular,
+                QtyIn = x.QtyIn,
+                QtyOut = x.QtyOut,
+                Rate = x.Rate,
+                CostPrice = costPrice,
+                CostAmount = costAmount,
+                SecUnit = x.SecUnit,
+                SecQtyIn = x.SecQtyIn,
+                SecQtyOut = x.SecQtyOut
+            };
+        }).ToList();
 
         var result = new List<StockLedgerLineResponse>
         {
@@ -724,6 +763,8 @@ internal class ReportService : IReportService
                 QtyIn = openingStock >= 0 ? openingStock : 0m,
                 QtyOut = openingStock < 0 ? -openingStock : 0m,
                 Rate = null,
+                CostPrice = null,
+                CostAmount = null,
                 SecQtyIn = openingSecStock >= 0 ? openingSecStock : 0m,
                 SecQtyOut = openingSecStock < 0 ? -openingSecStock : 0m
             }
@@ -761,6 +802,8 @@ internal class ReportService : IReportService
                 VoucherNo = line.Vno ?? "-",
                 Particular = line.Particular,
                 Rate = line.Rate,
+                CostPrice = line.CostPrice,
+                CostAmount = line.CostAmount,
                 QtyIn = line.QtyIn,
                 QtyOut = line.QtyOut,
                 Balance = runningBalance
@@ -782,6 +825,7 @@ internal class ReportService : IReportService
             TotalIn = totalIn,
             TotalOut = totalOut,
             ClosingBalance = runningBalance,
+            ShowCostPrice = filter.ShowCostPrice,
             GeneratedAt = DateTime.Now
         };
 

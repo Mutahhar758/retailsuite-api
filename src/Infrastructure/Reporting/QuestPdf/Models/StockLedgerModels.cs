@@ -6,6 +6,8 @@ public class StockLedgerReportItem
     public string VoucherNo { get; set; } = string.Empty;
     public string Particular { get; set; } = string.Empty;
     public decimal? Rate { get; set; }
+    public decimal? CostPrice { get; set; }
+    public decimal? CostAmount { get; set; }
     public decimal QtyIn { get; set; }
     public decimal QtyOut { get; set; }
     public decimal Balance { get; set; }
@@ -22,5 +24,6 @@ public class StockLedgerHeader
     public decimal TotalIn { get; set; }
     public decimal TotalOut { get; set; }
     public decimal ClosingBalance { get; set; }
+    public bool ShowCostPrice { get; set; } = false;
     public DateTime GeneratedAt { get; set; } = DateTime.Now;
 }

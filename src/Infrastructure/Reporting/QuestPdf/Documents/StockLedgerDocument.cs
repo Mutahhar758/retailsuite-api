@@ -121,77 +121,160 @@ public class StockLedgerDocument : IDocument
     {
         container.PaddingTop(6).Table(table =>
         {
-            table.ColumnsDefinition(columns =>
+            if (_header.ShowCostPrice)
             {
-                columns.ConstantColumn(68);   // Date
-                columns.ConstantColumn(75);   // Voucher #
-                columns.RelativeColumn(3.5f); // Particular
-                columns.ConstantColumn(60);   // Rate
-                columns.ConstantColumn(65);   // Qty In
-                columns.ConstantColumn(65);   // Qty Out
-                columns.ConstantColumn(75);   // Balance Qty
-            });
-
-            table.Header(header =>
-            {
-                header.Cell().Element(HeaderCell).AlignCenter().Text("Date");
-                header.Cell().Element(HeaderCell).Text("Voucher #");
-                header.Cell().Element(HeaderCell).Text("Particular / Narrative");
-                header.Cell().Element(HeaderCell).AlignRight().Text("Rate");
-                header.Cell().Element(HeaderCell).AlignRight().Text("Inward (+)");
-                header.Cell().Element(HeaderCell).AlignRight().Text("Outward (-)");
-                header.Cell().Element(HeaderCell).AlignRight().Text("Balance");
-            });
-
-            for (int i = 0; i < _items.Count; i++)
-            {
-                var item = _items[i];
-                var isEven = (i % 2 == 0);
-                var bg = isEven ? Colors.White : Colors.Grey.Lighten5;
-
-                bool isOpeningRow = item.VoucherNo == "-";
-
-                table.Cell().Element(c => BodyCell(c, bg)).AlignCenter().Text(item.Date.ToString("dd-MMM-yyyy")).FontSize(7.5f).FontColor(Colors.Grey.Darken2);
-                table.Cell().Element(c => BodyCell(c, bg)).Text(item.VoucherNo ?? string.Empty).Bold();
-                table.Cell().Element(c => BodyCell(c, bg)).Text(item.Particular ?? string.Empty).SemiBold();
-
-                // Rate
-                string rateStr = item.Rate.HasValue && item.Rate.Value > 0 ? item.Rate.Value.ToString("N2") : "-";
-                table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text(rateStr).FontColor(Colors.Grey.Darken3);
-
-                // Qty In
-                if (item.QtyIn > 0 && !isOpeningRow)
+                table.ColumnsDefinition(columns =>
                 {
-                    table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text(item.QtyIn.ToString("#,##0.00")).FontColor(Colors.Green.Darken3);
-                }
-                else if (item.QtyIn > 0 && isOpeningRow)
+                    columns.ConstantColumn(62);   // Date
+                    columns.ConstantColumn(68);   // Voucher #
+                    columns.RelativeColumn(3.5f); // Particular
+                    columns.ConstantColumn(52);   // Rate
+                    columns.ConstantColumn(55);   // Cost Price
+                    columns.ConstantColumn(60);   // Qty In
+                    columns.ConstantColumn(60);   // Qty Out
+                    columns.ConstantColumn(68);   // Balance Qty
+                });
+
+                table.Header(header =>
                 {
-                    table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text(item.QtyIn.ToString("#,##0.00")).FontColor(Colors.Grey.Darken4);
-                }
-                else
+                    header.Cell().Element(HeaderCell).AlignCenter().Text("Date");
+                    header.Cell().Element(HeaderCell).Text("Voucher #");
+                    header.Cell().Element(HeaderCell).Text("Particular / Narrative");
+                    header.Cell().Element(HeaderCell).AlignRight().Text("Rate");
+                    header.Cell().Element(HeaderCell).AlignRight().Text("Cost Price");
+                    header.Cell().Element(HeaderCell).AlignRight().Text("Inward (+)");
+                    header.Cell().Element(HeaderCell).AlignRight().Text("Outward (-)");
+                    header.Cell().Element(HeaderCell).AlignRight().Text("Balance");
+                });
+
+                for (int i = 0; i < _items.Count; i++)
                 {
-                    table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text("-").FontColor(Colors.Grey.Lighten1);
+                    var item = _items[i];
+                    var isEven = (i % 2 == 0);
+                    var bg = isEven ? Colors.White : Colors.Grey.Lighten5;
+
+                    bool isOpeningRow = item.VoucherNo == "-";
+
+                    table.Cell().Element(c => BodyCell(c, bg)).AlignCenter().Text(item.Date.ToString("dd-MMM-yyyy")).FontSize(7.5f).FontColor(Colors.Grey.Darken2);
+                    table.Cell().Element(c => BodyCell(c, bg)).Text(item.VoucherNo ?? string.Empty).Bold();
+                    table.Cell().Element(c => BodyCell(c, bg)).Text(item.Particular ?? string.Empty).SemiBold();
+
+                    // Rate
+                    string rateStr = item.Rate.HasValue && item.Rate.Value > 0 ? item.Rate.Value.ToString("N2") : "-";
+                    table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text(rateStr).FontColor(Colors.Grey.Darken3);
+
+                    // Cost Price
+                    string costStr = item.CostPrice.HasValue && item.CostPrice.Value > 0 ? item.CostPrice.Value.ToString("N2") : (isOpeningRow ? "-" : (item.CostPrice.HasValue ? "0.00" : "-"));
+                    table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text(costStr).FontColor(Colors.Indigo.Darken2);
+
+                    // Qty In
+                    if (item.QtyIn > 0 && !isOpeningRow)
+                    {
+                        table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text(item.QtyIn.ToString("#,##0.00")).FontColor(Colors.Green.Darken3);
+                    }
+                    else if (item.QtyIn > 0 && isOpeningRow)
+                    {
+                        table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text(item.QtyIn.ToString("#,##0.00")).FontColor(Colors.Grey.Darken4);
+                    }
+                    else
+                    {
+                        table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text("-").FontColor(Colors.Grey.Lighten1);
+                    }
+
+                    // Qty Out
+                    if (item.QtyOut > 0)
+                    {
+                        table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text(item.QtyOut.ToString("#,##0.00")).FontColor(Colors.Red.Darken2);
+                    }
+                    else
+                    {
+                        table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text("-").FontColor(Colors.Grey.Lighten1);
+                    }
+
+                    // Running Balance
+                    table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text(item.Balance.ToString("#,##0.00")).Bold().FontColor(Colors.Grey.Darken4);
                 }
 
-                // Qty Out
-                if (item.QtyOut > 0)
-                {
-                    table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text(item.QtyOut.ToString("#,##0.00")).FontColor(Colors.Red.Darken2);
-                }
-                else
-                {
-                    table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text("-").FontColor(Colors.Grey.Lighten1);
-                }
-
-                // Running Balance
-                table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text(item.Balance.ToString("#,##0.00")).Bold().FontColor(Colors.Grey.Darken4);
+                // Summary Totals Row (Span 5: Date, Voucher#, Particular, Rate, Cost Price)
+                table.Cell().ColumnSpan(5).Element(FooterTotalCell).Text("PERIOD MOVEMENT TOTALS").Bold().FontColor(Colors.Grey.Darken4);
+                table.Cell().Element(FooterTotalCell).AlignRight().Text(_header.TotalIn.ToString("#,##0.00")).Bold().FontColor(Colors.Green.Darken3);
+                table.Cell().Element(FooterTotalCell).AlignRight().Text(_header.TotalOut.ToString("#,##0.00")).Bold().FontColor(Colors.Red.Darken2);
+                table.Cell().Element(FooterTotalCell).AlignRight().Text(_header.ClosingBalance.ToString("#,##0.00")).Bold().FontColor(Colors.Blue.Darken3);
             }
+            else
+            {
+                table.ColumnsDefinition(columns =>
+                {
+                    columns.ConstantColumn(68);   // Date
+                    columns.ConstantColumn(75);   // Voucher #
+                    columns.RelativeColumn(3.5f); // Particular
+                    columns.ConstantColumn(60);   // Rate
+                    columns.ConstantColumn(65);   // Qty In
+                    columns.ConstantColumn(65);   // Qty Out
+                    columns.ConstantColumn(75);   // Balance Qty
+                });
 
-            // Summary Totals Row
-            table.Cell().ColumnSpan(4).Element(FooterTotalCell).Text("PERIOD MOVEMENT TOTALS").Bold().FontColor(Colors.Grey.Darken4);
-            table.Cell().Element(FooterTotalCell).AlignRight().Text(_header.TotalIn.ToString("#,##0.00")).Bold().FontColor(Colors.Green.Darken3);
-            table.Cell().Element(FooterTotalCell).AlignRight().Text(_header.TotalOut.ToString("#,##0.00")).Bold().FontColor(Colors.Red.Darken2);
-            table.Cell().Element(FooterTotalCell).AlignRight().Text(_header.ClosingBalance.ToString("#,##0.00")).Bold().FontColor(Colors.Blue.Darken3);
+                table.Header(header =>
+                {
+                    header.Cell().Element(HeaderCell).AlignCenter().Text("Date");
+                    header.Cell().Element(HeaderCell).Text("Voucher #");
+                    header.Cell().Element(HeaderCell).Text("Particular / Narrative");
+                    header.Cell().Element(HeaderCell).AlignRight().Text("Rate");
+                    header.Cell().Element(HeaderCell).AlignRight().Text("Inward (+)");
+                    header.Cell().Element(HeaderCell).AlignRight().Text("Outward (-)");
+                    header.Cell().Element(HeaderCell).AlignRight().Text("Balance");
+                });
+
+                for (int i = 0; i < _items.Count; i++)
+                {
+                    var item = _items[i];
+                    var isEven = (i % 2 == 0);
+                    var bg = isEven ? Colors.White : Colors.Grey.Lighten5;
+
+                    bool isOpeningRow = item.VoucherNo == "-";
+
+                    table.Cell().Element(c => BodyCell(c, bg)).AlignCenter().Text(item.Date.ToString("dd-MMM-yyyy")).FontSize(7.5f).FontColor(Colors.Grey.Darken2);
+                    table.Cell().Element(c => BodyCell(c, bg)).Text(item.VoucherNo ?? string.Empty).Bold();
+                    table.Cell().Element(c => BodyCell(c, bg)).Text(item.Particular ?? string.Empty).SemiBold();
+
+                    // Rate
+                    string rateStr = item.Rate.HasValue && item.Rate.Value > 0 ? item.Rate.Value.ToString("N2") : "-";
+                    table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text(rateStr).FontColor(Colors.Grey.Darken3);
+
+                    // Qty In
+                    if (item.QtyIn > 0 && !isOpeningRow)
+                    {
+                        table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text(item.QtyIn.ToString("#,##0.00")).FontColor(Colors.Green.Darken3);
+                    }
+                    else if (item.QtyIn > 0 && isOpeningRow)
+                    {
+                        table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text(item.QtyIn.ToString("#,##0.00")).FontColor(Colors.Grey.Darken4);
+                    }
+                    else
+                    {
+                        table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text("-").FontColor(Colors.Grey.Lighten1);
+                    }
+
+                    // Qty Out
+                    if (item.QtyOut > 0)
+                    {
+                        table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text(item.QtyOut.ToString("#,##0.00")).FontColor(Colors.Red.Darken2);
+                    }
+                    else
+                    {
+                        table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text("-").FontColor(Colors.Grey.Lighten1);
+                    }
+
+                    // Running Balance
+                    table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text(item.Balance.ToString("#,##0.00")).Bold().FontColor(Colors.Grey.Darken4);
+                }
+
+                // Summary Totals Row
+                table.Cell().ColumnSpan(4).Element(FooterTotalCell).Text("PERIOD MOVEMENT TOTALS").Bold().FontColor(Colors.Grey.Darken4);
+                table.Cell().Element(FooterTotalCell).AlignRight().Text(_header.TotalIn.ToString("#,##0.00")).Bold().FontColor(Colors.Green.Darken3);
+                table.Cell().Element(FooterTotalCell).AlignRight().Text(_header.TotalOut.ToString("#,##0.00")).Bold().FontColor(Colors.Red.Darken2);
+                table.Cell().Element(FooterTotalCell).AlignRight().Text(_header.ClosingBalance.ToString("#,##0.00")).Bold().FontColor(Colors.Blue.Darken3);
+            }
         });
     }
 

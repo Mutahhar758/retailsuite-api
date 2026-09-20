@@ -5,4 +5,5 @@ public class StockLedgerFilter
     public DateOnly FromDate { get; set; }
     public DateOnly ToDate { get; set; }
     public string FkItem { get; set; } = string.Empty;
+    public bool ShowCostPrice { get; set; } = false;
 }
