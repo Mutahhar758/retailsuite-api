@@ -18,7 +18,8 @@ internal class TenantMiddleware : IMiddleware
         if (path.StartsWith("/api/health", StringComparison.OrdinalIgnoreCase)
             || path.StartsWith("/swagger", StringComparison.OrdinalIgnoreCase)
             || path.StartsWith("/api/openapi", StringComparison.OrdinalIgnoreCase)
-            || path.StartsWith("/api/license", StringComparison.OrdinalIgnoreCase))
+            || path.StartsWith("/api/license", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWith("/hangfire", StringComparison.OrdinalIgnoreCase))
         {
             await next(context);
             return;

@@ -86,6 +86,7 @@ public static class Startup
             .UseFileStorage()
             .UseCorsPolicy()
             .UseRouting()
+            .UseBackgroundJobs()
             .UseMultitenancy()
             .UseTenantValidation()
             .UseRequestLogging(config)
@@ -95,7 +96,6 @@ public static class Startup
             .UseCurrentUser()
             .UseAuthorization()
             .UseEfTransaction()
-            .UseBackgroundJobs()
             .UseOpenApiDocumentation(config);
 
     public static IEndpointRouteBuilder MapEndpoints(this IEndpointRouteBuilder builder)
