@@ -151,9 +151,12 @@ public class ItemTransactionConfig : IEntityTypeConfiguration<ItemTransaction>
         builder.Property(x => x.CostPrice).HasPrecision(18, 4);
         builder.Property(x => x.CostAmount).HasPrecision(18, 2);
         builder.Property(x => x.RemainingQty).HasPrecision(18, 4).HasDefaultValue(0m);
+        builder.Property(x => x.RunningQtyBalance).HasPrecision(18, 4).HasDefaultValue(0m);
 
         builder.HasIndex(x => new { x.VType, x.VNo, x.Seq }).IsUnique().HasSoftDeleteFilter();
         builder.HasIndex(x => new { x.ItemId, x.TranType, x.VDate, x.Id });
+        // Covering index for O(1) stock balance lookup by item + date
+        builder.HasIndex(x => new { x.ItemId, x.VDate, x.Id });
         mtBuilder.AdjustUniqueIndexes();
 
         builder.HasOne(x => x.Account)

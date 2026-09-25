@@ -210,6 +210,19 @@ public class FifoCostingService : IFifoCostingService
                 .ThenBy(x => x.Id)
                 .ToListAsync(cancellationToken);
 
+            // Seed the running balance from the last transaction before fromDate.
+            // If none exists, the running balance starts at 0.
+            var seedRunningQty = await txRepo.GetAll()
+                .Where(x => x.ItemId == itemId && x.VDate < fromDate)
+                .OrderByDescending(x => x.VDate)
+                .ThenByDescending(x => x.VTime)
+                .ThenByDescending(x => x.TranType == "in" ? 0 : 1)
+                .ThenByDescending(x => x.Id)
+                .Select(x => (decimal?)x.RunningQtyBalance)
+                .FirstOrDefaultAsync(cancellationToken) ?? 0m;
+
+            decimal runningQty = seedRunningQty;
+
             foreach (var tx in replayTransactions)
             {
                 if (tx.TranType == "in")
@@ -224,45 +237,62 @@ public class FifoCostingService : IFifoCostingService
                             .ThenBy(x => x.Id)
                             .ToList();
                     }
+
+                    // Inward transaction increases running balance
+                    runningQty += tx.QtyIn;
+                    tx.RunningQtyBalance = runningQty;
+                    await txRepo.UpdateAsync(tx, false);
                 }
-                else if (tx.TranType == "out" && tx.QtyOut > 0)
+                else if (tx.TranType == "out")
                 {
-                    decimal neededQty = tx.QtyOut;
-                    decimal totalCost = 0m;
-
-                    // Only consume from batches received on or before this sale date/time
-                    var eligibleBatches = activePool
-                        .Where(b => b.RemainingQty > 0 && (b.VDate < tx.VDate || (b.VDate == tx.VDate && b.VTime <= tx.VTime)))
-                        .ToList();
-
-                    foreach (var batch in eligibleBatches)
+                    if (tx.QtyOut > 0)
                     {
-                        if (neededQty <= 0)
+                        decimal neededQty = tx.QtyOut;
+                        decimal totalCost = 0m;
+
+                        // Only consume from batches received on or before this sale date/time
+                        var eligibleBatches = activePool
+                            .Where(b => b.RemainingQty > 0 && (b.VDate < tx.VDate || (b.VDate == tx.VDate && b.VTime <= tx.VTime)))
+                            .ToList();
+
+                        foreach (var batch in eligibleBatches)
                         {
-                            break;
+                            if (neededQty <= 0)
+                            {
+                                break;
+                            }
+
+                            var takeQty = Math.Min(batch.RemainingQty, neededQty);
+                            batch.RemainingQty -= takeQty;
+                            await txRepo.UpdateAsync(batch, false);
+
+                            var mapping = new TransactionFifoMapping
+                            {
+                                OutTransactionId = tx.Id,
+                                InTransactionId = batch.Id,
+                                QtyConsumed = takeQty,
+                                CostRate = batch.Rate,
+                                CostAmount = Math.Round(takeQty * batch.Rate, 2)
+                            };
+
+                            await mapRepo.AddAsync(mapping, false);
+                            totalCost += takeQty * batch.Rate;
+                            neededQty -= takeQty;
                         }
 
-                        var takeQty = Math.Min(batch.RemainingQty, neededQty);
-                        batch.RemainingQty -= takeQty;
-                        await txRepo.UpdateAsync(batch, false);
-
-                        var mapping = new TransactionFifoMapping
-                        {
-                            OutTransactionId = tx.Id,
-                            InTransactionId = batch.Id,
-                            QtyConsumed = takeQty,
-                            CostRate = batch.Rate,
-                            CostAmount = Math.Round(takeQty * batch.Rate, 2)
-                        };
-
-                        await mapRepo.AddAsync(mapping, false);
-                        totalCost += takeQty * batch.Rate;
-                        neededQty -= takeQty;
+                        // Uncovered shortage has rate 0
+                        tx.CostAmount = Math.Round(totalCost, 2);
+                        tx.CostPrice = tx.QtyOut > 0 ? Math.Round(totalCost / tx.QtyOut, 4) : 0m;
+                    }
+                    else
+                    {
+                        tx.CostAmount = 0m;
+                        tx.CostPrice = 0m;
                     }
 
-                    // Uncovered shortage has rate 0
-                    tx.CostAmount = Math.Round(totalCost, 2);
-                    tx.CostPrice = tx.QtyOut > 0 ? Math.Round(totalCost / tx.QtyOut, 4) : 0m;
+                    // Outward transaction decreases running balance
+                    runningQty -= tx.QtyOut;
+                    tx.RunningQtyBalance = runningQty;
                     await txRepo.UpdateAsync(tx, false);
                 }
             }

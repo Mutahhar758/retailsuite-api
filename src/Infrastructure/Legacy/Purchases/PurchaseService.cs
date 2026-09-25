@@ -22,6 +22,7 @@ internal class PurchaseService : IPurchaseService
     private readonly IRepository<DefaultAccount> _defaultAccountRepository;
     private readonly IRepository<ChartOfAccount> _chartOfAccountRepository;
     private readonly IRepository<ItemDetail> _itemRepository;
+    private readonly IItemTransactionBalanceService _balanceService;
     private readonly ICurrentTenant _currentTenant;
 
     public PurchaseService(
@@ -32,6 +33,7 @@ internal class PurchaseService : IPurchaseService
         IRepository<DefaultAccount> defaultAccountRepository,
         IRepository<ChartOfAccount> chartOfAccountRepository,
         IRepository<ItemDetail> itemRepository,
+        IItemTransactionBalanceService balanceService,
         ICurrentTenant currentTenant)
     {
         _purchaseMasterRepository = purchaseMasterRepository;
@@ -41,6 +43,7 @@ internal class PurchaseService : IPurchaseService
         _defaultAccountRepository = defaultAccountRepository;
         _chartOfAccountRepository = chartOfAccountRepository;
         _itemRepository = itemRepository;
+        _balanceService = balanceService;
         _currentTenant = currentTenant;
     }
 
@@ -401,6 +404,7 @@ internal class PurchaseService : IPurchaseService
         Dictionary<string, ItemDetail> itemMap,
         CancellationToken cancellationToken)
     {
+        var txsToProcess = new List<ItemTransaction>();
         foreach (var line in lines)
         {
             var item = itemMap.GetValueOrDefault(line.ItemId);
@@ -414,7 +418,7 @@ internal class PurchaseService : IPurchaseService
 
             if (tx is null)
             {
-                await _itemTransactionRepository.AddAsync(new ItemTransaction
+                tx = new ItemTransaction
                 {
                     VDate = date,
                     VTime = TimeOnly.FromDateTime(DateTime.Now),
@@ -435,7 +439,8 @@ internal class PurchaseService : IPurchaseService
                     SecQtyIn = line.SecQty,
                     SecQtyOut = 0,
                     SecRate = line.SecRate
-                }, false);
+                };
+                await _itemTransactionRepository.AddAsync(tx, false);
             }
             else
             {
@@ -460,6 +465,8 @@ internal class PurchaseService : IPurchaseService
 
                 await _itemTransactionRepository.UpdateAsync(tx, false);
             }
+
+            txsToProcess.Add(tx);
         }
 
         var lineSeqSet = lines.Select(x => x.Seq).ToHashSet();
@@ -469,6 +476,8 @@ internal class PurchaseService : IPurchaseService
 
         if (staleEntries.Count > 0)
             await _itemTransactionRepository.DeleteRangeAsync(staleEntries, false);
+
+        await _balanceService.ProcessVoucherRunningBalancesAsync(_currentTenant.Id, VType, voucherNo, date, txsToProcess, cancellationToken);
     }
 
     private async Task UpsertGlEntriesAsync(string voucherNo, PurchaseCreateRequest request, decimal totalAmount, CancellationToken cancellationToken)

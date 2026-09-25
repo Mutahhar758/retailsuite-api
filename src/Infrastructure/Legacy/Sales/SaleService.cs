@@ -23,6 +23,7 @@ internal class SaleService : ISaleService
     private readonly IRepository<ChartOfAccount> _chartOfAccountRepository;
     private readonly IRepository<ItemDetail> _itemRepository;
     private readonly IFifoCostingService _fifoCostingService;
+    private readonly IItemTransactionBalanceService _balanceService;
     private readonly ICurrentTenant _currentTenant;
 
     public SaleService(
@@ -34,6 +35,7 @@ internal class SaleService : ISaleService
         IRepository<ChartOfAccount> chartOfAccountRepository,
         IRepository<ItemDetail> itemRepository,
         IFifoCostingService fifoCostingService,
+        IItemTransactionBalanceService balanceService,
         ICurrentTenant currentTenant)
     {
         _saleMasterRepository = saleMasterRepository;
@@ -44,6 +46,7 @@ internal class SaleService : ISaleService
         _chartOfAccountRepository = chartOfAccountRepository;
         _itemRepository = itemRepository;
         _fifoCostingService = fifoCostingService;
+        _balanceService = balanceService;
         _currentTenant = currentTenant;
     }
 
@@ -530,6 +533,7 @@ internal class SaleService : ISaleService
         Dictionary<string, ItemDetail> itemMap,
         CancellationToken cancellationToken)
     {
+        var txsToProcess = new List<ItemTransaction>();
         foreach (var line in lines)
         {
             var item = itemMap.GetValueOrDefault(line.ItemId);
@@ -543,7 +547,7 @@ internal class SaleService : ISaleService
 
             if (tx is null)
             {
-                await _itemTransactionRepository.AddAsync(new ItemTransaction
+                tx = new ItemTransaction
                 {
                     VDate = date,
                     VTime = TimeOnly.FromDateTime(DateTime.Now),
@@ -563,7 +567,8 @@ internal class SaleService : ISaleService
                     SecQtyIn = 0,
                     SecQtyOut = line.SecQty,
                     SecRate = line.SecRate
-                }, false);
+                };
+                await _itemTransactionRepository.AddAsync(tx, false);
             }
             else
             {
@@ -587,6 +592,8 @@ internal class SaleService : ISaleService
 
                 await _itemTransactionRepository.UpdateAsync(tx, false);
             }
+
+            txsToProcess.Add(tx);
         }
 
         var lineSeqSet = lines.Select(x => x.Seq).ToHashSet();
@@ -596,5 +603,7 @@ internal class SaleService : ISaleService
 
         if (staleEntries.Count > 0)
             await _itemTransactionRepository.DeleteRangeAsync(staleEntries, false);
+
+        await _balanceService.ProcessVoucherRunningBalancesAsync(_currentTenant.Id, VType, voucherNo, date, txsToProcess, cancellationToken);
     }
 }

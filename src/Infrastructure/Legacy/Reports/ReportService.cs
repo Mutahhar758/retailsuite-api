@@ -682,9 +682,13 @@ internal class ReportService : IReportService
 
         var openingStock = await _itemTransactionRepository.GetAll()
             .AsNoTracking()
-            .Where(x => x.ItemId == filter.FkItem && (x.VType == "Op" || x.VDate < filter.FromDate))
-            .Select(x => x.QtyIn - x.QtyOut)
-            .SumAsync(cancellationToken);
+            .Where(x => x.ItemId == filter.FkItem && x.VDate < filter.FromDate)
+            .OrderByDescending(x => x.VDate)
+            .ThenByDescending(x => x.VTime)
+            .ThenByDescending(x => x.TranType == "in" ? 0 : 1)
+            .ThenByDescending(x => x.Id)
+            .Select(x => (decimal?)x.RunningQtyBalance)
+            .FirstOrDefaultAsync(cancellationToken) ?? 0m;
 
         var openingSecStock = await _itemTransactionRepository.GetAll()
             .AsNoTracking()
@@ -850,13 +854,17 @@ internal class ReportService : IReportService
                 Unit = x.Item != null ? (x.Item.DefaultUnit != null ? x.Item.DefaultUnit.Title : x.Item.DefaultUnitId) : string.Empty,
                 SecUnit = x.Item != null ? (x.Item.SecondaryUnit != null ? x.Item.SecondaryUnit.Title : x.Item.SecondaryUnitId) : string.Empty,
                 x.VDate,
+                x.VTime,
                 x.VType,
                 x.TranType,
                 x.QtyIn,
                 x.QtyOut,
                 SecQtyIn = x.SecQtyIn ?? 0,
                 SecQtyOut = x.SecQtyOut ?? 0,
-                x.Rate
+                x.Rate,
+                x.RemainingQty,
+                x.RunningQtyBalance,
+                x.Id
             })
             .ToListAsync(cancellationToken);
 
@@ -864,15 +872,23 @@ internal class ReportService : IReportService
             .GroupBy(x => new { x.ItemId, x.Item, x.Unit, x.SecUnit })
             .Select(g =>
             {
-                var priQty = g.Where(x => x.VDate < filter.FromDate || x.VType == "Op").Sum(x => x.QtyIn - x.QtyOut);
-                var qty = g.Where(x => x.VDate >= filter.FromDate && x.VDate <= filter.ToDate && x.VType != "Op").Sum(x => x.QtyIn - x.QtyOut);
+                var latestTx = g.OrderByDescending(x => x.VDate).ThenByDescending(x => x.VTime).ThenByDescending(x => x.TranType == "in" ? 0 : 1).ThenByDescending(x => x.Id).FirstOrDefault();
+                var latestPriorTx = g.Where(x => x.VDate < filter.FromDate || (x.VType == "Op" && x.VDate == filter.FromDate)).OrderByDescending(x => x.VDate).ThenByDescending(x => x.VTime).ThenByDescending(x => x.TranType == "in" ? 0 : 1).ThenByDescending(x => x.Id).FirstOrDefault();
+                var priQty = latestPriorTx?.RunningQtyBalance ?? 0m;
+
+
                 var qtyIn = g.Where(x => x.VDate >= filter.FromDate && x.VDate <= filter.ToDate && x.VType != "Op").Sum(x => x.QtyIn);
                 var qtyOut = g.Where(x => x.VDate >= filter.FromDate && x.VDate <= filter.ToDate && x.VType != "Op").Sum(x => x.QtyOut);
-                var qtyBal = g.Sum(x => x.QtyIn - x.QtyOut);
-                var positiveQtyBal = g.Where(x => (x.QtyIn - x.QtyOut) > 0).Sum(x => x.QtyIn - x.QtyOut);
-                var amt = g.Where(x => string.Equals(x.TranType, "in", StringComparison.OrdinalIgnoreCase))
-                    .Sum(x => (x.QtyIn - x.QtyOut) * x.Rate);
-                var rate = positiveQtyBal == 0 ? 0 : amt / positiveQtyBal;
+                var qty = qtyIn - qtyOut;
+                var qtyBal = latestTx?.RunningQtyBalance ?? 0m;
+
+                // FIFO stock value: sum of remaining units in each inward batch multiplied by that batch's purchase rate.
+                // RemainingQty is maintained by FifoCostingService and reflects exactly how many units of each
+                // inward purchase still sit in stock after FIFO allocation.
+                var fifoStockValue = g
+                    .Where(x => string.Equals(x.TranType, "in", StringComparison.OrdinalIgnoreCase) && x.RemainingQty > 0)
+                    .Sum(x => x.RemainingQty * x.Rate);
+                var rate = qtyBal > 0 ? Math.Round(fifoStockValue / qtyBal, 4) : 0m;
 
                 var secPriQty = g.Where(x => x.VDate < filter.FromDate || x.VType == "Op").Sum(x => x.SecQtyIn - x.SecQtyOut);
                 var secQtyIn = g.Where(x => x.VDate >= filter.FromDate && x.VDate <= filter.ToDate && x.VType != "Op").Sum(x => x.SecQtyIn);
@@ -959,7 +975,7 @@ internal class ReportService : IReportService
             GeneratedAt = DateTime.Now
         };
 
-        var document = new StockBalanceDocument(header, items);
+        var document = new StockBalanceDocument(header, items, filter.ShowStockValue);
         return document.GeneratePdf();
     }
 
@@ -1171,35 +1187,27 @@ internal class ReportService : IReportService
             .FirstOrDefault(x => string.Equals(x.Title, "Purchase", StringComparison.OrdinalIgnoreCase)
                           || string.Equals(x.Title, "PU", StringComparison.OrdinalIgnoreCase));
 
-        var openingStock = await _itemTransactionRepository.GetAll()
+        // FIFO Opening Stock Value: sum of (RemainingQty * Rate) for all inward batches purchased
+        // before the period start. RemainingQty is maintained by FifoCostingService and reflects
+        // how many units of each purchase batch are still in stock.
+        // Note: for opening stock we use batches with VDate < FromDate to represent inventory
+        // carried forward into the period.
+        var openingStockValue = await _itemTransactionRepository.GetAll()
             .AsNoTracking()
-            .Where(x => x.VDate < filter.FromDate || x.VType == "Op")
-            .Where(x => !string.IsNullOrWhiteSpace(x.ItemId))
-            .GroupBy(x => x.ItemId)
-            .Select(g => new
-            {
-                QtyBal = g.Sum(x => x.QtyIn - x.QtyOut),
-                PosQtyBal = g.Where(x => (x.QtyIn - x.QtyOut) > 0).Sum(x => x.QtyIn - x.QtyOut),
-                Amt = g.Where(x => x.TranType == "in").Sum(x => (x.QtyIn - x.QtyOut) * x.Rate)
-            })
-            .ToListAsync(cancellationToken);
+            .Where(x => (x.VDate < filter.FromDate || x.VType == "Op")
+                     && !string.IsNullOrWhiteSpace(x.ItemId)
+                     && string.Equals(x.TranType, "in", StringComparison.OrdinalIgnoreCase)
+                     && x.RemainingQty > 0)
+            .SumAsync(x => x.RemainingQty * x.Rate, cancellationToken);
 
-        var openingStockValue = openingStock.Sum(x => x.QtyBal * (x.PosQtyBal == 0 ? 0 : x.Amt / x.PosQtyBal));
-
-        var closingStock = await _itemTransactionRepository.GetAll()
+        // FIFO Closing Stock Value: sum of (RemainingQty * Rate) for all inward batches up to ToDate.
+        var closingStockValue = await _itemTransactionRepository.GetAll()
             .AsNoTracking()
-            .Where(x => x.VDate <= filter.ToDate || x.VType == "Op")
-            .Where(x => !string.IsNullOrWhiteSpace(x.ItemId))
-            .GroupBy(x => x.ItemId)
-            .Select(g => new
-            {
-                QtyBal = g.Sum(x => x.QtyIn - x.QtyOut),
-                PosQtyBal = g.Where(x => (x.QtyIn - x.QtyOut) > 0).Sum(x => x.QtyIn - x.QtyOut),
-                Amt = g.Where(x => x.TranType == "in").Sum(x => (x.QtyIn - x.QtyOut) * x.Rate)
-            })
-            .ToListAsync(cancellationToken);
-
-        var closingStockValue = closingStock.Sum(x => x.QtyBal * (x.PosQtyBal == 0 ? 0 : x.Amt / x.PosQtyBal));
+            .Where(x => (x.VDate <= filter.ToDate || x.VType == "Op")
+                     && !string.IsNullOrWhiteSpace(x.ItemId)
+                     && string.Equals(x.TranType, "in", StringComparison.OrdinalIgnoreCase)
+                     && x.RemainingQty > 0)
+            .SumAsync(x => x.RemainingQty * x.Rate, cancellationToken);
 
         var purchaseDr = purchaseAccount != null && drMap.ContainsKey(purchaseAccount.Id) ? drMap[purchaseAccount.Id] : 0m;
         var purchaseCr = purchaseAccount != null && crMap.ContainsKey(purchaseAccount.Id) ? crMap[purchaseAccount.Id] : 0m;

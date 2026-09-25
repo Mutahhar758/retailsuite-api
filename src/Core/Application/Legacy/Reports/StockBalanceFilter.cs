@@ -8,4 +8,9 @@ public class StockBalanceFilter
     public string Filter { get; set; } = "All";
     public decimal Qty { get; set; }
     public string? Type { get; set; }
+    /// <summary>
+    /// When true, the Rate and Total Stock Value columns are included in the PDF report.
+    /// Defaults to true so the report shows FIFO inventory valuation by default.
+    /// </summary>
+    public bool ShowStockValue { get; set; } = true;
 }

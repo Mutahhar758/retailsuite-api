@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Retailer.Application.Common.Exceptions;
+using Retailer.Application.Common.Interfaces;
 using Retailer.Application.Common.Persistence;
+using Retailer.Application.Legacy.Inventory;
 using Retailer.Application.Legacy.StockAdjustments;
 using Retailer.Domain.Legacy;
 using Retailer.Shared.Common.Constants;
@@ -15,17 +17,23 @@ internal class StockAdjustmentService : IStockAdjustmentService
     private readonly IRepository<StockAdjDetail> _stockAdjDetailRepository;
     private readonly IRepository<ItemTransaction> _itemTransactionRepository;
     private readonly IRepository<ItemDetail> _itemRepository;
+    private readonly IItemTransactionBalanceService _balanceService;
+    private readonly ICurrentTenant _currentTenant;
 
     public StockAdjustmentService(
         IRepository<StockAdjMaster> stockAdjMasterRepository,
         IRepository<StockAdjDetail> stockAdjDetailRepository,
         IRepository<ItemTransaction> itemTransactionRepository,
-        IRepository<ItemDetail> itemRepository)
+        IRepository<ItemDetail> itemRepository,
+        IItemTransactionBalanceService balanceService,
+        ICurrentTenant currentTenant)
     {
         _stockAdjMasterRepository = stockAdjMasterRepository;
         _stockAdjDetailRepository = stockAdjDetailRepository;
         _itemTransactionRepository = itemTransactionRepository;
         _itemRepository = itemRepository;
+        _balanceService = balanceService;
+        _currentTenant = currentTenant;
     }
 
     public async Task<List<StockAdjustmentResponse>> GetListAsync(StockAdjustmentListFilter filter, CancellationToken cancellationToken)
@@ -299,6 +307,7 @@ internal class StockAdjustmentService : IStockAdjustmentService
         Dictionary<string, ItemDetail> itemMap,
         CancellationToken cancellationToken)
     {
+        var txsToProcess = new List<ItemTransaction>();
         foreach (var line in lines)
         {
             var item = itemMap.GetValueOrDefault(line.ItemId);
@@ -314,7 +323,7 @@ internal class StockAdjustmentService : IStockAdjustmentService
 
             if (tx is null)
             {
-                await _itemTransactionRepository.AddAsync(new ItemTransaction
+                tx = new ItemTransaction
                 {
                     VDate = date,
                     VTime = TimeOnly.FromDateTime(DateTime.Now),
@@ -335,7 +344,8 @@ internal class StockAdjustmentService : IStockAdjustmentService
                     SecQtyIn = line.SecQtyIn,
                     SecQtyOut = line.SecQtyOut,
                     SecRate = line.SecRate
-                }, false);
+                };
+                await _itemTransactionRepository.AddAsync(tx, false);
             }
             else
             {
@@ -359,6 +369,8 @@ internal class StockAdjustmentService : IStockAdjustmentService
 
                 await _itemTransactionRepository.UpdateAsync(tx, false);
             }
+
+            txsToProcess.Add(tx);
         }
 
         var lineSeqSet = lines.Select(x => x.Seq).ToHashSet();
@@ -368,5 +380,7 @@ internal class StockAdjustmentService : IStockAdjustmentService
 
         if (staleEntries.Count > 0)
             await _itemTransactionRepository.DeleteRangeAsync(staleEntries, false);
+
+        await _balanceService.ProcessVoucherRunningBalancesAsync(_currentTenant.Id, VType, voucherNo, date, txsToProcess, cancellationToken);
     }
 }

@@ -1444,6 +1444,13 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasDefaultValue(0m)
                         .HasColumnName("remaining_qty");
 
+                    b.Property<decimal>("RunningQtyBalance")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasDefaultValue(0m)
+                        .HasColumnName("running_qty_balance");
+
                     b.Property<decimal?>("SecQtyIn")
                         .HasColumnType("numeric")
                         .HasColumnName("sec_qty_in");
@@ -1505,6 +1512,9 @@ namespace Migrators.PostgreSQL.Migrations.Application
 
                     b.HasIndex("UnitId", "TenantId")
                         .HasDatabaseName("ix_item_transaction_unit_id_tenant_id");
+
+                    b.HasIndex("ItemId", "VDate", "Id")
+                        .HasDatabaseName("ix_item_transaction_item_id_v_date_id");
 
                     b.HasIndex("ItemId", "TranType", "VDate", "Id")
                         .HasDatabaseName("ix_item_transaction_item_id_tran_type_v_date_id");

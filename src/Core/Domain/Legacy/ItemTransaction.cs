@@ -28,6 +28,13 @@ public class ItemTransaction : AuditableEntity, IAggregateRoot
     public decimal? CostAmount { get; set; }
     public decimal RemainingQty { get; set; }
 
+    /// <summary>
+    /// Running cumulative stock balance for this item after this transaction, ordered by (VDate, TranType in before out, Id).
+    /// Maintained by FifoCostingService.RebuildItemFifoAsync — enables O(1) stock balance lookups
+    /// instead of summing all transactions up to a date.
+    /// </summary>
+    public decimal RunningQtyBalance { get; set; }
+
     public ChartOfAccount? Account { get; set; }
     public ItemDetail? Item { get; set; }
     public Unit? Unit { get; set; }

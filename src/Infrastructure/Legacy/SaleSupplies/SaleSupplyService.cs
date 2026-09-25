@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Retailer.Application.Common.Exceptions;
+using Retailer.Application.Common.Interfaces;
 using Retailer.Application.Common.Persistence;
+using Retailer.Application.Legacy.Inventory;
 using Retailer.Application.Legacy.SaleSupplies;
 using Retailer.Domain.Legacy;
 using Retailer.Shared.Common.Constants;
@@ -17,6 +19,8 @@ internal class SaleSupplyService : ISaleSupplyService
     private readonly IRepository<ItemTransaction> _itemTransactionRepository;
     private readonly IRepository<DefaultAccount> _defaultAccountRepository;
     private readonly IRepository<ItemDetail> _itemRepository;
+    private readonly IItemTransactionBalanceService _balanceService;
+    private readonly ICurrentTenant _currentTenant;
 
     public SaleSupplyService(
         IRepository<SaleSupplyMaster> saleSupplyMasterRepository,
@@ -24,7 +28,9 @@ internal class SaleSupplyService : ISaleSupplyService
         IRepository<GlEntry> glRepository,
         IRepository<ItemTransaction> itemTransactionRepository,
         IRepository<DefaultAccount> defaultAccountRepository,
-        IRepository<ItemDetail> itemRepository)
+        IRepository<ItemDetail> itemRepository,
+        IItemTransactionBalanceService balanceService,
+        ICurrentTenant currentTenant)
     {
         _saleSupplyMasterRepository = saleSupplyMasterRepository;
         _saleSupplyDetailRepository = saleSupplyDetailRepository;
@@ -32,6 +38,8 @@ internal class SaleSupplyService : ISaleSupplyService
         _itemTransactionRepository = itemTransactionRepository;
         _defaultAccountRepository = defaultAccountRepository;
         _itemRepository = itemRepository;
+        _balanceService = balanceService;
+        _currentTenant = currentTenant;
     }
 
     public async Task<List<SaleSupplyResponse>> GetListAsync(SaleSupplyListFilter filter, CancellationToken cancellationToken)
@@ -419,6 +427,7 @@ internal class SaleSupplyService : ISaleSupplyService
         var resolvedDefaultUnitId = item?.DefaultUnitId ?? item?.PrimaryUnitId;
         var resolvedDefaultSecUnitId = item?.SecondaryUnitId;
 
+        var txsToProcess = new List<ItemTransaction>();
         foreach (var line in lines)
         {
             var resolvedUnitId = resolvedDefaultUnitId;
@@ -431,7 +440,7 @@ internal class SaleSupplyService : ISaleSupplyService
 
             if (tx is null)
             {
-                await _itemTransactionRepository.AddAsync(new ItemTransaction
+                tx = new ItemTransaction
                 {
                     VDate = date,
                     VTime = TimeOnly.FromDateTime(DateTime.Now),
@@ -451,7 +460,8 @@ internal class SaleSupplyService : ISaleSupplyService
                     SecQtyIn = 0,
                     SecQtyOut = line.SecQty,
                     SecRate = line.SecRate
-                }, false);
+                };
+                await _itemTransactionRepository.AddAsync(tx, false);
             }
             else
             {
@@ -475,6 +485,8 @@ internal class SaleSupplyService : ISaleSupplyService
 
                 await _itemTransactionRepository.UpdateAsync(tx, false);
             }
+
+            txsToProcess.Add(tx);
         }
 
         var lineSeqSet = lines.Select(x => x.Seq).ToHashSet();
@@ -484,6 +496,8 @@ internal class SaleSupplyService : ISaleSupplyService
 
         if (staleEntries.Count > 0)
             await _itemTransactionRepository.DeleteRangeAsync(staleEntries, false);
+
+        await _balanceService.ProcessVoucherRunningBalancesAsync(_currentTenant.Id, VType, voucherNo, date, txsToProcess, cancellationToken);
     }
 
     public async Task<List<SaleSupplyLineResponse>> GetCustomerLinesAsync(

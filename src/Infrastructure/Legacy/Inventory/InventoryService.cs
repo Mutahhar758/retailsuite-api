@@ -14,15 +14,21 @@ internal class InventoryService : IInventoryService
     private readonly IRepository<ItemDetail> _itemRepository;
     private readonly IRepository<ItemTransaction> _itemTransactionRepository;
     private readonly IMediaServiceClient _mediaServiceClient;
+    private readonly IItemTransactionBalanceService _balanceService;
+    private readonly ICurrentTenant _currentTenant;
 
     public InventoryService(
         IRepository<ItemDetail> itemRepository,
         IRepository<ItemTransaction> itemTransactionRepository,
-        IMediaServiceClient mediaServiceClient)
+        IMediaServiceClient mediaServiceClient,
+        IItemTransactionBalanceService balanceService,
+        ICurrentTenant currentTenant)
     {
         _itemRepository = itemRepository;
         _itemTransactionRepository = itemTransactionRepository;
         _mediaServiceClient = mediaServiceClient;
+        _balanceService = balanceService;
+        _currentTenant = currentTenant;
     }
 
     public async Task<List<InventoryItemLookupResponse>> GetItemsLookupAsync(string? itemCategoryCode, CancellationToken cancellationToken)
@@ -272,7 +278,7 @@ internal class InventoryService : IInventoryService
     {
         var today = DateOnly.FromDateTime(DateTime.Today);
 
-        await _itemTransactionRepository.AddAsync(new ItemTransaction
+        var tx = new ItemTransaction
         {
             VDate = today,
             VTime = TimeOnly.FromDateTime(DateTime.Now),
@@ -288,8 +294,10 @@ internal class InventoryService : IInventoryService
             Rate = rate,
             Amount = qty * rate,
             Counter = "001"
-        }, false);
+        };
 
+        await _itemTransactionRepository.AddAsync(tx, false);
+        await _balanceService.ProcessVoucherRunningBalancesAsync(_currentTenant.Id, "OP", itemId, today, new[] { tx }, cancellationToken);
         await _itemTransactionRepository.SaveChangesAsync(cancellationToken);
     }
 
@@ -317,7 +325,9 @@ internal class InventoryService : IInventoryService
             tx.Rate = rate;
             tx.Amount = qty * rate;
 
-            await _itemTransactionRepository.UpdateAsync(tx);
+            await _itemTransactionRepository.UpdateAsync(tx, false);
+            await _balanceService.ProcessVoucherRunningBalancesAsync(_currentTenant.Id, "OP", itemId, today, new[] { tx }, cancellationToken);
+            await _itemTransactionRepository.SaveChangesAsync(cancellationToken);
         }
     }
 
