@@ -27,13 +27,27 @@ public class CustomerBillDocument : IDocument
 
     public void Compose(IDocumentContainer container)
     {
-        if (_header.Layout == CustomerBillPrintLayout.Thermal80mm)
+        if (_header.IsWandaLayout)
         {
-            ComposeThermal80(container);
+            if (_header.Layout == CustomerBillPrintLayout.Thermal80mm)
+            {
+                ComposeWandaThermal80(container);
+            }
+            else
+            {
+                ComposeWandaA4(container);
+            }
         }
         else
         {
-            ComposeA4(container);
+            if (_header.Layout == CustomerBillPrintLayout.Thermal80mm)
+            {
+                ComposeThermal80(container);
+            }
+            else
+            {
+                ComposeA4(container);
+            }
         }
     }
 
@@ -629,6 +643,371 @@ public class CustomerBillDocument : IDocument
             .PaddingVertical(5)
             .PaddingHorizontal(4)
             .DefaultTextStyle(x => x.FontSize(9.5f).Bold().FontColor(Colors.Blue.Darken3));
+    }
+
+    #endregion
+
+    #region Wanda / Feed Mill Layout
+
+    private void ComposeWandaA4(IDocumentContainer container)
+    {
+        decimal totalSaleKg = _items.Sum(x => x.Qty);
+        decimal totalSaleBags = _items.Sum(x => x.SecQty ?? (x.QtyInPack.HasValue && x.QtyInPack.Value > 0 ? Math.Round(x.Qty / x.QtyInPack.Value) : 0));
+        decimal totalSaleAmount = _items.Sum(x => x.Amount);
+
+        decimal totalPurchaseKg = 0m;
+        decimal totalPurchaseBags = 0m;
+        decimal totalPurchaseAmount = 0m;
+
+        decimal totalBill = totalSaleAmount;
+        decimal previousBal = _header.PreviousBalance;
+        decimal grandTotal = previousBal + totalBill;
+        decimal receipts = _header.Payment;
+        decimal payments = 0m;
+        decimal netBalance = _header.ClosingBalance;
+
+        container.Page(page =>
+        {
+            page.Size(PageSizes.A4);
+            page.Margin(20, Unit.Point);
+            page.PageColor(Colors.White);
+            page.DefaultTextStyle(x => x.FontSize(8.5f).FontFamily(Fonts.Arial).FontColor(Colors.Black));
+
+            page.Content().Border(1f).BorderColor(Colors.Black).CornerRadius(6).Padding(16).Column(col =>
+            {
+                // 1. Company Name
+                col.Item().AlignCenter().Text(_header.CompanyName.ToUpper())
+                    .FontSize(18).Bold().FontColor(Colors.Black);
+
+                // 2. Report Subtitle
+                col.Item().AlignCenter().PaddingTop(2).Text("CUSTOMER BILL")
+                    .FontSize(11).Bold().FontColor(Colors.Black);
+
+                // 3. Customer Info, Date Range, Previous Balance
+                col.Item().PaddingTop(10).Row(metaRow =>
+                {
+                    metaRow.RelativeItem().Column(infoCol =>
+                    {
+                        infoCol.Item().Text(t =>
+                        {
+                            t.Span("Account: ").Bold();
+                            t.Span($"{_header.CustomerTitle} ({_header.CustomerAccount})").SemiBold();
+                        });
+                        infoCol.Item().PaddingTop(2).Text(t =>
+                        {
+                            t.Span("Date: ").Bold();
+                            t.Span($"{_header.FromDate:dd-MMM-yyyy} to {_header.ToDate:dd-MMM-yyyy}").SemiBold();
+                        });
+                    });
+
+                    metaRow.AutoItem().AlignRight().Text(t =>
+                    {
+                        t.Span("Previous Balance: ").Bold();
+                        t.Span($"Rs. {previousBal:N2}").SemiBold();
+                    });
+                });
+
+                col.Item().PaddingTop(8);
+
+                // 4. 11-column Table matching exact layout
+                col.Item().Table(table =>
+                {
+                    table.ColumnsDefinition(columns =>
+                    {
+                        columns.ConstantColumn(46);   // Date
+                        columns.ConstantColumn(58);   // Voucher No
+                        columns.RelativeColumn(2.0f); // Description
+                        columns.ConstantColumn(52);   // Weight (Kg)
+                        columns.ConstantColumn(36);   // Bags
+                        columns.ConstantColumn(46);   // Kg Rate
+                        columns.ConstantColumn(48);   // Bag Rate
+                        columns.ConstantColumn(44);   // Carriage
+                        columns.ConstantColumn(62);   // Amount
+                        columns.ConstantColumn(52);   // Receipt Date
+                        columns.ConstantColumn(58);   // Receipt Amount
+                    });
+
+                    table.Header(header =>
+                    {
+                        static IContainer WandaHeaderCell(IContainer c) =>
+                            c.Border(0.75f).BorderColor(Colors.Black).PaddingVertical(4).PaddingHorizontal(2);
+
+                        header.Cell().Element(WandaHeaderCell).AlignCenter().Text("Date").Bold().FontSize(8f);
+                        header.Cell().Element(WandaHeaderCell).AlignCenter().Text("Voucher No").Bold().FontSize(8f);
+                        header.Cell().Element(WandaHeaderCell).AlignCenter().Text("Description").Bold().FontSize(8f);
+                        header.Cell().Element(WandaHeaderCell).AlignCenter().Text("Weight (Kg)").Bold().FontSize(8f);
+                        header.Cell().Element(WandaHeaderCell).AlignCenter().Text("Bags").Bold().FontSize(8f);
+                        header.Cell().Element(WandaHeaderCell).AlignCenter().Text("Kg Rate").Bold().FontSize(8f);
+                        header.Cell().Element(WandaHeaderCell).AlignCenter().Text("Bag Rate").Bold().FontSize(8f);
+                        header.Cell().Element(WandaHeaderCell).AlignCenter().Text("Carriage").Bold().FontSize(8f);
+                        header.Cell().Element(WandaHeaderCell).AlignCenter().Text("Amount").Bold().FontSize(8f);
+                        header.Cell().Element(WandaHeaderCell).AlignCenter().Text("Receipt Date").Bold().FontSize(7.5f);
+                        header.Cell().Element(WandaHeaderCell).AlignCenter().Text("Receipt Amount").Bold().FontSize(7.5f);
+                    });
+
+                    static IContainer WandaBodyCell(IContainer c) =>
+                        c.Border(0.5f).BorderColor(Colors.Black).PaddingVertical(3.5f).PaddingHorizontal(3);
+
+                    if (_items.Count == 0)
+                    {
+                        table.Cell().ColumnSpan(11).Element(WandaBodyCell).AlignCenter().PaddingVertical(12)
+                            .Text("No transactions in period").Italic().FontSize(8.5f);
+                    }
+                    else
+                    {
+                        foreach (var line in _items)
+                        {
+                            decimal bagQty = line.SecQty ?? (line.QtyInPack.HasValue && line.QtyInPack.Value > 0 ? Math.Round(line.Qty / line.QtyInPack.Value) : 0);
+                            decimal kgRate = line.Rate;
+                            decimal bagRate = line.SecRate ?? (line.QtyInPack.HasValue && line.QtyInPack.Value > 0 ? line.Rate * line.QtyInPack.Value : (bagQty > 0 ? Math.Round(line.Amount / bagQty) : 0));
+
+                            table.Cell().Element(WandaBodyCell).AlignCenter().Text($"{line.Date:dd/MM/yy}").FontSize(8f);
+                            table.Cell().Element(WandaBodyCell).AlignCenter().Text(line.VNo).FontSize(8f);
+                            table.Cell().Element(WandaBodyCell).AlignLeft().Text(line.Item).SemiBold().FontSize(8.5f);
+                            table.Cell().Element(WandaBodyCell).AlignRight().Text(line.Qty.ToString("#,##0")).FontSize(8.5f);
+                            table.Cell().Element(WandaBodyCell).AlignRight().Text(bagQty > 0 ? bagQty.ToString("#,##0") : "-").FontSize(8.5f);
+                            table.Cell().Element(WandaBodyCell).AlignRight().Text(kgRate > 0 ? kgRate.ToString("#,##0.00") : "-").FontSize(8.5f);
+                            table.Cell().Element(WandaBodyCell).AlignRight().Text(bagRate > 0 ? bagRate.ToString("#,##0") : "-").FontSize(8.5f);
+                            table.Cell().Element(WandaBodyCell).AlignRight().Text(line.AddLess != 0 ? line.AddLess.ToString("#,##0") : "0").FontSize(8.5f);
+                            table.Cell().Element(WandaBodyCell).AlignRight().Text(line.Amount.ToString("#,##0")).Bold().FontSize(8.5f);
+                            table.Cell().Element(WandaBodyCell).AlignCenter().Text(line.ReceiptDate.HasValue ? line.ReceiptDate.Value.ToString("dd/MM/yy") : string.Empty).FontSize(8f);
+                            table.Cell().Element(WandaBodyCell).AlignRight().Text(line.ReceiptAmount.HasValue && line.ReceiptAmount.Value != 0 ? line.ReceiptAmount.Value.ToString("#,##0") : string.Empty).FontSize(8.5f);
+                        }
+                    }
+                });
+
+                col.Item().PaddingTop(12);
+
+                // 5. 3-Column Summary Card Box (matching screenshot exactly)
+                col.Item().Border(1f).BorderColor(Colors.Black).CornerRadius(6).Padding(10).Row(summaryRow =>
+                {
+                    // Column 1: Purchases & Sales Summary
+                    summaryRow.RelativeItem(1.25f).PaddingRight(10).Column(c1 =>
+                    {
+                        c1.Item().Row(r =>
+                        {
+                            r.RelativeItem().Text("Purchase Weight (Kg):").FontSize(8.5f);
+                            r.AutoItem().Text(totalPurchaseKg.ToString("#,##0")).Bold().FontSize(8.5f);
+                        });
+                        c1.Item().PaddingTop(2).Row(r =>
+                        {
+                            r.RelativeItem().Text("Purchase Bags:").FontSize(8.5f);
+                            r.AutoItem().Text(totalPurchaseBags.ToString("#,##0")).Bold().FontSize(8.5f);
+                        });
+                        c1.Item().PaddingTop(2).Row(r =>
+                        {
+                            r.RelativeItem().Text("Purchase Amount:").FontSize(8.5f);
+                            r.AutoItem().Text(totalPurchaseAmount.ToString("#,##0")).Bold().FontSize(8.5f);
+                        });
+
+                        c1.Item().PaddingVertical(4).LineHorizontal(0.5f).LineColor(Colors.Grey.Lighten1);
+
+                        c1.Item().Row(r =>
+                        {
+                            r.RelativeItem().Text("Sale Weight (Kg):").FontSize(8.5f);
+                            r.AutoItem().Text(totalSaleKg.ToString("#,##0")).Bold().FontSize(8.5f);
+                        });
+                        c1.Item().PaddingTop(2).Row(r =>
+                        {
+                            r.RelativeItem().Text("Sale Bags:").FontSize(8.5f);
+                            r.AutoItem().Text(totalSaleBags.ToString("#,##0")).Bold().FontSize(8.5f);
+                        });
+                        c1.Item().PaddingTop(2).Row(r =>
+                        {
+                            r.RelativeItem().Text("Sale Amount:").FontSize(8.5f);
+                            r.AutoItem().Text(totalSaleAmount.ToString("#,##0")).Bold().FontSize(8.5f);
+                        });
+                    });
+
+                    // Column 2: Bill Breakdown
+                    summaryRow.RelativeItem(1.0f).BorderLeft(1f).BorderColor(Colors.Black).PaddingHorizontal(10).Column(c2 =>
+                    {
+                        c2.Item().Row(r =>
+                        {
+                            r.RelativeItem().Text("Previous Balance:").FontSize(8.5f);
+                            r.AutoItem().Text(previousBal.ToString("#,##0.00")).Bold().FontSize(8.5f);
+                        });
+                        c2.Item().PaddingTop(3).Row(r =>
+                        {
+                            r.RelativeItem().Text("Total Bill:").FontSize(8.5f);
+                            r.AutoItem().Text(totalBill.ToString("#,##0.00")).Bold().FontSize(8.5f);
+                        });
+
+                        c2.Item().PaddingVertical(5).LineHorizontal(1f).LineColor(Colors.Black);
+
+                        c2.Item().Row(r =>
+                        {
+                            r.RelativeItem().Text("Grand Total:").Bold().FontSize(9f);
+                            r.AutoItem().Text(grandTotal.ToString("#,##0.00")).Bold().FontSize(9f);
+                        });
+                    });
+
+                    // Column 3: Receipts & Net Balance
+                    summaryRow.RelativeItem(1.0f).BorderLeft(1f).BorderColor(Colors.Black).PaddingLeft(10).Column(c3 =>
+                    {
+                        c3.Item().Row(r =>
+                        {
+                            r.RelativeItem().Text("Receipts:").FontSize(8.5f);
+                            r.AutoItem().Text(receipts.ToString("#,##0.00")).Bold().FontSize(8.5f);
+                        });
+                        c3.Item().PaddingTop(3).Row(r =>
+                        {
+                            r.RelativeItem().Text("Payments:").FontSize(8.5f);
+                            r.AutoItem().Text(payments.ToString("#,##0.00")).Bold().FontSize(8.5f);
+                        });
+
+                        c3.Item().PaddingVertical(5).LineHorizontal(1.5f).LineColor(Colors.Black);
+
+                        c3.Item().Row(r =>
+                        {
+                            r.RelativeItem().Text("Net Balance:").Bold().FontSize(9.5f);
+                            r.AutoItem().Text(netBalance.ToString("#,##0")).Bold().FontSize(10.5f);
+                        });
+                    });
+                });
+
+                // 6. Optional Raast QR Section (if enabled)
+                if (_header.ShowQrPayment && _header.QrPayment != null)
+                {
+                    col.Item().PaddingTop(8).Element(ComposeA4QrPayment);
+                }
+
+                // 7. Footer
+                col.Item().PaddingTop(12).LineHorizontal(0.5f).LineColor(Colors.Grey.Lighten1);
+                col.Item().AlignCenter().PaddingTop(4).Text("Software Powered by Bizgrip Solutions").FontSize(7.5f).FontColor(Colors.Grey.Darken2);
+            });
+        });
+    }
+
+    private void ComposeWandaThermal80(IDocumentContainer container)
+    {
+        decimal totalSaleKg = _items.Sum(x => x.Qty);
+        decimal totalSaleBags = _items.Sum(x => x.SecQty ?? (x.QtyInPack.HasValue && x.QtyInPack.Value > 0 ? Math.Round(x.Qty / x.QtyInPack.Value) : 0));
+        decimal totalSaleAmount = _items.Sum(x => x.Amount);
+        decimal totalBill = totalSaleAmount;
+        decimal previousBal = _header.PreviousBalance;
+        decimal receipts = _header.Payment;
+        decimal netBalance = _header.ClosingBalance;
+
+        container.Page(page =>
+        {
+            page.ContinuousSize(80, Unit.Millimetre);
+            page.MarginVertical(2, Unit.Millimetre);
+            page.MarginHorizontal(4, Unit.Millimetre);
+            page.PageColor(Colors.White);
+            page.DefaultTextStyle(x => x.FontSize(8f).FontFamily("Arial").FontColor(Colors.Black));
+
+            page.Content().Column(col =>
+            {
+                // Header
+                col.Item().AlignCenter().Text(_header.CompanyName).FontSize(12f).Bold();
+                col.Item().AlignCenter().PaddingTop(1).Text("WANDA / FEED BILL").FontSize(9f).Bold();
+
+                col.Item().PaddingVertical(2).LineHorizontal(1f).LineColor(Colors.Black);
+
+                col.Item().Row(r =>
+                {
+                    r.AutoItem().Text("Customer: ").Bold().FontSize(8.5f);
+                    r.RelativeItem().Text(_header.CustomerTitle).Bold().FontSize(8.5f);
+                });
+                col.Item().Row(r =>
+                {
+                    r.AutoItem().Text("Period: ").FontSize(8f).SemiBold();
+                    r.RelativeItem().Text($"{_header.FromDate:dd/MM/yy} to {_header.ToDate:dd/MM/yy}").FontSize(8f).SemiBold();
+                });
+
+                col.Item().PaddingVertical(2).LineHorizontal(1f).LineColor(Colors.Black);
+
+                // Items table (Item, Weight, Bags, Rate, Amount)
+                col.Item().Table(table =>
+                {
+                    table.ColumnsDefinition(cols =>
+                    {
+                        cols.RelativeColumn(2.0f); // Item & Date
+                        cols.RelativeColumn(1.0f); // Kg
+                        cols.RelativeColumn(0.7f); // Bags
+                        cols.RelativeColumn(0.9f); // Rate
+                        cols.RelativeColumn(1.2f); // Total
+                    });
+
+                    table.Header(h =>
+                    {
+                        h.Cell().Text("ITEM").Bold().FontSize(7.5f);
+                        h.Cell().AlignRight().Text("KG").Bold().FontSize(7.5f);
+                        h.Cell().AlignRight().Text("BAG").Bold().FontSize(7.5f);
+                        h.Cell().AlignRight().Text("RATE").Bold().FontSize(7.5f);
+                        h.Cell().AlignRight().Text("TOTAL").Bold().FontSize(8f);
+                        h.Cell().ColumnSpan(5).PaddingVertical(1).LineHorizontal(0.75f).LineColor(Colors.Black);
+                    });
+
+                    foreach (var line in _items)
+                    {
+                        decimal bagQty = line.SecQty ?? (line.QtyInPack.HasValue && line.QtyInPack.Value > 0 ? Math.Round(line.Qty / line.QtyInPack.Value) : 0);
+                        table.Cell().PaddingVertical(1).Text(t =>
+                        {
+                            t.Span($"{line.Date:dd/MM} ").FontSize(7.5f).SemiBold();
+                            t.Span(line.Item).FontSize(8f).SemiBold();
+                        });
+                        table.Cell().AlignRight().PaddingVertical(1).Text(line.Qty.ToString("#,##0")).FontSize(8f).SemiBold();
+                        table.Cell().AlignRight().PaddingVertical(1).Text(bagQty > 0 ? bagQty.ToString("#,##0") : "-").FontSize(8f).SemiBold();
+                        table.Cell().AlignRight().PaddingVertical(1).Text($"{line.Rate:N0}").FontSize(8f).SemiBold();
+                        table.Cell().AlignRight().PaddingVertical(1).Text($"{line.Amount:N0}").FontSize(8.5f).Bold();
+                    }
+                });
+
+                col.Item().PaddingVertical(2).LineHorizontal(1f).LineColor(Colors.Black);
+
+                // Summary
+                col.Item().Row(r =>
+                {
+                    r.RelativeItem().Text("Total Sale Kg:").FontSize(8.5f).SemiBold();
+                    r.AutoItem().Text(totalSaleKg.ToString("#,##0")).FontSize(8.5f).Bold();
+                });
+                col.Item().Row(r =>
+                {
+                    r.RelativeItem().Text("Total Sale Bags:").FontSize(8.5f).SemiBold();
+                    r.AutoItem().Text(totalSaleBags.ToString("#,##0")).FontSize(8.5f).Bold();
+                });
+                col.Item().Row(r =>
+                {
+                    r.RelativeItem().Text("Previous Balance:").FontSize(8.5f).SemiBold();
+                    r.AutoItem().Text($"{previousBal:N0}").FontSize(8.5f).SemiBold();
+                });
+                col.Item().Row(r =>
+                {
+                    r.RelativeItem().Text("Total Bill:").FontSize(8.5f).SemiBold();
+                    r.AutoItem().Text($"{totalBill:N0}").FontSize(8.5f).SemiBold();
+                });
+                col.Item().Row(r =>
+                {
+                    r.RelativeItem().Text("Receipts:").FontSize(8.5f).SemiBold();
+                    r.AutoItem().Text($"{receipts:N0}").FontSize(8.5f).SemiBold();
+                });
+
+                col.Item().PaddingVertical(2).LineHorizontal(1f).LineColor(Colors.Black);
+
+                col.Item().Row(r =>
+                {
+                    r.RelativeItem().Text("NET DUE:").FontSize(10f).Bold();
+                    r.AutoItem().Text($"Rs. {netBalance:N0}").FontSize(11f).Bold();
+                });
+
+                // QR if enabled
+                if (_header.ShowQrPayment && _header.QrPayment != null)
+                {
+                    byte[]? qrBytes = null;
+                    try { qrBytes = QrCodeHelper.GeneratePng(_header.QrPayment.BuildEmvCoPayload(_header.ClosingBalance), 3); } catch { }
+                    if (qrBytes != null && qrBytes.Length > 0)
+                    {
+                        col.Item().PaddingTop(3).AlignCenter().Image(qrBytes).FitWidth();
+                        col.Item().AlignCenter().Text("SCAN TO PAY (RAAST)").FontSize(7.5f).Bold();
+                    }
+                }
+
+                col.Item().PaddingVertical(2).LineHorizontal(0.5f).LineColor(Colors.Black);
+                col.Item().AlignCenter().Text("Software powered by Bizgrip Solutions").FontSize(6f).SemiBold();
+            });
+        });
     }
 
     #endregion

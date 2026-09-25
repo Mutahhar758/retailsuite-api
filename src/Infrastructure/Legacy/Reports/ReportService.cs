@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using QuestPDF.Fluent;
 using Retailer.Application.Common.Exceptions;
+using Retailer.Application.Common.Interfaces;
 using Retailer.Application.Common.Persistence;
 using Retailer.Application.Legacy.Reports;
 using Retailer.Domain.Legacy;
@@ -30,6 +31,7 @@ internal class ReportService : IReportService
     private readonly IRepository<SaleRetMaster> _saleRetMasterRepository;
     private readonly IRepository<DefaultAccount> _defaultAccountRepository;
     private readonly IRepository<Setting> _settingRepository;
+    private readonly ICurrentTenant _currentTenant;
 
     public ReportService(
         IRepository<GlEntry> glRepository,
@@ -49,7 +51,8 @@ internal class ReportService : IReportService
         IRepository<SaleRetDetail> saleRetDetailRepository,
         IRepository<SaleRetMaster> saleRetMasterRepository,
         IRepository<DefaultAccount> defaultAccountRepository,
-        IRepository<Setting> settingRepository)
+        IRepository<Setting> settingRepository,
+        ICurrentTenant currentTenant)
     {
         _glRepository = glRepository;
         _chartOfAccountRepository = chartOfAccountRepository;
@@ -69,6 +72,7 @@ internal class ReportService : IReportService
         _saleRetMasterRepository = saleRetMasterRepository;
         _defaultAccountRepository = defaultAccountRepository;
         _settingRepository = settingRepository;
+        _currentTenant = currentTenant;
     }
 
     public async Task<List<AccountStatementLineResponse>> GetAccountStatementAsync(AccountStatementFilter filter, CancellationToken cancellationToken)
@@ -1433,6 +1437,7 @@ internal class ReportService : IReportService
         var layout = string.Equals(filter.Layout, "Thermal", StringComparison.OrdinalIgnoreCase)
             ? CustomerBillPrintLayout.Thermal80mm
             : CustomerBillPrintLayout.A4Sheet;
+        bool isWanda = filter.IsWandaLayout ?? _currentTenant.HasVariablePackFeature;
 
         var header = new CustomerBillHeader
         {
@@ -1452,6 +1457,7 @@ internal class ReportService : IReportService
             Payment = billResponse.Summary.Payment,
             ClosingBalance = billResponse.Summary.Balance,
             Layout = layout,
+            IsWandaLayout = isWanda,
             ThankyouLine = thankYou,
             QrPayment = new QrPaymentInfo
             {
@@ -1510,6 +1516,8 @@ internal class ReportService : IReportService
             ? CustomerBillPrintLayout.Thermal80mm
             : CustomerBillPrintLayout.A4Sheet;
 
+        bool isWanda = filter.IsWandaLayout ?? _currentTenant.HasVariablePackFeature;
+
         var batchList = new List<(CustomerBillHeader Header, List<CustomerBillLineResponse> Lines)>();
 
         foreach (var accountId in accountIds)
@@ -1563,6 +1571,7 @@ internal class ReportService : IReportService
                     Payment = billResponse.Summary.Payment,
                     ClosingBalance = billResponse.Summary.Balance,
                     Layout = layout,
+                    IsWandaLayout = isWanda,
                     ThankyouLine = thankYou,
                     QrPayment = new QrPaymentInfo
                     {

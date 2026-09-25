@@ -12,4 +12,5 @@ public class CustomerBillFilter
     public string? QrAccountNumber { get; set; }
     public string? QrBankName { get; set; }
     public string? ThankyouLine { get; set; }
+    public bool? IsWandaLayout { get; set; }
 }

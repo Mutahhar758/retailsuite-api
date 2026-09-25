@@ -13,4 +13,5 @@ public class CustomerBillBatchFilter
     public string? QrBankName { get; set; }
     public string? ThankyouLine { get; set; }
     public bool OnlyWithActivity { get; set; } = true;
+    public bool? IsWandaLayout { get; set; }
 }

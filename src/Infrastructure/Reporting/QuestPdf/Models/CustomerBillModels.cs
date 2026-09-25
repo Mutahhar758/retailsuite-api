@@ -29,4 +29,5 @@ public class CustomerBillHeader
     public CustomerBillPrintLayout Layout { get; set; } = CustomerBillPrintLayout.A4Sheet;
     public QrPaymentInfo? QrPayment { get; set; }
     public bool ShowQrPayment => QrPayment != null && QrPayment.IsEnabled && ClosingBalance > 0;
+    public bool IsWandaLayout { get; set; }
 }
