@@ -1302,16 +1302,17 @@ internal class ReportService : IReportService
             .Distinct()
             .ToDictionaryAsync(x => x.Code, x => x.Title, cancellationToken);
 
-        var saleLines = await (
+        var saleLinesRaw = await (
             from sd in _saleRepository.GetAll().AsNoTracking()
             join sm in _saleMasterRepository.GetAll().AsNoTracking()
                 on new { sd.VType, sd.VNo } equals new { sm.VType, VNo = sm.VNo }
             where sm.AccountId == filter.Account
                   && sm.VDate >= filter.FromDate && sm.VDate <= filter.ToDate
-            select new CustomerBillLineResponse
+            select new
             {
                 Date = sm.VDate,
                 VNo = sd.VType + "-" + sd.VNo,
+                Seq = sd.Seq,
                 Item = sd.Item != null ? sd.Item.Title : (sd.ItemId ?? string.Empty),
                 UnitId = sd.UnitId ?? string.Empty,
                 UnitTitle = sd.Unit != null ? sd.Unit.Title : (!string.IsNullOrWhiteSpace(sd.UnitId) && unitMap.ContainsKey(sd.UnitId) ? unitMap[sd.UnitId] : (sd.Item != null && sd.Item.DefaultUnit != null ? sd.Item.DefaultUnit.Title : (sd.Item != null && sd.Item.PrimaryUnit != null ? sd.Item.PrimaryUnit.Title : (sd.UnitId ?? string.Empty)))),
@@ -1322,8 +1323,37 @@ internal class ReportService : IReportService
                 SecQty = sd.SecQty,
                 SecRate = sd.SecRate,
                 QtyInPack = sd.QtyInPack,
-                SecUnitTitle = sd.SecUnit != null ? sd.SecUnit.Title : (!string.IsNullOrWhiteSpace(sd.SecUnitId) && unitMap.ContainsKey(sd.SecUnitId) ? unitMap[sd.SecUnitId] : (sd.Item != null && sd.Item.SecondaryUnit != null ? sd.Item.SecondaryUnit.Title : (sd.SecUnitId ?? string.Empty)))
+                SecUnitTitle = sd.SecUnit != null ? sd.SecUnit.Title : (!string.IsNullOrWhiteSpace(sd.SecUnitId) && unitMap.ContainsKey(sd.SecUnitId) ? unitMap[sd.SecUnitId] : (sd.Item != null && sd.Item.SecondaryUnit != null ? sd.Item.SecondaryUnit.Title : (sd.SecUnitId ?? string.Empty))),
+                ReceiptAmount = sm.CashReceipt - (sm.CashBack ?? 0m)
             }).ToListAsync(cancellationToken);
+
+        var saleLines = new List<CustomerBillLineResponse>();
+        foreach (var group in saleLinesRaw.GroupBy(x => x.VNo))
+        {
+            bool first = true;
+            foreach (var item in group.OrderBy(x => x.Seq))
+            {
+                saleLines.Add(new CustomerBillLineResponse
+                {
+                    Date = item.Date,
+                    VNo = item.VNo,
+                    Item = item.Item,
+                    UnitId = item.UnitId,
+                    UnitTitle = item.UnitTitle,
+                    Qty = item.Qty,
+                    Rate = item.Rate,
+                    AddLess = item.AddLess,
+                    Amount = item.Amount,
+                    SecQty = item.SecQty,
+                    SecRate = item.SecRate,
+                    QtyInPack = item.QtyInPack,
+                    SecUnitTitle = item.SecUnitTitle,
+                    ReceiptDate = first && item.ReceiptAmount > 0 ? item.Date : null,
+                    ReceiptAmount = first && item.ReceiptAmount > 0 ? item.ReceiptAmount : null
+                });
+                first = false;
+            }
+        }
 
         var supplyLines = await (
             from ssd in _saleSupplyDetailRepository.GetAll().AsNoTracking()
@@ -1345,16 +1375,41 @@ internal class ReportService : IReportService
                 SecQty = ssd.SecQty,
                 SecRate = ssd.SecRate,
                 QtyInPack = ssd.QtyInPack,
-                SecUnitTitle = ssd.SecUnit != null ? ssd.SecUnit.Title : (!string.IsNullOrWhiteSpace(ssd.SecUnitId) && unitMap.ContainsKey(ssd.SecUnitId) ? unitMap[ssd.SecUnitId] : (ssm.Item != null && ssm.Item.SecondaryUnit != null ? ssm.Item.SecondaryUnit.Title : (ssd.SecUnitId ?? string.Empty)))
+                SecUnitTitle = ssd.SecUnit != null ? ssd.SecUnit.Title : (!string.IsNullOrWhiteSpace(ssd.SecUnitId) && unitMap.ContainsKey(ssd.SecUnitId) ? unitMap[ssd.SecUnitId] : (ssm.Item != null && ssm.Item.SecondaryUnit != null ? ssm.Item.SecondaryUnit.Title : (ssd.SecUnitId ?? string.Empty))),
+                ReceiptDate = null,
+                ReceiptAmount = null
             }).ToListAsync(cancellationToken);
+
+        bool useClearingDate = string.Equals(filter.DateBasis, "ClearingDate", StringComparison.OrdinalIgnoreCase);
+
+        var standaloneReceipts = await _glRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => x.CrAccountId == filter.Account
+                        && (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) >= filter.FromDate
+                        && (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) <= filter.ToDate
+                        && (x.VType == "RV" || x.VType == "JV"))
+            .Select(x => new CustomerBillLineResponse
+            {
+                Date = useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate,
+                VNo = x.VType + "-" + x.VoucherNo,
+                Item = !string.IsNullOrWhiteSpace(x.Remarks) ? x.Remarks : (x.Narration != null ? x.Narration.Title : "Payment Received"),
+                UnitId = string.Empty,
+                UnitTitle = string.Empty,
+                Qty = 0,
+                Rate = 0,
+                AddLess = 0,
+                Amount = 0,
+                ReceiptDate = useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate,
+                ReceiptAmount = x.Amount
+            })
+            .ToListAsync(cancellationToken);
 
         var lines = saleLines
             .Concat(supplyLines)
+            .Concat(standaloneReceipts)
             .OrderBy(x => x.Date)
             .ThenBy(x => x.VNo)
             .ToList();
-
-        bool useClearingDate = string.Equals(filter.DateBasis, "ClearingDate", StringComparison.OrdinalIgnoreCase);
 
         var previousBalance = await _glRepository.GetAll()
             .AsNoTracking()
@@ -1363,14 +1418,23 @@ internal class ReportService : IReportService
             .Select(x => x.DrAccountId == filter.Account ? x.Amount : -x.Amount)
             .SumAsync(cancellationToken);
 
-        var payment = await _glRepository.GetAll()
+        var receipts = await _glRepository.GetAll()
             .AsNoTracking()
-            .Where(x => (x.DrAccountId == filter.Account || x.CrAccountId == filter.Account)
+            .Where(x => x.CrAccountId == filter.Account
                         && (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) >= filter.FromDate
                         && (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) <= filter.ToDate
-                        && (x.VType == "PV" || x.VType == "RV" || x.VType == "JV"))
-            .Select(x => x.DrAccountId == filter.Account ? x.Amount : -x.Amount)
-            .SumAsync(cancellationToken);
+                        && (x.VType == "SL" || x.VType == "SP" || x.VType == "RV" || x.VType == "JV"))
+            .SumAsync(x => x.Amount, cancellationToken);
+
+        var refunds = await _glRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => x.DrAccountId == filter.Account
+                        && (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) >= filter.FromDate
+                        && (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) <= filter.ToDate
+                        && x.VType == "PV")
+            .SumAsync(x => x.Amount, cancellationToken);
+
+        var payment = receipts - refunds;
 
         var balance = await _glRepository.GetAll()
             .AsNoTracking()
