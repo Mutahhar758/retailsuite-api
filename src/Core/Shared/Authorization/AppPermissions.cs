@@ -53,6 +53,8 @@ public static class AppResource
     public const string StockBalance = nameof(StockBalance);
     public const string StockLedger = nameof(StockLedger);
     public const string IncomeSummary = nameof(IncomeSummary);
+    public const string ProfitByCustomer = nameof(ProfitByCustomer);
+    public const string ProfitByItem = nameof(ProfitByItem);
     public const string BalanceSheet = nameof(BalanceSheet);
     public const string CustomerBill = nameof(CustomerBill);
     public const string MilkComparison = nameof(MilkComparison);
@@ -112,6 +114,14 @@ public static class AppPermissions
         // Income Summary
         new("View Income Summary", AppAction.View, AppResource.IncomeSummary),
         new("Export Income Summary", AppAction.Export, AppResource.IncomeSummary),
+
+        // Profit by Customer
+        new("View Profit By Customer", AppAction.View, AppResource.ProfitByCustomer),
+        new("Export Profit By Customer", AppAction.Export, AppResource.ProfitByCustomer),
+
+        // Profit by Item
+        new("View Profit By Item", AppAction.View, AppResource.ProfitByItem),
+        new("Export Profit By Item", AppAction.Export, AppResource.ProfitByItem),
 
         // Balance Sheet
         new("View Balance Sheet", AppAction.View, AppResource.BalanceSheet),
@@ -389,6 +399,8 @@ public static class AppPermissions
         p.Resource == AppResource.StockBalance ||
         p.Resource == AppResource.StockLedger ||
         p.Resource == AppResource.IncomeSummary ||
+        p.Resource == AppResource.ProfitByCustomer ||
+        p.Resource == AppResource.ProfitByItem ||
         p.Resource == AppResource.BalanceSheet ||
         p.Resource == AppResource.CustomerBill ||
         p.Resource == AppResource.MilkComparison ||

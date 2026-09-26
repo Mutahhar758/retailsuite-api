@@ -30,4 +30,8 @@ public interface IReportService : ITransientService
     Task<byte[]> GetPurchaseSupplyComparisonPdfAsync(PurchaseSupplyComparisonFilter filter, CancellationToken cancellationToken);
     Task<CustomerBalanceRecoveryResponse> GetCustomerBalanceRecoveryAsync(CustomerBalanceRecoveryFilter filter, CancellationToken cancellationToken);
     Task<byte[]> GetCustomerBalanceRecoveryPdfAsync(CustomerBalanceRecoveryFilter filter, CancellationToken cancellationToken);
+    Task<ProfitByCustomerResponse> GetProfitByCustomerAsync(ProfitByCustomerFilter filter, CancellationToken cancellationToken);
+    Task<byte[]> GetProfitByCustomerPdfAsync(ProfitByCustomerFilter filter, CancellationToken cancellationToken);
+    Task<ProfitByItemResponse> GetProfitByItemAsync(ProfitByItemFilter filter, CancellationToken cancellationToken);
+    Task<byte[]> GetProfitByItemPdfAsync(ProfitByItemFilter filter, CancellationToken cancellationToken);
 }

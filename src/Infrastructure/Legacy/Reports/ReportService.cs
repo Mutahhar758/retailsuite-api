@@ -31,6 +31,7 @@ internal class ReportService : IReportService
     private readonly IRepository<SaleRetMaster> _saleRetMasterRepository;
     private readonly IRepository<DefaultAccount> _defaultAccountRepository;
     private readonly IRepository<Setting> _settingRepository;
+    private readonly IRepository<TransactionFifoMapping> _fifoMappingRepository;
     private readonly ICurrentTenant _currentTenant;
 
     public ReportService(
@@ -52,6 +53,7 @@ internal class ReportService : IReportService
         IRepository<SaleRetMaster> saleRetMasterRepository,
         IRepository<DefaultAccount> defaultAccountRepository,
         IRepository<Setting> settingRepository,
+        IRepository<TransactionFifoMapping> fifoMappingRepository,
         ICurrentTenant currentTenant)
     {
         _glRepository = glRepository;
@@ -72,6 +74,7 @@ internal class ReportService : IReportService
         _saleRetMasterRepository = saleRetMasterRepository;
         _defaultAccountRepository = defaultAccountRepository;
         _settingRepository = settingRepository;
+        _fifoMappingRepository = fifoMappingRepository;
         _currentTenant = currentTenant;
     }
 
@@ -1191,27 +1194,11 @@ internal class ReportService : IReportService
             .FirstOrDefault(x => string.Equals(x.Title, "Purchase", StringComparison.OrdinalIgnoreCase)
                           || string.Equals(x.Title, "PU", StringComparison.OrdinalIgnoreCase));
 
-        // FIFO Opening Stock Value: sum of (RemainingQty * Rate) for all inward batches purchased
-        // before the period start. RemainingQty is maintained by FifoCostingService and reflects
-        // how many units of each purchase batch are still in stock.
-        // Note: for opening stock we use batches with VDate < FromDate to represent inventory
-        // carried forward into the period.
-        var openingStockValue = await _itemTransactionRepository.GetAll()
-            .AsNoTracking()
-            .Where(x => (x.VDate < filter.FromDate || x.VType == "Op")
-                     && !string.IsNullOrWhiteSpace(x.ItemId)
-                     && string.Equals(x.TranType, "in", StringComparison.OrdinalIgnoreCase)
-                     && x.RemainingQty > 0)
-            .SumAsync(x => x.RemainingQty * x.Rate, cancellationToken);
+        // FIFO Opening Stock Value: accurate historical valuation as of (FromDate - 1 day)
+        var openingStockValue = await GetFifoStockValuationAsync(filter.FromDate.AddDays(-1), cancellationToken);
 
-        // FIFO Closing Stock Value: sum of (RemainingQty * Rate) for all inward batches up to ToDate.
-        var closingStockValue = await _itemTransactionRepository.GetAll()
-            .AsNoTracking()
-            .Where(x => (x.VDate <= filter.ToDate || x.VType == "Op")
-                     && !string.IsNullOrWhiteSpace(x.ItemId)
-                     && string.Equals(x.TranType, "in", StringComparison.OrdinalIgnoreCase)
-                     && x.RemainingQty > 0)
-            .SumAsync(x => x.RemainingQty * x.Rate, cancellationToken);
+        // FIFO Closing Stock Value: accurate valuation as of ToDate
+        var closingStockValue = await GetFifoStockValuationAsync(filter.ToDate, cancellationToken);
 
         var purchaseDr = purchaseAccount != null && drMap.ContainsKey(purchaseAccount.Id) ? drMap[purchaseAccount.Id] : 0m;
         var purchaseCr = purchaseAccount != null && crMap.ContainsKey(purchaseAccount.Id) ? crMap[purchaseAccount.Id] : 0m;
@@ -2320,6 +2307,349 @@ internal class ReportService : IReportService
         };
 
         var document = new CustomerBalanceRecoveryDocument(header, response.Lines);
+        return document.GeneratePdf();
+    }
+    /// <summary>
+    /// Computes accurate FIFO inventory valuation as of a specific date.
+    /// For current/future dates, uses the indexed RemainingQty directly (O(1)).
+    /// For historical dates, computes remaining batch quantities using TransactionFifoMapping.
+    /// </summary>
+    private async Task<decimal> GetFifoStockValuationAsync(DateOnly asOfDate, CancellationToken cancellationToken)
+    {
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        if (asOfDate >= today)
+        {
+            return await _itemTransactionRepository.GetAll()
+                .AsNoTracking()
+                .Where(x => string.Equals(x.TranType, "in", StringComparison.OrdinalIgnoreCase)
+                         && !string.IsNullOrWhiteSpace(x.ItemId)
+                         && (x.VDate <= asOfDate || x.VType == "Op")
+                         && x.RemainingQty > 0)
+                .SumAsync(x => x.RemainingQty * x.Rate, cancellationToken);
+        }
+
+        var inBatches = await _itemTransactionRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => string.Equals(x.TranType, "in", StringComparison.OrdinalIgnoreCase)
+                     && !string.IsNullOrWhiteSpace(x.ItemId)
+                     && (x.VDate <= asOfDate || x.VType == "Op"))
+            .Select(x => new { x.Id, x.QtyIn, x.Rate })
+            .ToListAsync(cancellationToken);
+
+        if (inBatches.Count == 0)
+            return 0m;
+
+        var consumptions = await _fifoMappingRepository.GetAll()
+            .AsNoTracking()
+            .Where(m => m.OutTransaction.VDate <= asOfDate)
+            .GroupBy(m => m.InTransactionId)
+            .Select(g => new { InTxId = g.Key, ConsumedQty = g.Sum(x => x.QtyConsumed) })
+            .ToDictionaryAsync(x => x.InTxId, x => x.ConsumedQty, cancellationToken);
+
+        decimal totalValue = 0m;
+        foreach (var batch in inBatches)
+        {
+            var consumed = consumptions.GetValueOrDefault(batch.Id, 0m);
+            var remaining = Math.Max(0m, batch.QtyIn - consumed);
+            if (remaining > 0)
+            {
+                totalValue += remaining * batch.Rate;
+            }
+        }
+
+        return Math.Round(totalValue, 2);
+    }
+
+    public async Task<ProfitByCustomerResponse> GetProfitByCustomerAsync(
+        ProfitByCustomerFilter filter,
+        CancellationToken cancellationToken)
+    {
+        if (filter.ToDate < filter.FromDate)
+            throw new BadRequestException("To date must be greater than or equal to from date.");
+
+        var txQuery = _itemTransactionRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => x.VDate >= filter.FromDate && x.VDate <= filter.ToDate)
+            .Where(x => !string.IsNullOrWhiteSpace(x.AccountId))
+            .Where(x => (x.TranType == "out" && (x.VType == "SL" || x.VType == "SP"))
+                     || (x.TranType == "in" && x.VType == "SR"));
+
+        if (!string.IsNullOrWhiteSpace(filter.CustomerAccount))
+        {
+            txQuery = txQuery.Where(x => x.AccountId == filter.CustomerAccount);
+        }
+
+        var rawTxs = await txQuery
+            .Select(x => new
+            {
+                x.Id,
+                x.AccountId,
+                x.VDate,
+                x.VNo,
+                x.VType,
+                x.TranType,
+                x.ItemId,
+                ItemTitle = x.Item != null ? x.Item.Title : x.ItemId,
+                Unit = x.Item != null && x.Item.DefaultUnit != null ? x.Item.DefaultUnit.Title : (x.Unit != null ? x.Unit.Title : string.Empty),
+                Qty = x.TranType == "out" ? x.QtyOut : x.QtyIn,
+                x.Rate,
+                Amount = x.Amount != 0 ? x.Amount : (x.TranType == "out" ? x.QtyOut * x.Rate : x.QtyIn * x.Rate),
+                CostPrice = x.CostPrice ?? (x.Item != null ? x.Item.PriRate : 0m),
+                CostAmount = x.CostAmount ?? ((x.TranType == "out" ? x.QtyOut : x.QtyIn) * (x.CostPrice ?? (x.Item != null ? x.Item.PriRate : 0m)))
+            })
+            .ToListAsync(cancellationToken);
+
+        var accountIds = rawTxs.Select(x => x.AccountId!).Distinct().ToList();
+        var accounts = await _chartOfAccountRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => accountIds.Contains(x.Id))
+            .Select(x => new { x.Id, x.Title })
+            .ToDictionaryAsync(x => x.Id, x => x.Title, cancellationToken);
+
+        var customers = await _customerDetailRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => accountIds.Contains(x.Id))
+            .Select(x => new { AccountId = x.Id, City = x.Address, Phone = x.Phone1 })
+            .ToDictionaryAsync(x => x.AccountId, x => x, cancellationToken);
+
+        var customerGroups = rawTxs
+            .GroupBy(x => x.AccountId!)
+            .Select(g =>
+            {
+                var accountId = g.Key;
+                var accountTitle = accounts.GetValueOrDefault(accountId, accountId);
+                var custInfo = customers.GetValueOrDefault(accountId);
+
+                var sales = g.Where(x => x.TranType == "out").ToList();
+                var returns = g.Where(x => x.TranType == "in").ToList();
+
+                var salesQty = sales.Sum(x => x.Qty);
+                var returnQty = returns.Sum(x => x.Qty);
+                var netQty = salesQty - returnQty;
+
+                var salesAmt = sales.Sum(x => x.Amount);
+                var returnAmt = returns.Sum(x => x.Amount);
+                var netSales = salesAmt - returnAmt;
+
+                var salesCost = sales.Sum(x => x.CostAmount);
+                var returnCost = returns.Sum(x => x.CostAmount);
+                var netCost = salesCost - returnCost;
+
+                var invoiceCount = g.Select(x => x.VNo).Distinct().Count();
+
+                var details = g
+                    .OrderBy(x => x.VDate)
+                    .ThenBy(x => x.VNo)
+                    .Select(x => new ProfitByCustomerDetailLineResponse
+                    {
+                        VDate = x.VDate,
+                        VNo = x.VNo,
+                        VType = x.VType,
+                        ItemId = x.ItemId ?? string.Empty,
+                        ItemTitle = x.ItemTitle ?? string.Empty,
+                        Unit = x.Unit,
+                        Qty = x.TranType == "out" ? x.Qty : -x.Qty,
+                        SaleRate = x.Rate,
+                        SaleAmount = x.TranType == "out" ? x.Amount : -x.Amount,
+                        CostPrice = x.CostPrice,
+                        CostAmount = x.TranType == "out" ? x.CostAmount : -x.CostAmount
+                    })
+                    .ToList();
+
+                return new ProfitByCustomerLineResponse
+                {
+                    AccountId = accountId,
+                    AccountTitle = accountTitle,
+                    City = custInfo?.City,
+                    Phone = custInfo?.Phone,
+                    InvoiceCount = invoiceCount,
+                    TotalQty = netQty,
+                    TotalSales = Math.Round(netSales, 2),
+                    TotalCost = Math.Round(netCost, 2),
+                    Details = details
+                };
+            })
+            .OrderByDescending(x => x.GrossProfit)
+            .ToList();
+
+        return new ProfitByCustomerResponse
+        {
+            FromDate = filter.FromDate,
+            ToDate = filter.ToDate,
+            TotalSales = Math.Round(customerGroups.Sum(x => x.TotalSales), 2),
+            TotalCost = Math.Round(customerGroups.Sum(x => x.TotalCost), 2),
+            TotalQtySold = customerGroups.Sum(x => x.TotalQty),
+            Lines = customerGroups
+        };
+    }
+
+    public async Task<byte[]> GetProfitByCustomerPdfAsync(
+        ProfitByCustomerFilter filter,
+        CancellationToken cancellationToken)
+    {
+        var response = await GetProfitByCustomerAsync(filter, cancellationToken);
+
+        var company = await _companyDetailRepository.GetAll()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(cancellationToken);
+
+        string customerFilterText = string.Empty;
+        if (!string.IsNullOrWhiteSpace(filter.CustomerAccount))
+        {
+            var acc = await _chartOfAccountRepository.GetAll()
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == filter.CustomerAccount, cancellationToken);
+            customerFilterText = acc != null ? $"{acc.Title} ({acc.Id})" : filter.CustomerAccount;
+        }
+
+        var header = new ProfitByCustomerReportHeader
+        {
+            CompanyName = company?.CompanyName ?? "Retail Suite Enterprise",
+            FromDate = response.FromDate,
+            ToDate = response.ToDate,
+            CustomerFilter = customerFilterText,
+            GeneratedAt = DateTime.Now,
+            TotalSales = response.TotalSales,
+            TotalCost = response.TotalCost,
+            TotalQtySold = response.TotalQtySold,
+            TotalCustomers = response.CustomerCount
+        };
+
+        var items = response.Lines.Select(x => new ProfitByCustomerReportItem
+        {
+            AccountId = x.AccountId,
+            AccountTitle = x.AccountTitle,
+            City = x.City,
+            InvoiceCount = x.InvoiceCount,
+            TotalQty = x.TotalQty,
+            TotalSales = x.TotalSales,
+            TotalCost = x.TotalCost
+        }).ToList();
+
+        var document = new ProfitByCustomerDocument(header, items);
+        return document.GeneratePdf();
+    }
+
+    public async Task<ProfitByItemResponse> GetProfitByItemAsync(
+        ProfitByItemFilter filter,
+        CancellationToken cancellationToken)
+    {
+        if (filter.ToDate < filter.FromDate)
+            throw new BadRequestException("To date must be greater than or equal to from date.");
+
+        var txQuery = _itemTransactionRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => x.VDate >= filter.FromDate && x.VDate <= filter.ToDate)
+            .Where(x => !string.IsNullOrWhiteSpace(x.ItemId))
+            .Where(x => (x.TranType == "out" && (x.VType == "SL" || x.VType == "SP"))
+                     || (x.TranType == "in" && x.VType == "SR"));
+
+        if (!string.IsNullOrWhiteSpace(filter.ItemId))
+        {
+            txQuery = txQuery.Where(x => x.ItemId == filter.ItemId);
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter.CategoryId))
+        {
+            txQuery = txQuery.Where(x => x.Item != null && x.Item.ItemCategoryId == filter.CategoryId);
+        }
+
+        var rawTxs = await txQuery
+            .Select(x => new
+            {
+                x.ItemId,
+                ItemTitle = x.Item != null ? x.Item.Title : x.ItemId,
+                Category = x.Item != null && x.Item.ItemCategory != null ? x.Item.ItemCategory.Title : string.Empty,
+                Unit = x.Item != null && x.Item.DefaultUnit != null ? x.Item.DefaultUnit.Title : (x.Unit != null ? x.Unit.Title : string.Empty),
+                x.TranType,
+                Qty = x.TranType == "out" ? x.QtyOut : x.QtyIn,
+                x.Rate,
+                Amount = x.Amount != 0 ? x.Amount : (x.TranType == "out" ? x.QtyOut * x.Rate : x.QtyIn * x.Rate),
+                CostPrice = x.CostPrice ?? (x.Item != null ? x.Item.PriRate : 0m),
+                CostAmount = x.CostAmount ?? ((x.TranType == "out" ? x.QtyOut : x.QtyIn) * (x.CostPrice ?? (x.Item != null ? x.Item.PriRate : 0m)))
+            })
+            .ToListAsync(cancellationToken);
+
+        var itemGroups = rawTxs
+            .GroupBy(x => new { x.ItemId, x.ItemTitle, x.Category, x.Unit })
+            .Select(g =>
+            {
+                var sales = g.Where(x => x.TranType == "out").ToList();
+                var returns = g.Where(x => x.TranType == "in").ToList();
+
+                var salesQty = sales.Sum(x => x.Qty);
+                var returnQty = returns.Sum(x => x.Qty);
+                var netQty = salesQty - returnQty;
+
+                var salesAmt = sales.Sum(x => x.Amount);
+                var returnAmt = returns.Sum(x => x.Amount);
+                var netSales = salesAmt - returnAmt;
+
+                var salesCost = sales.Sum(x => x.CostAmount);
+                var returnCost = returns.Sum(x => x.CostAmount);
+                var netCost = salesCost - returnCost;
+
+                return new ProfitByItemLineResponse
+                {
+                    ItemId = g.Key.ItemId!,
+                    ItemTitle = g.Key.ItemTitle ?? g.Key.ItemId!,
+                    Category = g.Key.Category,
+                    Unit = g.Key.Unit,
+                    TotalQty = netQty,
+                    TotalSales = Math.Round(netSales, 2),
+                    TotalCost = Math.Round(netCost, 2)
+                };
+            })
+            .OrderByDescending(x => x.GrossProfit)
+            .ToList();
+
+        return new ProfitByItemResponse
+        {
+            FromDate = filter.FromDate,
+            ToDate = filter.ToDate,
+            TotalSales = Math.Round(itemGroups.Sum(x => x.TotalSales), 2),
+            TotalCost = Math.Round(itemGroups.Sum(x => x.TotalCost), 2),
+            TotalQtySold = itemGroups.Sum(x => x.TotalQty),
+            Lines = itemGroups
+        };
+    }
+
+    public async Task<byte[]> GetProfitByItemPdfAsync(
+        ProfitByItemFilter filter,
+        CancellationToken cancellationToken)
+    {
+        var response = await GetProfitByItemAsync(filter, cancellationToken);
+
+        var company = await _companyDetailRepository.GetAll()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var header = new ProfitByItemReportHeader
+        {
+            CompanyName = company?.CompanyName ?? "Retail Suite Enterprise",
+            FromDate = response.FromDate,
+            ToDate = response.ToDate,
+            ItemFilter = filter.ItemId,
+            CategoryFilter = filter.CategoryId,
+            GeneratedAt = DateTime.Now,
+            TotalSales = response.TotalSales,
+            TotalCost = response.TotalCost,
+            TotalQtySold = response.TotalQtySold,
+            TotalItems = response.ItemCount
+        };
+
+        var items = response.Lines.Select(x => new ProfitByItemReportItem
+        {
+            ItemId = x.ItemId,
+            ItemTitle = x.ItemTitle,
+            Category = x.Category,
+            Unit = x.Unit,
+            TotalQty = x.TotalQty,
+            TotalSales = x.TotalSales,
+            TotalCost = x.TotalCost
+        }).ToList();
+
+        var document = new ProfitByItemDocument(header, items);
         return document.GeneratePdf();
     }
 }

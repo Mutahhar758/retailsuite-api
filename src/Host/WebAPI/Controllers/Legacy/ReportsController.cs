@@ -206,6 +206,54 @@ public class ReportsController : VersionNeutralApiController
         return File(pdfBytes, "application/pdf", fileName);
     }
 
+    [HttpGet("profit-by-customer")]
+    [MustHavePermission(AppAction.View, AppResource.ProfitByCustomer)]
+    [OpenApiOperation("Get profit by customer report data (FIFO costing).", "")]
+    public async Task<HttpResponseDto<ProfitByCustomerResponse>> GetProfitByCustomerAsync(
+        [FromQuery] ProfitByCustomerFilter filter,
+        CancellationToken cancellationToken)
+    {
+        var result = await _reportService.GetProfitByCustomerAsync(filter, cancellationToken);
+        return result.ToInformationResponse();
+    }
+
+    [HttpGet("profit-by-customer/pdf")]
+    [MustHavePermission(AppAction.View, AppResource.ProfitByCustomer)]
+    [OpenApiOperation("Get profit by customer report as a vector PDF document.", "")]
+    public async Task<IActionResult> GetProfitByCustomerPdfAsync(
+        [FromQuery] ProfitByCustomerFilter filter,
+        CancellationToken cancellationToken)
+    {
+        var pdfBytes = await _reportService.GetProfitByCustomerPdfAsync(filter, cancellationToken);
+        string fileName = $"ProfitByCustomer_{filter.FromDate:yyyyMMdd}_{filter.ToDate:yyyyMMdd}.pdf";
+        Response.Headers.Append("Content-Disposition", $"inline; filename=\"{fileName}\"");
+        return File(pdfBytes, "application/pdf", fileName);
+    }
+
+    [HttpGet("profit-by-item")]
+    [MustHavePermission(AppAction.View, AppResource.ProfitByItem)]
+    [OpenApiOperation("Get profit by item report data (FIFO costing).", "")]
+    public async Task<HttpResponseDto<ProfitByItemResponse>> GetProfitByItemAsync(
+        [FromQuery] ProfitByItemFilter filter,
+        CancellationToken cancellationToken)
+    {
+        var result = await _reportService.GetProfitByItemAsync(filter, cancellationToken);
+        return result.ToInformationResponse();
+    }
+
+    [HttpGet("profit-by-item/pdf")]
+    [MustHavePermission(AppAction.View, AppResource.ProfitByItem)]
+    [OpenApiOperation("Get profit by item report as a vector PDF document.", "")]
+    public async Task<IActionResult> GetProfitByItemPdfAsync(
+        [FromQuery] ProfitByItemFilter filter,
+        CancellationToken cancellationToken)
+    {
+        var pdfBytes = await _reportService.GetProfitByItemPdfAsync(filter, cancellationToken);
+        string fileName = $"ProfitByItem_{filter.FromDate:yyyyMMdd}_{filter.ToDate:yyyyMMdd}.pdf";
+        Response.Headers.Append("Content-Disposition", $"inline; filename=\"{fileName}\"");
+        return File(pdfBytes, "application/pdf", fileName);
+    }
+
     [HttpGet("customer-bill")]
     [MustHavePermission(AppAction.View, AppResource.CustomerBill)]
     [OpenApiOperation("Get customer bill report data.", "")]
