@@ -1429,10 +1429,10 @@ internal class ReportService : IReportService
             .ToDictionaryAsync(s => s.Key, s => s.Value, cancellationToken);
 
         bool qrEnabled = filter.QrEnabled ?? (settings.TryGetValue("Bill.QrPayment.Enabled", out var qe) && string.Equals(qe, "true", StringComparison.OrdinalIgnoreCase));
-        string qrTitle = !string.IsNullOrWhiteSpace(filter.QrAccountTitle) ? filter.QrAccountTitle : (settings.TryGetValue("Bill.QrPayment.AccountTitle", out var qt) ? (qt ?? string.Empty) : string.Empty);
-        string qrAcc = !string.IsNullOrWhiteSpace(filter.QrAccountNumber) ? filter.QrAccountNumber : (settings.TryGetValue("Bill.QrPayment.AccountNumber", out var qa) ? (qa ?? string.Empty) : string.Empty);
-        string qrBank = !string.IsNullOrWhiteSpace(filter.QrBankName) ? filter.QrBankName : (settings.TryGetValue("Bill.QrPayment.BankName", out var qb) ? (qb ?? string.Empty) : string.Empty);
-        string thankYou = !string.IsNullOrWhiteSpace(filter.ThankyouLine) ? filter.ThankyouLine : (settings.TryGetValue("Bill.ThankYouMessage", out var ty) ? (ty ?? "Thank you for shopping with us!") : "Thank you for shopping with us!");
+        string qrTitle = settings.TryGetValue("Bill.QrPayment.AccountTitle", out var qt) ? (qt ?? string.Empty) : string.Empty;
+        string qrAcc = settings.TryGetValue("Bill.QrPayment.AccountNumber", out var qa) ? (qa ?? string.Empty) : string.Empty;
+        string qrBank = settings.TryGetValue("Bill.QrPayment.BankName", out var qb) ? (qb ?? string.Empty) : string.Empty;
+        string thankYou = settings.TryGetValue("Bill.ThankYouMessage", out var ty) ? (ty ?? "Thank you for shopping with us!") : "Thank you for shopping with us!";
 
         var layout = string.Equals(filter.Layout, "Thermal", StringComparison.OrdinalIgnoreCase)
             ? CustomerBillPrintLayout.Thermal80mm
@@ -1507,10 +1507,10 @@ internal class ReportService : IReportService
             .ToDictionaryAsync(s => s.Key, s => s.Value, cancellationToken);
 
         bool qrEnabled = filter.QrEnabled ?? (settings.TryGetValue("Bill.QrPayment.Enabled", out var qe) && string.Equals(qe, "true", StringComparison.OrdinalIgnoreCase));
-        string qrTitle = !string.IsNullOrWhiteSpace(filter.QrAccountTitle) ? filter.QrAccountTitle : (settings.TryGetValue("Bill.QrPayment.AccountTitle", out var qt) ? (qt ?? string.Empty) : string.Empty);
-        string qrAcc = !string.IsNullOrWhiteSpace(filter.QrAccountNumber) ? filter.QrAccountNumber : (settings.TryGetValue("Bill.QrPayment.AccountNumber", out var qa) ? (qa ?? string.Empty) : string.Empty);
-        string qrBank = !string.IsNullOrWhiteSpace(filter.QrBankName) ? filter.QrBankName : (settings.TryGetValue("Bill.QrPayment.BankName", out var qb) ? (qb ?? string.Empty) : string.Empty);
-        string thankYou = !string.IsNullOrWhiteSpace(filter.ThankyouLine) ? filter.ThankyouLine : (settings.TryGetValue("Bill.ThankYouMessage", out var ty) ? (ty ?? "Thank you for shopping with us!") : "Thank you for shopping with us!");
+        string qrTitle = settings.TryGetValue("Bill.QrPayment.AccountTitle", out var qt) ? (qt ?? string.Empty) : string.Empty;
+        string qrAcc = settings.TryGetValue("Bill.QrPayment.AccountNumber", out var qa) ? (qa ?? string.Empty) : string.Empty;
+        string qrBank = settings.TryGetValue("Bill.QrPayment.BankName", out var qb) ? (qb ?? string.Empty) : string.Empty;
+        string thankYou = settings.TryGetValue("Bill.ThankYouMessage", out var ty) ? (ty ?? "Thank you for shopping with us!") : "Thank you for shopping with us!";
 
         var layout = string.Equals(filter.Layout, "Thermal", StringComparison.OrdinalIgnoreCase)
             ? CustomerBillPrintLayout.Thermal80mm
@@ -1532,10 +1532,6 @@ internal class ReportService : IReportService
                     DateBasis = filter.DateBasis,
                     Layout = filter.Layout,
                     QrEnabled = qrEnabled,
-                    QrAccountTitle = qrTitle,
-                    QrAccountNumber = qrAcc,
-                    QrBankName = qrBank,
-                    ThankyouLine = thankYou
                 };
 
                 var billResponse = await GetCustomerBillAsync(billFilter, cancellationToken);

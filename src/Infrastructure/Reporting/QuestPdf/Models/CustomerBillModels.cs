@@ -28,6 +28,6 @@ public class CustomerBillHeader
     public string? ThankyouLine { get; set; }
     public CustomerBillPrintLayout Layout { get; set; } = CustomerBillPrintLayout.A4Sheet;
     public QrPaymentInfo? QrPayment { get; set; }
-    public bool ShowQrPayment => QrPayment != null && QrPayment.IsEnabled && ClosingBalance > 0;
+    public bool ShowQrPayment => QrPayment != null && QrPayment.IsEnabled && !string.IsNullOrWhiteSpace(QrPayment.AccountNumber) && ClosingBalance > 0;
     public bool IsWandaLayout { get; set; }
 }
