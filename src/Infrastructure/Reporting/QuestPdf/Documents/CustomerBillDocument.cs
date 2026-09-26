@@ -655,10 +655,6 @@ public class CustomerBillDocument : IDocument
         decimal totalSaleBags = _items.Sum(x => x.SecQty ?? (x.QtyInPack.HasValue && x.QtyInPack.Value > 0 ? Math.Round(x.Qty / x.QtyInPack.Value) : 0));
         decimal totalSaleAmount = _items.Sum(x => x.Amount);
 
-        decimal totalPurchaseKg = 0m;
-        decimal totalPurchaseBags = 0m;
-        decimal totalPurchaseAmount = 0m;
-
         decimal totalBill = totalSaleAmount;
         decimal previousBal = _header.PreviousBalance;
         decimal grandTotal = previousBal + totalBill;
@@ -669,11 +665,11 @@ public class CustomerBillDocument : IDocument
         container.Page(page =>
         {
             page.Size(PageSizes.A4);
-            page.Margin(20, Unit.Point);
+            page.Margin(14, Unit.Point);
             page.PageColor(Colors.White);
             page.DefaultTextStyle(x => x.FontSize(8.5f).FontFamily(Fonts.Arial).FontColor(Colors.Black));
 
-            page.Content().Border(1f).BorderColor(Colors.Black).CornerRadius(6).Padding(16).Column(col =>
+            page.Content().Border(1f).BorderColor(Colors.Black).CornerRadius(6).Padding(10).Column(col =>
             {
                 // 1. Company Name
                 col.Item().AlignCenter().Text(_header.CompanyName.ToUpper())
@@ -714,39 +710,39 @@ public class CustomerBillDocument : IDocument
                 {
                     table.ColumnsDefinition(columns =>
                     {
-                        columns.ConstantColumn(46);   // Date
-                        columns.ConstantColumn(58);   // Voucher No
-                        columns.RelativeColumn(2.0f); // Description
-                        columns.ConstantColumn(52);   // Weight (Kg)
-                        columns.ConstantColumn(36);   // Bags
-                        columns.ConstantColumn(46);   // Kg Rate
-                        columns.ConstantColumn(48);   // Bag Rate
-                        columns.ConstantColumn(44);   // Carriage
-                        columns.ConstantColumn(62);   // Amount
-                        columns.ConstantColumn(52);   // Receipt Date
-                        columns.ConstantColumn(58);   // Receipt Amount
+                        columns.ConstantColumn(38);   // Date
+                        columns.ConstantColumn(46);   // Voucher No
+                        columns.RelativeColumn();     // Description (Takes maximum available space)
+                        columns.ConstantColumn(46);   // Weight (Kg)
+                        columns.ConstantColumn(30);   // Bags
+                        columns.ConstantColumn(38);   // Kg Rate
+                        columns.ConstantColumn(38);   // Bag Rate
+                        columns.ConstantColumn(36);   // Carriage
+                        columns.ConstantColumn(50);   // Amount
+                        columns.ConstantColumn(44);   // Receipt Date
+                        columns.ConstantColumn(48);   // Receipt Amount
                     });
 
                     table.Header(header =>
                     {
                         static IContainer WandaHeaderCell(IContainer c) =>
-                            c.Border(0.75f).BorderColor(Colors.Black).PaddingVertical(4).PaddingHorizontal(2);
+                            c.Border(0.75f).BorderColor(Colors.Black).PaddingVertical(3).PaddingHorizontal(1.5f);
 
-                        header.Cell().Element(WandaHeaderCell).AlignCenter().Text("Date").Bold().FontSize(8f);
-                        header.Cell().Element(WandaHeaderCell).AlignCenter().Text("Voucher No").Bold().FontSize(8f);
-                        header.Cell().Element(WandaHeaderCell).AlignCenter().Text("Description").Bold().FontSize(8f);
-                        header.Cell().Element(WandaHeaderCell).AlignCenter().Text("Weight (Kg)").Bold().FontSize(8f);
-                        header.Cell().Element(WandaHeaderCell).AlignCenter().Text("Bags").Bold().FontSize(8f);
-                        header.Cell().Element(WandaHeaderCell).AlignCenter().Text("Kg Rate").Bold().FontSize(8f);
-                        header.Cell().Element(WandaHeaderCell).AlignCenter().Text("Bag Rate").Bold().FontSize(8f);
-                        header.Cell().Element(WandaHeaderCell).AlignCenter().Text("Carriage").Bold().FontSize(8f);
-                        header.Cell().Element(WandaHeaderCell).AlignCenter().Text("Amount").Bold().FontSize(8f);
-                        header.Cell().Element(WandaHeaderCell).AlignCenter().Text("Receipt Date").Bold().FontSize(7.5f);
-                        header.Cell().Element(WandaHeaderCell).AlignCenter().Text("Receipt Amount").Bold().FontSize(7.5f);
+                        header.Cell().Element(WandaHeaderCell).AlignCenter().Text("Date").Bold().FontSize(7.5f);
+                        header.Cell().Element(WandaHeaderCell).AlignCenter().Text("Voucher No").Bold().FontSize(7.5f);
+                        header.Cell().Element(WandaHeaderCell).AlignCenter().Text("Description").Bold().FontSize(7.5f);
+                        header.Cell().Element(WandaHeaderCell).AlignCenter().Text("Weight (Kg)").Bold().FontSize(7.5f);
+                        header.Cell().Element(WandaHeaderCell).AlignCenter().Text("Bags").Bold().FontSize(7.5f);
+                        header.Cell().Element(WandaHeaderCell).AlignCenter().Text("Kg Rate").Bold().FontSize(7.5f);
+                        header.Cell().Element(WandaHeaderCell).AlignCenter().Text("Bag Rate").Bold().FontSize(7.5f);
+                        header.Cell().Element(WandaHeaderCell).AlignCenter().Text("Carriage").Bold().FontSize(7.5f);
+                        header.Cell().Element(WandaHeaderCell).AlignCenter().Text("Amount").Bold().FontSize(7.5f);
+                        header.Cell().Element(WandaHeaderCell).AlignCenter().Text("Receipt Date").Bold().FontSize(7f);
+                        header.Cell().Element(WandaHeaderCell).AlignCenter().Text("Receipt Amount").Bold().FontSize(7f);
                     });
 
                     static IContainer WandaBodyCell(IContainer c) =>
-                        c.Border(0.5f).BorderColor(Colors.Black).PaddingVertical(3.5f).PaddingHorizontal(3);
+                        c.Border(0.5f).BorderColor(Colors.Black).PaddingVertical(3).PaddingHorizontal(2f);
 
                     if (_items.Count == 0)
                     {
@@ -761,17 +757,17 @@ public class CustomerBillDocument : IDocument
                             decimal kgRate = line.Rate;
                             decimal bagRate = line.SecRate ?? (line.QtyInPack.HasValue && line.QtyInPack.Value > 0 ? line.Rate * line.QtyInPack.Value : (bagQty > 0 ? Math.Round(line.Amount / bagQty) : 0));
 
-                            table.Cell().Element(WandaBodyCell).AlignCenter().Text($"{line.Date:dd/MM/yy}").FontSize(8f);
-                            table.Cell().Element(WandaBodyCell).AlignCenter().Text(line.VNo).FontSize(8f);
-                            table.Cell().Element(WandaBodyCell).AlignLeft().Text(line.Item).SemiBold().FontSize(8.5f);
-                            table.Cell().Element(WandaBodyCell).AlignRight().Text(line.Qty.ToString("#,##0")).FontSize(8.5f);
-                            table.Cell().Element(WandaBodyCell).AlignRight().Text(bagQty > 0 ? bagQty.ToString("#,##0") : "-").FontSize(8.5f);
-                            table.Cell().Element(WandaBodyCell).AlignRight().Text(kgRate > 0 ? kgRate.ToString("#,##0.00") : "-").FontSize(8.5f);
-                            table.Cell().Element(WandaBodyCell).AlignRight().Text(bagRate > 0 ? bagRate.ToString("#,##0") : "-").FontSize(8.5f);
-                            table.Cell().Element(WandaBodyCell).AlignRight().Text(line.AddLess != 0 ? line.AddLess.ToString("#,##0") : "0").FontSize(8.5f);
-                            table.Cell().Element(WandaBodyCell).AlignRight().Text(line.Amount.ToString("#,##0")).Bold().FontSize(8.5f);
-                            table.Cell().Element(WandaBodyCell).AlignCenter().Text(line.ReceiptDate.HasValue ? line.ReceiptDate.Value.ToString("dd/MM/yy") : string.Empty).FontSize(8f);
-                            table.Cell().Element(WandaBodyCell).AlignRight().Text(line.ReceiptAmount.HasValue && line.ReceiptAmount.Value != 0 ? line.ReceiptAmount.Value.ToString("#,##0") : string.Empty).FontSize(8.5f);
+                            table.Cell().Element(WandaBodyCell).AlignCenter().Text($"{line.Date:dd/MM/yy}").FontSize(7.5f);
+                            table.Cell().Element(WandaBodyCell).AlignCenter().Text(line.VNo).FontSize(7.5f);
+                            table.Cell().Element(WandaBodyCell).AlignLeft().Text(line.Item).SemiBold().FontSize(8f);
+                            table.Cell().Element(WandaBodyCell).AlignRight().Text(line.Qty.ToString("#,##0")).FontSize(8f);
+                            table.Cell().Element(WandaBodyCell).AlignRight().Text(bagQty > 0 ? bagQty.ToString("#,##0") : "-").FontSize(8f);
+                            table.Cell().Element(WandaBodyCell).AlignRight().Text(kgRate > 0 ? kgRate.ToString("#,##0.00") : "-").FontSize(8f);
+                            table.Cell().Element(WandaBodyCell).AlignRight().Text(bagRate > 0 ? bagRate.ToString("#,##0") : "-").FontSize(8f);
+                            table.Cell().Element(WandaBodyCell).AlignRight().Text(line.AddLess != 0 ? line.AddLess.ToString("#,##0") : "0").FontSize(8f);
+                            table.Cell().Element(WandaBodyCell).AlignRight().Text(line.Amount.ToString("#,##0")).Bold().FontSize(8f);
+                            table.Cell().Element(WandaBodyCell).AlignCenter().Text(line.ReceiptDate.HasValue ? line.ReceiptDate.Value.ToString("dd/MM/yy") : string.Empty).FontSize(7.5f);
+                            table.Cell().Element(WandaBodyCell).AlignRight().Text(line.ReceiptAmount.HasValue && line.ReceiptAmount.Value != 0 ? line.ReceiptAmount.Value.ToString("#,##0") : string.Empty).FontSize(8f);
                         }
                     }
                 });
@@ -781,41 +777,23 @@ public class CustomerBillDocument : IDocument
                 // 5. 3-Column Summary Card Box (matching screenshot exactly)
                 col.Item().Border(1f).BorderColor(Colors.Black).CornerRadius(6).Padding(10).Row(summaryRow =>
                 {
-                    // Column 1: Purchases & Sales Summary
-                    summaryRow.RelativeItem(1.25f).PaddingRight(10).Column(c1 =>
+                    // Column 1: Sales Summary
+                    summaryRow.RelativeItem(1.1f).PaddingRight(10).Column(c1 =>
                     {
-                        c1.Item().Row(r =>
-                        {
-                            r.RelativeItem().Text("Purchase Weight (Kg):").FontSize(8.5f);
-                            r.AutoItem().Text(totalPurchaseKg.ToString("#,##0")).Bold().FontSize(8.5f);
-                        });
-                        c1.Item().PaddingTop(2).Row(r =>
-                        {
-                            r.RelativeItem().Text("Purchase Bags:").FontSize(8.5f);
-                            r.AutoItem().Text(totalPurchaseBags.ToString("#,##0")).Bold().FontSize(8.5f);
-                        });
-                        c1.Item().PaddingTop(2).Row(r =>
-                        {
-                            r.RelativeItem().Text("Purchase Amount:").FontSize(8.5f);
-                            r.AutoItem().Text(totalPurchaseAmount.ToString("#,##0")).Bold().FontSize(8.5f);
-                        });
-
-                        c1.Item().PaddingVertical(4).LineHorizontal(0.5f).LineColor(Colors.Grey.Lighten1);
-
                         c1.Item().Row(r =>
                         {
                             r.RelativeItem().Text("Sale Weight (Kg):").FontSize(8.5f);
                             r.AutoItem().Text(totalSaleKg.ToString("#,##0")).Bold().FontSize(8.5f);
                         });
-                        c1.Item().PaddingTop(2).Row(r =>
+                        c1.Item().PaddingTop(3).Row(r =>
                         {
                             r.RelativeItem().Text("Sale Bags:").FontSize(8.5f);
                             r.AutoItem().Text(totalSaleBags.ToString("#,##0")).Bold().FontSize(8.5f);
                         });
-                        c1.Item().PaddingTop(2).Row(r =>
+                        c1.Item().PaddingTop(3).Row(r =>
                         {
                             r.RelativeItem().Text("Sale Amount:").FontSize(8.5f);
-                            r.AutoItem().Text(totalSaleAmount.ToString("#,##0")).Bold().FontSize(8.5f);
+                            r.AutoItem().Text(totalSaleAmount.ToString("#,##0.00")).Bold().FontSize(8.5f);
                         });
                     });
 
