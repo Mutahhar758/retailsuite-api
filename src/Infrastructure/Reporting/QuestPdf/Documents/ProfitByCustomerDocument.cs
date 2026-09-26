@@ -105,23 +105,21 @@ public class ProfitByCustomerDocument : IDocument
         {
             table.ColumnsDefinition(cols =>
             {
-                cols.ConstantColumn(30);  // Sr#
-                cols.ConstantColumn(95);  // Account Code
-                cols.RelativeColumn(3);   // Customer Name
+                cols.ConstantColumn(30);   // Sr#
+                cols.RelativeColumn(3.5f); // Customer Name
                 cols.RelativeColumn(1.5f); // City
-                cols.ConstantColumn(45);  // Invoices
-                cols.ConstantColumn(65);  // Qty Sold
-                cols.ConstantColumn(90);  // Total Sales
-                cols.ConstantColumn(90);  // FIFO Cost
-                cols.ConstantColumn(90);  // Gross Profit
-                cols.ConstantColumn(55);  // Margin %
+                cols.ConstantColumn(50);   // Invoices
+                cols.ConstantColumn(70);   // Qty Sold
+                cols.ConstantColumn(95);   // Total Sales
+                cols.ConstantColumn(95);   // Cost Amount
+                cols.ConstantColumn(95);   // Gross Profit
+                cols.ConstantColumn(60);   // Margin %
             });
 
             // Table Header
             table.Header(header =>
             {
                 header.Cell().Element(HeaderCellStyle).Text("#").Bold();
-                header.Cell().Element(HeaderCellStyle).Text("Account Code").Bold();
                 header.Cell().Element(HeaderCellStyle).Text("Customer Title").Bold();
                 header.Cell().Element(HeaderCellStyle).Text("City").Bold();
                 header.Cell().Element(HeaderCellStyle).AlignRight().Text("Invoices").Bold();
@@ -146,7 +144,6 @@ public class ProfitByCustomerDocument : IDocument
                 var bg = i % 2 == 0 ? Colors.White : Colors.Grey.Lighten5;
 
                 table.Cell().Element(c => CellStyle(c, bg)).Text((i + 1).ToString());
-                table.Cell().Element(c => CellStyle(c, bg)).Text(item.AccountId);
                 table.Cell().Element(c => CellStyle(c, bg)).Text(item.AccountTitle).SemiBold();
                 table.Cell().Element(c => CellStyle(c, bg)).Text(item.City ?? "-");
                 table.Cell().Element(c => CellStyle(c, bg)).AlignRight().Text(item.InvoiceCount.ToString());
@@ -160,7 +157,7 @@ public class ProfitByCustomerDocument : IDocument
             }
 
             // Summary Totals Row
-            table.Cell().ColumnSpan(4).Element(TotalCellStyle).Text("GRAND TOTALS").Bold();
+            table.Cell().ColumnSpan(3).Element(TotalCellStyle).Text("GRAND TOTALS").Bold();
             table.Cell().Element(TotalCellStyle).AlignRight().Text(_items.Sum(x => x.InvoiceCount).ToString()).Bold();
             table.Cell().Element(TotalCellStyle).AlignRight().Text($"{_header.TotalQtySold:#,##0.##}").Bold();
             table.Cell().Element(TotalCellStyle).AlignRight().Text($"Rs. {_header.TotalSales:#,##0.00}").Bold();
