@@ -1381,32 +1381,40 @@ internal class ReportService : IReportService
             }).ToListAsync(cancellationToken);
 
         bool useClearingDate = string.Equals(filter.DateBasis, "ClearingDate", StringComparison.OrdinalIgnoreCase);
+        bool isWanda = filter.IsWandaLayout ?? _currentTenant.HasVariablePackFeature;
 
-        var standaloneReceipts = await _glRepository.GetAll()
-            .AsNoTracking()
-            .Where(x => x.CrAccountId == filter.Account
-                        && (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) >= filter.FromDate
-                        && (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) <= filter.ToDate
-                        && (x.VType == "RV" || x.VType == "JV"))
-            .Select(x => new CustomerBillLineResponse
-            {
-                Date = useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate,
-                VNo = x.VType + "-" + x.VoucherNo,
-                Item = !string.IsNullOrWhiteSpace(x.Remarks) ? x.Remarks : (x.Narration != null ? x.Narration.Title : "Payment Received"),
-                UnitId = string.Empty,
-                UnitTitle = string.Empty,
-                Qty = 0,
-                Rate = 0,
-                AddLess = 0,
-                Amount = 0,
-                ReceiptDate = useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate,
-                ReceiptAmount = x.Amount
-            })
-            .ToListAsync(cancellationToken);
+        IEnumerable<CustomerBillLineResponse> combinedLines = saleLines.Concat(supplyLines);
 
-        var lines = saleLines
-            .Concat(supplyLines)
-            .Concat(standaloneReceipts)
+        // Only Wanda layout displays standalone receipts inline in the table grid (via dedicated Receipt columns).
+        // Normal bills (A4/Thermal/Milk shop) only show sold items in the grid, with receipts summarized in the footer.
+        if (isWanda)
+        {
+            var standaloneReceipts = await _glRepository.GetAll()
+                .AsNoTracking()
+                .Where(x => x.CrAccountId == filter.Account
+                            && (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) >= filter.FromDate
+                            && (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) <= filter.ToDate
+                            && (x.VType == "RV" || x.VType == "JV"))
+                .Select(x => new CustomerBillLineResponse
+                {
+                    Date = useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate,
+                    VNo = x.VType + "-" + x.VoucherNo,
+                    Item = !string.IsNullOrWhiteSpace(x.Remarks) ? x.Remarks : (x.Narration != null ? x.Narration.Title : "Payment Received"),
+                    UnitId = string.Empty,
+                    UnitTitle = string.Empty,
+                    Qty = 0,
+                    Rate = 0,
+                    AddLess = 0,
+                    Amount = 0,
+                    ReceiptDate = useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate,
+                    ReceiptAmount = x.Amount
+                })
+                .ToListAsync(cancellationToken);
+
+            combinedLines = combinedLines.Concat(standaloneReceipts);
+        }
+
+        var lines = combinedLines
             .OrderBy(x => x.Date)
             .ThenBy(x => x.VNo)
             .ToList();
@@ -1583,6 +1591,7 @@ internal class ReportService : IReportService
                     DateBasis = filter.DateBasis,
                     Layout = filter.Layout,
                     QrEnabled = qrEnabled,
+                    IsWandaLayout = isWanda
                 };
 
                 var billResponse = await GetCustomerBillAsync(billFilter, cancellationToken);
