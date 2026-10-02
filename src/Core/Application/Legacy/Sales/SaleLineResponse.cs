@@ -22,6 +22,13 @@ public class SaleLineResponse
     public decimal? SecRate { get; set; }
     public decimal? QtyInPack { get; set; }
     public decimal? Packing { get; set; }
+    public string? Imei { get; set; }
+    public string? Imei2 { get; set; }
+    public string? PtaStatus { get; set; }
+    public string? ConditionNote { get; set; }
+    public int? BatteryHealth { get; set; }
+    public int? WarrantyMonths { get; set; }
+    public DateOnly? WarrantyExpiryDate { get; set; }
     public decimal CashReceipt { get; set; }
     public decimal CashBack { get; set; }
     public string CreatedBy { get; set; } = default!;

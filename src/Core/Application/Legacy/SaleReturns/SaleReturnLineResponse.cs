@@ -22,6 +22,8 @@ public class SaleReturnLineResponse
     public decimal? SecRate { get; set; }
     public decimal? QtyInPack { get; set; }
     public decimal? Packing { get; set; }
+    public string? Imei { get; set; }
+    public string? Imei2 { get; set; }
     public decimal CashReceipt { get; set; }
     public decimal CashBack { get; set; }
     public string CreatedBy { get; set; } = default!;

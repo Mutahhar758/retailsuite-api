@@ -445,6 +445,60 @@ namespace Migrators.PostgreSQL.Migrations.Application
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
 
+            modelBuilder.Entity("Retailer.Domain.Legacy.Brand", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text")
+                        .HasColumnName("id");
+
+                    b.Property<string>("TenantId")
+                        .HasColumnType("text")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<bool>("Active")
+                        .HasColumnType("boolean")
+                        .HasColumnName("active");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_on");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("text")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_on");
+
+                    b.Property<string>("LastModifiedBy")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("last_modified_by");
+
+                    b.Property<DateTime?>("LastModifiedOn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_modified_on");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("title");
+
+                    b.HasKey("Id", "TenantId")
+                        .HasName("ak_brand_id_tenant_id");
+
+                    b.ToTable("Brand", "public");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
             modelBuilder.Entity("Retailer.Domain.Legacy.ChartOfAccount", b =>
                 {
                     b.Property<string>("Id")
@@ -1165,6 +1219,79 @@ namespace Migrators.PostgreSQL.Migrations.Application
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
 
+            modelBuilder.Entity("Retailer.Domain.Legacy.ImeiCostAddition", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("TenantId")
+                        .HasColumnType("text")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("numeric")
+                        .HasColumnName("amount");
+
+                    b.Property<string>("ConsumedItemId")
+                        .HasColumnType("text")
+                        .HasColumnName("consumed_item_id");
+
+                    b.Property<decimal?>("ConsumedQty")
+                        .HasColumnType("numeric")
+                        .HasColumnName("consumed_qty");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_on");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date")
+                        .HasColumnName("date");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("ExpenseType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("expense_type");
+
+                    b.Property<string>("Imei")
+                        .IsRequired()
+                        .HasMaxLength(25)
+                        .HasColumnType("character varying(25)")
+                        .HasColumnName("imei");
+
+                    b.Property<string>("PaidFromAccount")
+                        .HasColumnType("text")
+                        .HasColumnName("paid_from_account");
+
+                    b.HasKey("Id", "TenantId")
+                        .HasName("ak_imei_cost_addition_id_tenant_id");
+
+                    b.HasIndex("ConsumedItemId", "TenantId")
+                        .HasDatabaseName("ix_imei_cost_addition_consumed_item_id_tenant_id");
+
+                    b.HasIndex("PaidFromAccount", "TenantId")
+                        .HasDatabaseName("ix_imei_cost_addition_paid_from_account_tenant_id");
+
+                    b.ToTable("ImeiCostAddition", "public");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
             modelBuilder.Entity("Retailer.Domain.Legacy.ItemCategory", b =>
                 {
                     b.Property<string>("Id")
@@ -1251,6 +1378,14 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnType("text")
                         .HasColumnName("barcode");
 
+                    b.Property<string>("BrandId")
+                        .HasColumnType("text")
+                        .HasColumnName("brand_id");
+
+                    b.Property<string>("Color")
+                        .HasColumnType("text")
+                        .HasColumnName("color");
+
                     b.Property<string>("CreatedBy")
                         .IsRequired()
                         .HasColumnType("text")
@@ -1302,6 +1437,10 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnType("text")
                         .HasColumnName("media_id");
 
+                    b.Property<string>("ModelName")
+                        .HasColumnType("text")
+                        .HasColumnName("model_name");
+
                     b.Property<decimal?>("OpnRate")
                         .HasColumnType("numeric")
                         .HasColumnName("opn_rate");
@@ -1327,6 +1466,14 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnType("character varying(1000)")
                         .HasColumnName("quick_qty_presets");
 
+                    b.Property<string>("Ram")
+                        .HasColumnType("text")
+                        .HasColumnName("ram");
+
+                    b.Property<bool?>("RequireImei")
+                        .HasColumnType("boolean")
+                        .HasColumnName("require_imei");
+
                     b.Property<decimal>("SecRate")
                         .HasColumnType("numeric")
                         .HasColumnName("sec_rate");
@@ -1335,6 +1482,10 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnType("text")
                         .HasColumnName("secondary_unit_id");
 
+                    b.Property<string>("Storage")
+                        .HasColumnType("text")
+                        .HasColumnName("storage");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasColumnType("text")
@@ -1342,6 +1493,9 @@ namespace Migrators.PostgreSQL.Migrations.Application
 
                     b.HasKey("Id", "TenantId")
                         .HasName("ak_item_detail_id_tenant_id");
+
+                    b.HasIndex("BrandId", "TenantId")
+                        .HasDatabaseName("ix_item_detail_brand_id_tenant_id");
 
                     b.HasIndex("DefaultUnitId", "TenantId")
                         .HasDatabaseName("ix_item_detail_default_unit_id_tenant_id");
@@ -1946,6 +2100,14 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnType("numeric")
                         .HasColumnName("add_less");
 
+                    b.Property<int?>("BatteryHealth")
+                        .HasColumnType("integer")
+                        .HasColumnName("battery_health");
+
+                    b.Property<string>("ConditionNote")
+                        .HasColumnType("text")
+                        .HasColumnName("condition_note");
+
                     b.Property<string>("CreatedBy")
                         .IsRequired()
                         .HasColumnType("text")
@@ -1963,6 +2125,14 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("deleted_on");
 
+                    b.Property<string>("Imei")
+                        .HasColumnType("text")
+                        .HasColumnName("imei");
+
+                    b.Property<string>("Imei2")
+                        .HasColumnType("text")
+                        .HasColumnName("imei2");
+
                     b.Property<string>("ItemId")
                         .HasColumnType("text")
                         .HasColumnName("item_id");
@@ -1979,6 +2149,10 @@ namespace Migrators.PostgreSQL.Migrations.Application
                     b.Property<decimal?>("Packing")
                         .HasColumnType("numeric")
                         .HasColumnName("packing");
+
+                    b.Property<string>("PtaStatus")
+                        .HasColumnType("text")
+                        .HasColumnName("pta_status");
 
                     b.Property<int?>("PurchaseMasterId")
                         .HasColumnType("integer")
@@ -2118,6 +2292,14 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnType("text")
                         .HasColumnName("narration_id");
 
+                    b.Property<string>("SellerCnic")
+                        .HasColumnType("text")
+                        .HasColumnName("seller_cnic");
+
+                    b.Property<string>("SellerContact")
+                        .HasColumnType("text")
+                        .HasColumnName("seller_contact");
+
                     b.Property<DateOnly>("VDate")
                         .HasColumnType("date")
                         .HasColumnName("v_date");
@@ -2184,6 +2366,14 @@ namespace Migrators.PostgreSQL.Migrations.Application
                     b.Property<DateTime?>("DeletedOn")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("deleted_on");
+
+                    b.Property<string>("Imei")
+                        .HasColumnType("text")
+                        .HasColumnName("imei");
+
+                    b.Property<string>("Imei2")
+                        .HasColumnType("text")
+                        .HasColumnName("imei2");
 
                     b.Property<string>("ItemId")
                         .HasColumnType("text")
@@ -2369,6 +2559,250 @@ namespace Migrators.PostgreSQL.Migrations.Application
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
 
+            modelBuilder.Entity("Retailer.Domain.Legacy.RepairJob", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text")
+                        .HasColumnName("id");
+
+                    b.Property<string>("TenantId")
+                        .HasColumnType("text")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<decimal?>("AdvancePaid")
+                        .HasColumnType("numeric")
+                        .HasColumnName("advance_paid");
+
+                    b.Property<string>("AssignedTechnicianId")
+                        .HasColumnType("text")
+                        .HasColumnName("assigned_technician_id");
+
+                    b.Property<string>("BrandId")
+                        .HasColumnType("text")
+                        .HasColumnName("brand_id");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_on");
+
+                    b.Property<string>("CustomerAcc")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("customer_acc");
+
+                    b.Property<string>("CustomerName")
+                        .HasColumnType("text")
+                        .HasColumnName("customer_name");
+
+                    b.Property<string>("CustomerPhone")
+                        .HasColumnType("text")
+                        .HasColumnName("customer_phone");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("text")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_on");
+
+                    b.Property<DateTime?>("DeliveredOn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("delivered_on");
+
+                    b.Property<string>("DeviceModel")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("device_model");
+
+                    b.Property<decimal?>("EstimatedCost")
+                        .HasColumnType("numeric")
+                        .HasColumnName("estimated_cost");
+
+                    b.Property<DateTime?>("ExpectedDelivery")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expected_delivery");
+
+                    b.Property<string>("FaultDescription")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("fault_description");
+
+                    b.Property<string>("Imei")
+                        .HasMaxLength(25)
+                        .HasColumnType("character varying(25)")
+                        .HasColumnName("imei");
+
+                    b.Property<DateOnly>("JobDate")
+                        .HasColumnType("date")
+                        .HasColumnName("job_date");
+
+                    b.Property<string>("LastModifiedBy")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("last_modified_by");
+
+                    b.Property<DateTime?>("LastModifiedOn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_modified_on");
+
+                    b.Property<string>("PasscodeOrPattern")
+                        .HasColumnType("text")
+                        .HasColumnName("passcode_or_pattern");
+
+                    b.Property<string>("PhysicalCondition")
+                        .HasColumnType("text")
+                        .HasColumnName("physical_condition");
+
+                    b.Property<string>("Remarks")
+                        .HasColumnType("text")
+                        .HasColumnName("remarks");
+
+                    b.Property<string>("SaleVNo")
+                        .HasColumnType("text")
+                        .HasColumnName("sale_v_no");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id", "TenantId")
+                        .HasName("ak_repair_job_id_tenant_id");
+
+                    b.HasIndex("AssignedTechnicianId", "TenantId")
+                        .HasDatabaseName("ix_repair_job_assigned_technician_id_tenant_id");
+
+                    b.HasIndex("BrandId", "TenantId")
+                        .HasDatabaseName("ix_repair_job_brand_id_tenant_id");
+
+                    b.HasIndex("CustomerAcc", "TenantId")
+                        .HasDatabaseName("ix_repair_job_customer_acc_tenant_id");
+
+                    b.ToTable("RepairJob", "public");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Legacy.RepairJobPart", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("TenantId")
+                        .HasColumnType("text")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<decimal>("CostRate")
+                        .HasColumnType("numeric")
+                        .HasColumnName("cost_rate");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_on");
+
+                    b.Property<string>("ItemId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("item_id");
+
+                    b.Property<string>("JobNo")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("job_no");
+
+                    b.Property<decimal>("Qty")
+                        .HasColumnType("numeric")
+                        .HasColumnName("qty");
+
+                    b.Property<decimal>("Rate")
+                        .HasColumnType("numeric")
+                        .HasColumnName("rate");
+
+                    b.HasKey("Id", "TenantId")
+                        .HasName("ak_repair_job_part_id_tenant_id");
+
+                    b.HasIndex("ItemId", "TenantId")
+                        .HasDatabaseName("ix_repair_job_part_item_id_tenant_id");
+
+                    b.HasIndex("JobNo", "TenantId")
+                        .HasDatabaseName("ix_repair_job_part_job_no_tenant_id");
+
+                    b.ToTable("RepairJobPart", "public");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Legacy.RepairJobServiceItem", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("TenantId")
+                        .HasColumnType("text")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("numeric")
+                        .HasColumnName("amount");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("JobNo")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("job_no");
+
+                    b.Property<string>("ServiceItemId")
+                        .HasColumnType("text")
+                        .HasColumnName("service_item_id");
+
+                    b.Property<decimal>("TechnicianShare")
+                        .HasColumnType("numeric")
+                        .HasColumnName("technician_share");
+
+                    b.HasKey("Id", "TenantId")
+                        .HasName("ak_repair_job_service_id_tenant_id");
+
+                    b.HasIndex("JobNo", "TenantId")
+                        .HasDatabaseName("ix_repair_job_service_job_no_tenant_id");
+
+                    b.HasIndex("ServiceItemId", "TenantId")
+                        .HasDatabaseName("ix_repair_job_service_service_item_id_tenant_id");
+
+                    b.ToTable("RepairJobService", "public");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
             modelBuilder.Entity("Retailer.Domain.Legacy.Sale", b =>
                 {
                     b.Property<int>("Id")
@@ -2381,6 +2815,14 @@ namespace Migrators.PostgreSQL.Migrations.Application
                     b.Property<string>("TenantId")
                         .HasColumnType("text")
                         .HasColumnName("tenant_id");
+
+                    b.Property<int?>("BatteryHealth")
+                        .HasColumnType("integer")
+                        .HasColumnName("battery_health");
+
+                    b.Property<string>("ConditionNote")
+                        .HasColumnType("text")
+                        .HasColumnName("condition_note");
 
                     b.Property<string>("CreatedBy")
                         .IsRequired()
@@ -2407,6 +2849,14 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnType("numeric")
                         .HasColumnName("gross_rate");
 
+                    b.Property<string>("Imei")
+                        .HasColumnType("text")
+                        .HasColumnName("imei");
+
+                    b.Property<string>("Imei2")
+                        .HasColumnType("text")
+                        .HasColumnName("imei2");
+
                     b.Property<string>("ItemId")
                         .HasColumnType("text")
                         .HasColumnName("item_id");
@@ -2423,6 +2873,10 @@ namespace Migrators.PostgreSQL.Migrations.Application
                     b.Property<decimal?>("Packing")
                         .HasColumnType("numeric")
                         .HasColumnName("packing");
+
+                    b.Property<string>("PtaStatus")
+                        .HasColumnType("text")
+                        .HasColumnName("pta_status");
 
                     b.Property<decimal>("Qty")
                         .HasColumnType("numeric")
@@ -2465,6 +2919,14 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("v_type");
+
+                    b.Property<DateOnly?>("WarrantyExpiryDate")
+                        .HasColumnType("date")
+                        .HasColumnName("warranty_expiry_date");
+
+                    b.Property<int?>("WarrantyMonths")
+                        .HasColumnType("integer")
+                        .HasColumnName("warranty_months");
 
                     b.HasKey("Id", "TenantId")
                         .HasName("ak_sales_id_tenant_id");
@@ -2640,6 +3102,14 @@ namespace Migrators.PostgreSQL.Migrations.Application
                     b.Property<decimal?>("GrossRate")
                         .HasColumnType("numeric")
                         .HasColumnName("gross_rate");
+
+                    b.Property<string>("Imei")
+                        .HasColumnType("text")
+                        .HasColumnName("imei");
+
+                    b.Property<string>("Imei2")
+                        .HasColumnType("text")
+                        .HasColumnName("imei2");
 
                     b.Property<string>("ItemId")
                         .HasColumnType("text")
@@ -3180,6 +3650,14 @@ namespace Migrators.PostgreSQL.Migrations.Application
                     b.Property<DateTime?>("DeletedOn")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("deleted_on");
+
+                    b.Property<string>("Imei")
+                        .HasColumnType("text")
+                        .HasColumnName("imei");
+
+                    b.Property<string>("Imei2")
+                        .HasColumnType("text")
+                        .HasColumnName("imei2");
 
                     b.Property<string>("ItemId")
                         .HasColumnType("text")
@@ -3991,6 +4469,25 @@ namespace Migrators.PostgreSQL.Migrations.Application
                     b.Navigation("PayableAccountRef");
                 });
 
+            modelBuilder.Entity("Retailer.Domain.Legacy.ImeiCostAddition", b =>
+                {
+                    b.HasOne("Retailer.Domain.Legacy.ItemDetail", "ConsumedItem")
+                        .WithMany()
+                        .HasForeignKey("ConsumedItemId", "TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_imei_cost_addition_item_detail_consumed_item_id_tenant_id");
+
+                    b.HasOne("Retailer.Domain.Legacy.ChartOfAccount", "PaidFrom")
+                        .WithMany()
+                        .HasForeignKey("PaidFromAccount", "TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_imei_cost_addition_chart_of_account_paid_from_account_tenant_id");
+
+                    b.Navigation("ConsumedItem");
+
+                    b.Navigation("PaidFrom");
+                });
+
             modelBuilder.Entity("Retailer.Domain.Legacy.ItemCategory", b =>
                 {
                     b.HasOne("Retailer.Domain.Legacy.PrepStation", "PrepStation")
@@ -4004,6 +4501,11 @@ namespace Migrators.PostgreSQL.Migrations.Application
 
             modelBuilder.Entity("Retailer.Domain.Legacy.ItemDetail", b =>
                 {
+                    b.HasOne("Retailer.Domain.Legacy.Brand", "Brand")
+                        .WithMany()
+                        .HasForeignKey("BrandId", "TenantId")
+                        .HasConstraintName("fk_item_detail_brand_brand_id_tenant_id");
+
                     b.HasOne("Retailer.Domain.Legacy.Unit", "DefaultUnit")
                         .WithMany("DefaultUnitItems")
                         .HasForeignKey("DefaultUnitId", "TenantId")
@@ -4027,6 +4529,8 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasForeignKey("SecondaryUnitId", "TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_item_detail_units_secondary_unit_id_tenant_id");
+
+                    b.Navigation("Brand");
 
                     b.Navigation("DefaultUnit");
 
@@ -4237,6 +4741,75 @@ namespace Migrators.PostgreSQL.Migrations.Application
                     b.Navigation("Account");
 
                     b.Navigation("Narration");
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Legacy.RepairJob", b =>
+                {
+                    b.HasOne("Retailer.Domain.Legacy.HrInfo", "AssignedTechnician")
+                        .WithMany()
+                        .HasForeignKey("AssignedTechnicianId", "TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_repair_job_hr_info_assigned_technician_id_tenant_id");
+
+                    b.HasOne("Retailer.Domain.Legacy.Brand", "Brand")
+                        .WithMany()
+                        .HasForeignKey("BrandId", "TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_repair_job_brand_brand_id_tenant_id");
+
+                    b.HasOne("Retailer.Domain.Legacy.ChartOfAccount", "CustomerAccount")
+                        .WithMany()
+                        .HasForeignKey("CustomerAcc", "TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_repair_job_chart_of_account_customer_acc_tenant_id");
+
+                    b.Navigation("AssignedTechnician");
+
+                    b.Navigation("Brand");
+
+                    b.Navigation("CustomerAccount");
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Legacy.RepairJobPart", b =>
+                {
+                    b.HasOne("Retailer.Domain.Legacy.ItemDetail", "Item")
+                        .WithMany()
+                        .HasForeignKey("ItemId", "TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_repair_job_part_item_detail_item_id_tenant_id");
+
+                    b.HasOne("Retailer.Domain.Legacy.RepairJob", "RepairJob")
+                        .WithMany("Parts")
+                        .HasForeignKey("JobNo", "TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_repair_job_part_repair_job_job_no_tenant_id");
+
+                    b.Navigation("Item");
+
+                    b.Navigation("RepairJob");
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Legacy.RepairJobServiceItem", b =>
+                {
+                    b.HasOne("Retailer.Domain.Legacy.RepairJob", "RepairJob")
+                        .WithMany("Services")
+                        .HasForeignKey("JobNo", "TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_repair_job_service_repair_job_job_no_tenant_id");
+
+                    b.HasOne("Retailer.Domain.Legacy.ItemDetail", "ServiceItem")
+                        .WithMany()
+                        .HasForeignKey("ServiceItemId", "TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_repair_job_service_item_detail_service_item_id_tenant_id");
+
+                    b.Navigation("RepairJob");
+
+                    b.Navigation("ServiceItem");
                 });
 
             modelBuilder.Entity("Retailer.Domain.Legacy.Sale", b =>
@@ -4542,6 +5115,13 @@ namespace Migrators.PostgreSQL.Migrations.Application
             modelBuilder.Entity("Retailer.Domain.Legacy.PurchaseRetMaster", b =>
                 {
                     b.Navigation("Details");
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Legacy.RepairJob", b =>
+                {
+                    b.Navigation("Parts");
+
+                    b.Navigation("Services");
                 });
 
             modelBuilder.Entity("Retailer.Domain.Legacy.SaleMaster", b =>

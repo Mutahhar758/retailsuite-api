@@ -33,7 +33,18 @@ internal partial class UserService
                 .ToListAsync(cancellationToken));
         }
 
-        return permissions.Distinct().ToList();
+        var result = permissions.Distinct();
+
+        if (!_currentTenant.HasMobileShopFeature)
+        {
+            result = result.Where(c =>
+                !c.StartsWith($"Permissions.{AppResource.Brands}.") &&
+                !c.StartsWith($"Permissions.{AppResource.RepairJobs}.") &&
+                !c.StartsWith($"Permissions.{AppResource.ImeiStock}.") &&
+                !c.StartsWith($"Permissions.{AppResource.WarrantyLookup}."));
+        }
+
+        return result.ToList();
     }
 
     public async Task<bool> HasPermissionAsync(string userId, string permission, CancellationToken cancellationToken)

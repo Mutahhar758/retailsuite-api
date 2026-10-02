@@ -703,6 +703,113 @@ public class SettingConfig : IEntityTypeConfiguration<Setting>
     }
 }
 
+// ---------------------------------------------------------------------------
+// Mobile Shop & Repair Management module configurations
+// ---------------------------------------------------------------------------
+
+public class BrandConfig : IEntityTypeConfiguration<Brand>
+{
+    public void Configure(EntityTypeBuilder<Brand> builder)
+    {
+        builder.IsMultiTenant();
+        builder.Property(x => x.Id).ValueGeneratedNever();
+        builder.Property(x => x.Title).HasMaxLength(50).IsRequired();
+    }
+}
+
+public class RepairJobConfig : IEntityTypeConfiguration<RepairJob>
+{
+    public void Configure(EntityTypeBuilder<RepairJob> builder)
+    {
+        builder.IsMultiTenant();
+        builder.Property(x => x.Id).ValueGeneratedNever();
+        builder.Property(x => x.CustomerAcc).HasMaxLength(20).IsRequired();
+        builder.Property(x => x.DeviceModel).HasMaxLength(100).IsRequired();
+        builder.Property(x => x.Imei).HasMaxLength(25);
+        builder.Property(x => x.FaultDescription).HasMaxLength(500).IsRequired();
+        builder.Property(x => x.Status).HasMaxLength(20).IsRequired();
+
+        builder.HasOne(x => x.CustomerAccount)
+            .WithMany()
+            .HasForeignKey(x => x.CustomerAcc)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(x => x.Brand)
+            .WithMany()
+            .HasForeignKey(x => x.BrandId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(x => x.AssignedTechnician)
+            .WithMany()
+            .HasForeignKey(x => x.AssignedTechnicianId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasMany(x => x.Parts)
+            .WithOne(x => x.RepairJob)
+            .HasForeignKey(x => x.JobNo)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasMany(x => x.Services)
+            .WithOne(x => x.RepairJob)
+            .HasForeignKey(x => x.JobNo)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public class RepairJobPartConfig : IEntityTypeConfiguration<RepairJobPart>
+{
+    public void Configure(EntityTypeBuilder<RepairJobPart> builder)
+    {
+        builder.IsMultiTenant();
+        builder.Property(x => x.Id).ValueGeneratedOnAdd();
+        builder.Property(x => x.JobNo).HasMaxLength(20).IsRequired();
+        builder.Property(x => x.ItemId).HasMaxLength(20).IsRequired();
+
+        builder.HasOne(x => x.Item)
+            .WithMany()
+            .HasForeignKey(x => x.ItemId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+public class RepairJobServiceItemConfig : IEntityTypeConfiguration<RepairJobServiceItem>
+{
+    public void Configure(EntityTypeBuilder<RepairJobServiceItem> builder)
+    {
+        builder.IsMultiTenant();
+        builder.Property(x => x.Id).ValueGeneratedOnAdd();
+        builder.Property(x => x.JobNo).HasMaxLength(20).IsRequired();
+        builder.Property(x => x.Description).HasMaxLength(200).IsRequired();
+
+        builder.HasOne(x => x.ServiceItem)
+            .WithMany()
+            .HasForeignKey(x => x.ServiceItemId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+public class ImeiCostAdditionConfig : IEntityTypeConfiguration<ImeiCostAddition>
+{
+    public void Configure(EntityTypeBuilder<ImeiCostAddition> builder)
+    {
+        builder.IsMultiTenant();
+        builder.Property(x => x.Id).ValueGeneratedOnAdd();
+        builder.Property(x => x.Imei).HasMaxLength(25).IsRequired();
+        builder.Property(x => x.ExpenseType).HasMaxLength(30).IsRequired();
+        builder.Property(x => x.Description).HasMaxLength(200).IsRequired();
+
+        builder.HasOne(x => x.PaidFrom)
+            .WithMany()
+            .HasForeignKey(x => x.PaidFromAccount)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(x => x.ConsumedItem)
+            .WithMany()
+            .HasForeignKey(x => x.ConsumedItemId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
 internal static class IndexBuilderExtensions
 {
     /// <summary>

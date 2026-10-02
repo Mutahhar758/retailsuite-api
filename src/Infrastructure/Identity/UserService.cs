@@ -38,6 +38,7 @@ internal partial class UserService : IUserService
     private readonly ITokenService _tokenService;
     private readonly ISessionService _sessionService;
     private readonly ICurrentUser _currentUser;
+    private readonly ICurrentTenant _currentTenant;
 
     public UserService(
         SignInManager<ApplicationUser> signInManager,
@@ -53,7 +54,8 @@ internal partial class UserService : IUserService
         IOptions<SecuritySettings> securitySettings,
         ITokenService tokenService,
         ISessionService sessionService,
-        ICurrentUser currentUser)
+        ICurrentUser currentUser,
+        ICurrentTenant currentTenant)
     {
         _signInManager = signInManager;
         _userManager = userManager;
@@ -69,6 +71,7 @@ internal partial class UserService : IUserService
         _tokenService = tokenService;
         _sessionService = sessionService;
         _currentUser = currentUser;
+        _currentTenant = currentTenant;
     }
 
     public async Task<PaginationResponse<UserDetailsDto>> SearchAsync(UserListFilter filter, CancellationToken cancellationToken)

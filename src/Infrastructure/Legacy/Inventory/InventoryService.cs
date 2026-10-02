@@ -55,7 +55,14 @@ internal class InventoryService : IInventoryService
                 DefaultUnit = x.DefaultUnitId,
                 QtyInPack = x.QtyInPack,
                 MediaId = x.MediaId,
-                QuickQtyPresets = x.QuickQtyPresets
+                QuickQtyPresets = x.QuickQtyPresets,
+                RequireImei = x.RequireImei,
+                BrandId = x.BrandId,
+                BrandTitle = x.Brand != null ? x.Brand.Title : null,
+                ModelName = x.ModelName,
+                Storage = x.Storage,
+                Ram = x.Ram,
+                Color = x.Color
             })
             .ToListAsync(cancellationToken);
 
@@ -73,6 +80,7 @@ internal class InventoryService : IInventoryService
 
         var items = await query
             .Include(x => x.ItemCategory)
+            .Include(x => x.Brand)
             .OrderBy(x => x.ItemCategoryId)
             .ThenBy(x => x.Title)
             .ToListAsync(cancellationToken);
@@ -97,7 +105,14 @@ internal class InventoryService : IInventoryService
             OpnRate = x.OpnRate,
             ItemType = x.ItemType,
             MediaId = x.MediaId,
-            QuickQtyPresets = x.QuickQtyPresets
+            QuickQtyPresets = x.QuickQtyPresets,
+            RequireImei = x.RequireImei,
+            BrandId = x.BrandId,
+            BrandTitle = x.Brand?.Title,
+            ModelName = x.ModelName,
+            Storage = x.Storage,
+            Ram = x.Ram,
+            Color = x.Color
         }).ToList();
 
         await PopulateMediaUrlsAsync(mappedItems, cancellationToken);
@@ -110,6 +125,7 @@ internal class InventoryService : IInventoryService
         var item = await _itemRepository.GetAll()
             .AsNoTracking()
             .Include(x => x.ItemCategory)
+            .Include(x => x.Brand)
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (item is null) return null;
 
@@ -133,7 +149,14 @@ internal class InventoryService : IInventoryService
             OpnRate = item.OpnRate,
             ItemType = item.ItemType,
             MediaId = item.MediaId,
-            QuickQtyPresets = item.QuickQtyPresets
+            QuickQtyPresets = item.QuickQtyPresets,
+            RequireImei = item.RequireImei,
+            BrandId = item.BrandId,
+            BrandTitle = item.Brand?.Title,
+            ModelName = item.ModelName,
+            Storage = item.Storage,
+            Ram = item.Ram,
+            Color = item.Color
         };
 
         if (!string.IsNullOrEmpty(response.MediaId))
@@ -185,7 +208,13 @@ internal class InventoryService : IInventoryService
                 OpnStock = isNewService ? 0 : request.OpnStock,
                 OpnRate = isNewService ? 0 : request.OpnRate,
                 MediaId = request.MediaId,
-                QuickQtyPresets = request.QuickQtyPresets
+                QuickQtyPresets = request.QuickQtyPresets,
+                RequireImei = request.RequireImei,
+                BrandId = request.BrandId,
+                ModelName = request.ModelName,
+                Storage = request.Storage,
+                Ram = request.Ram,
+                Color = request.Color
             };
 
             await _itemRepository.AddAsync(item);
@@ -223,6 +252,12 @@ internal class InventoryService : IInventoryService
         existing.OpnRate = isExistingService ? 0 : request.OpnRate;
         existing.MediaId = request.MediaId;
         existing.QuickQtyPresets = request.QuickQtyPresets;
+        existing.RequireImei = request.RequireImei;
+        existing.BrandId = request.BrandId;
+        existing.ModelName = request.ModelName;
+        existing.Storage = request.Storage;
+        existing.Ram = request.Ram;
+        existing.Color = request.Color;
 
         await _itemRepository.UpdateAsync(existing);
 

@@ -116,6 +116,8 @@ internal class PurchaseReturnService : IPurchaseReturnService
                 SecRate = d.SecRate,
                 QtyInPack = d.QtyInPack,
                 Packing = d.Packing,
+                Imei = d.Imei,
+                Imei2 = d.Imei2,
                 CreatedBy = m.CreatedBy,
                 CreatedOn = m.CreatedOn,
                 LastModifiedBy = m.LastModifiedBy,
@@ -178,7 +180,9 @@ internal class PurchaseReturnService : IPurchaseReturnService
                 SecQty = line.SecQty,
                 SecRate = line.SecRate,
                 QtyInPack = line.QtyInPack,
-                Packing = line.Packing
+                Packing = line.Packing,
+                Imei = line.Imei,
+                Imei2 = line.Imei2
             }, false);
         }
 
@@ -244,7 +248,9 @@ internal class PurchaseReturnService : IPurchaseReturnService
                     SecQty = line.SecQty,
                     SecRate = line.SecRate,
                     QtyInPack = line.QtyInPack,
-                    Packing = line.Packing
+                    Packing = line.Packing,
+                    Imei = line.Imei,
+                    Imei2 = line.Imei2
                 }, false);
             }
             else
@@ -260,6 +266,8 @@ internal class PurchaseReturnService : IPurchaseReturnService
                 existing.SecRate = line.SecRate;
                 existing.QtyInPack = line.QtyInPack;
                 existing.Packing = line.Packing;
+                existing.Imei = line.Imei;
+                existing.Imei2 = line.Imei2;
 
                 await _purchaseRetDetailRepository.UpdateAsync(existing, false);
             }

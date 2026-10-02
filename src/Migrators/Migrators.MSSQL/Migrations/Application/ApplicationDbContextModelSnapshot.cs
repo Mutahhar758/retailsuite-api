@@ -446,6 +446,60 @@ namespace Migrators.MSSQL.Migrations.Application
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
 
+            modelBuilder.Entity("Retailer.Domain.Legacy.Brand", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("id");
+
+                    b.Property<string>("TenantId")
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<bool>("Active")
+                        .HasColumnType("bit")
+                        .HasColumnName("active");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_on");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("deleted_on");
+
+                    b.Property<string>("LastModifiedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("last_modified_by");
+
+                    b.Property<DateTime?>("LastModifiedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("last_modified_on");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("title");
+
+                    b.HasKey("Id", "TenantId")
+                        .HasName("ak_brand_id_tenant_id");
+
+                    b.ToTable("Brand");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
             modelBuilder.Entity("Retailer.Domain.Legacy.ChartOfAccount", b =>
                 {
                     b.Property<string>("Id")
@@ -1166,6 +1220,79 @@ namespace Migrators.MSSQL.Migrations.Application
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
 
+            modelBuilder.Entity("Retailer.Domain.Legacy.ImeiCostAddition", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("TenantId")
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("amount");
+
+                    b.Property<string>("ConsumedItemId")
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("consumed_item_id");
+
+                    b.Property<decimal?>("ConsumedQty")
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("consumed_qty");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_on");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date")
+                        .HasColumnName("date");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("ExpenseType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)")
+                        .HasColumnName("expense_type");
+
+                    b.Property<string>("Imei")
+                        .IsRequired()
+                        .HasMaxLength(25)
+                        .HasColumnType("nvarchar(25)")
+                        .HasColumnName("imei");
+
+                    b.Property<string>("PaidFromAccount")
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("paid_from_account");
+
+                    b.HasKey("Id", "TenantId")
+                        .HasName("ak_imei_cost_addition_id_tenant_id");
+
+                    b.HasIndex("ConsumedItemId", "TenantId")
+                        .HasDatabaseName("ix_imei_cost_addition_consumed_item_id_tenant_id");
+
+                    b.HasIndex("PaidFromAccount", "TenantId")
+                        .HasDatabaseName("ix_imei_cost_addition_paid_from_account_tenant_id");
+
+                    b.ToTable("ImeiCostAddition");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
             modelBuilder.Entity("Retailer.Domain.Legacy.ItemCategory", b =>
                 {
                     b.Property<string>("Id")
@@ -1252,6 +1379,14 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("barcode");
 
+                    b.Property<string>("BrandId")
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("brand_id");
+
+                    b.Property<string>("Color")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("color");
+
                     b.Property<string>("CreatedBy")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)")
@@ -1303,6 +1438,10 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("media_id");
 
+                    b.Property<string>("ModelName")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("model_name");
+
                     b.Property<decimal?>("OpnRate")
                         .HasColumnType("decimal(18,2)")
                         .HasColumnName("opn_rate");
@@ -1328,6 +1467,14 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasColumnType("nvarchar(1000)")
                         .HasColumnName("quick_qty_presets");
 
+                    b.Property<string>("Ram")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("ram");
+
+                    b.Property<bool?>("RequireImei")
+                        .HasColumnType("bit")
+                        .HasColumnName("require_imei");
+
                     b.Property<decimal>("SecRate")
                         .HasColumnType("decimal(18,2)")
                         .HasColumnName("sec_rate");
@@ -1336,6 +1483,10 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasColumnType("nvarchar(450)")
                         .HasColumnName("secondary_unit_id");
 
+                    b.Property<string>("Storage")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("storage");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)")
@@ -1343,6 +1494,9 @@ namespace Migrators.MSSQL.Migrations.Application
 
                     b.HasKey("Id", "TenantId")
                         .HasName("ak_item_detail_id_tenant_id");
+
+                    b.HasIndex("BrandId", "TenantId")
+                        .HasDatabaseName("ix_item_detail_brand_id_tenant_id");
 
                     b.HasIndex("DefaultUnitId", "TenantId")
                         .HasDatabaseName("ix_item_detail_default_unit_id_tenant_id");
@@ -1947,6 +2101,14 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasColumnType("decimal(18,2)")
                         .HasColumnName("add_less");
 
+                    b.Property<int?>("BatteryHealth")
+                        .HasColumnType("int")
+                        .HasColumnName("battery_health");
+
+                    b.Property<string>("ConditionNote")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("condition_note");
+
                     b.Property<string>("CreatedBy")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)")
@@ -1964,6 +2126,14 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasColumnType("datetime2")
                         .HasColumnName("deleted_on");
 
+                    b.Property<string>("Imei")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("imei");
+
+                    b.Property<string>("Imei2")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("imei2");
+
                     b.Property<string>("ItemId")
                         .HasColumnType("nvarchar(450)")
                         .HasColumnName("item_id");
@@ -1980,6 +2150,10 @@ namespace Migrators.MSSQL.Migrations.Application
                     b.Property<decimal?>("Packing")
                         .HasColumnType("decimal(18,2)")
                         .HasColumnName("packing");
+
+                    b.Property<string>("PtaStatus")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("pta_status");
 
                     b.Property<int?>("PurchaseMasterId")
                         .HasColumnType("int")
@@ -2119,6 +2293,14 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasColumnType("nvarchar(450)")
                         .HasColumnName("narration_id");
 
+                    b.Property<string>("SellerCnic")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("seller_cnic");
+
+                    b.Property<string>("SellerContact")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("seller_contact");
+
                     b.Property<DateOnly>("VDate")
                         .HasColumnType("date")
                         .HasColumnName("v_date");
@@ -2185,6 +2367,14 @@ namespace Migrators.MSSQL.Migrations.Application
                     b.Property<DateTime?>("DeletedOn")
                         .HasColumnType("datetime2")
                         .HasColumnName("deleted_on");
+
+                    b.Property<string>("Imei")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("imei");
+
+                    b.Property<string>("Imei2")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("imei2");
 
                     b.Property<string>("ItemId")
                         .HasColumnType("nvarchar(450)")
@@ -2370,6 +2560,250 @@ namespace Migrators.MSSQL.Migrations.Application
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
 
+            modelBuilder.Entity("Retailer.Domain.Legacy.RepairJob", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("id");
+
+                    b.Property<string>("TenantId")
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<decimal?>("AdvancePaid")
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("advance_paid");
+
+                    b.Property<string>("AssignedTechnicianId")
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("assigned_technician_id");
+
+                    b.Property<string>("BrandId")
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("brand_id");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_on");
+
+                    b.Property<string>("CustomerAcc")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("customer_acc");
+
+                    b.Property<string>("CustomerName")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("customer_name");
+
+                    b.Property<string>("CustomerPhone")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("customer_phone");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("deleted_on");
+
+                    b.Property<DateTime?>("DeliveredOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("delivered_on");
+
+                    b.Property<string>("DeviceModel")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("device_model");
+
+                    b.Property<decimal?>("EstimatedCost")
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("estimated_cost");
+
+                    b.Property<DateTime?>("ExpectedDelivery")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("expected_delivery");
+
+                    b.Property<string>("FaultDescription")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("fault_description");
+
+                    b.Property<string>("Imei")
+                        .HasMaxLength(25)
+                        .HasColumnType("nvarchar(25)")
+                        .HasColumnName("imei");
+
+                    b.Property<DateOnly>("JobDate")
+                        .HasColumnType("date")
+                        .HasColumnName("job_date");
+
+                    b.Property<string>("LastModifiedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("last_modified_by");
+
+                    b.Property<DateTime?>("LastModifiedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("last_modified_on");
+
+                    b.Property<string>("PasscodeOrPattern")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("passcode_or_pattern");
+
+                    b.Property<string>("PhysicalCondition")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("physical_condition");
+
+                    b.Property<string>("Remarks")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("remarks");
+
+                    b.Property<string>("SaleVNo")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("sale_v_no");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id", "TenantId")
+                        .HasName("ak_repair_job_id_tenant_id");
+
+                    b.HasIndex("AssignedTechnicianId", "TenantId")
+                        .HasDatabaseName("ix_repair_job_assigned_technician_id_tenant_id");
+
+                    b.HasIndex("BrandId", "TenantId")
+                        .HasDatabaseName("ix_repair_job_brand_id_tenant_id");
+
+                    b.HasIndex("CustomerAcc", "TenantId")
+                        .HasDatabaseName("ix_repair_job_customer_acc_tenant_id");
+
+                    b.ToTable("RepairJob");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Legacy.RepairJobPart", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("TenantId")
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<decimal>("CostRate")
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("cost_rate");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_on");
+
+                    b.Property<string>("ItemId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("item_id");
+
+                    b.Property<string>("JobNo")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("job_no");
+
+                    b.Property<decimal>("Qty")
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("qty");
+
+                    b.Property<decimal>("Rate")
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("rate");
+
+                    b.HasKey("Id", "TenantId")
+                        .HasName("ak_repair_job_part_id_tenant_id");
+
+                    b.HasIndex("ItemId", "TenantId")
+                        .HasDatabaseName("ix_repair_job_part_item_id_tenant_id");
+
+                    b.HasIndex("JobNo", "TenantId")
+                        .HasDatabaseName("ix_repair_job_part_job_no_tenant_id");
+
+                    b.ToTable("RepairJobPart");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Legacy.RepairJobServiceItem", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("TenantId")
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("amount");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("JobNo")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("job_no");
+
+                    b.Property<string>("ServiceItemId")
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("service_item_id");
+
+                    b.Property<decimal>("TechnicianShare")
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("technician_share");
+
+                    b.HasKey("Id", "TenantId")
+                        .HasName("ak_repair_job_service_id_tenant_id");
+
+                    b.HasIndex("JobNo", "TenantId")
+                        .HasDatabaseName("ix_repair_job_service_job_no_tenant_id");
+
+                    b.HasIndex("ServiceItemId", "TenantId")
+                        .HasDatabaseName("ix_repair_job_service_service_item_id_tenant_id");
+
+                    b.ToTable("RepairJobService");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
             modelBuilder.Entity("Retailer.Domain.Legacy.Sale", b =>
                 {
                     b.Property<int>("Id")
@@ -2382,6 +2816,14 @@ namespace Migrators.MSSQL.Migrations.Application
                     b.Property<string>("TenantId")
                         .HasColumnType("nvarchar(450)")
                         .HasColumnName("tenant_id");
+
+                    b.Property<int?>("BatteryHealth")
+                        .HasColumnType("int")
+                        .HasColumnName("battery_health");
+
+                    b.Property<string>("ConditionNote")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("condition_note");
 
                     b.Property<string>("CreatedBy")
                         .IsRequired()
@@ -2408,6 +2850,14 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasColumnType("decimal(18,2)")
                         .HasColumnName("gross_rate");
 
+                    b.Property<string>("Imei")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("imei");
+
+                    b.Property<string>("Imei2")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("imei2");
+
                     b.Property<string>("ItemId")
                         .HasColumnType("nvarchar(450)")
                         .HasColumnName("item_id");
@@ -2424,6 +2874,10 @@ namespace Migrators.MSSQL.Migrations.Application
                     b.Property<decimal?>("Packing")
                         .HasColumnType("decimal(18,2)")
                         .HasColumnName("packing");
+
+                    b.Property<string>("PtaStatus")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("pta_status");
 
                     b.Property<decimal>("Qty")
                         .HasColumnType("decimal(18,2)")
@@ -2466,6 +2920,14 @@ namespace Migrators.MSSQL.Migrations.Application
                         .IsRequired()
                         .HasColumnType("nvarchar(450)")
                         .HasColumnName("v_type");
+
+                    b.Property<DateOnly?>("WarrantyExpiryDate")
+                        .HasColumnType("date")
+                        .HasColumnName("warranty_expiry_date");
+
+                    b.Property<int?>("WarrantyMonths")
+                        .HasColumnType("int")
+                        .HasColumnName("warranty_months");
 
                     b.HasKey("Id", "TenantId")
                         .HasName("ak_sales_id_tenant_id");
@@ -2641,6 +3103,14 @@ namespace Migrators.MSSQL.Migrations.Application
                     b.Property<decimal?>("GrossRate")
                         .HasColumnType("decimal(18,2)")
                         .HasColumnName("gross_rate");
+
+                    b.Property<string>("Imei")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("imei");
+
+                    b.Property<string>("Imei2")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("imei2");
 
                     b.Property<string>("ItemId")
                         .HasColumnType("nvarchar(450)")
@@ -3181,6 +3651,14 @@ namespace Migrators.MSSQL.Migrations.Application
                     b.Property<DateTime?>("DeletedOn")
                         .HasColumnType("datetime2")
                         .HasColumnName("deleted_on");
+
+                    b.Property<string>("Imei")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("imei");
+
+                    b.Property<string>("Imei2")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("imei2");
 
                     b.Property<string>("ItemId")
                         .HasColumnType("nvarchar(450)")
@@ -3992,6 +4470,25 @@ namespace Migrators.MSSQL.Migrations.Application
                     b.Navigation("PayableAccountRef");
                 });
 
+            modelBuilder.Entity("Retailer.Domain.Legacy.ImeiCostAddition", b =>
+                {
+                    b.HasOne("Retailer.Domain.Legacy.ItemDetail", "ConsumedItem")
+                        .WithMany()
+                        .HasForeignKey("ConsumedItemId", "TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_imei_cost_addition_item_detail_consumed_item_id_tenant_id");
+
+                    b.HasOne("Retailer.Domain.Legacy.ChartOfAccount", "PaidFrom")
+                        .WithMany()
+                        .HasForeignKey("PaidFromAccount", "TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_imei_cost_addition_chart_of_account_paid_from_account_tenant_id");
+
+                    b.Navigation("ConsumedItem");
+
+                    b.Navigation("PaidFrom");
+                });
+
             modelBuilder.Entity("Retailer.Domain.Legacy.ItemCategory", b =>
                 {
                     b.HasOne("Retailer.Domain.Legacy.PrepStation", "PrepStation")
@@ -4005,6 +4502,11 @@ namespace Migrators.MSSQL.Migrations.Application
 
             modelBuilder.Entity("Retailer.Domain.Legacy.ItemDetail", b =>
                 {
+                    b.HasOne("Retailer.Domain.Legacy.Brand", "Brand")
+                        .WithMany()
+                        .HasForeignKey("BrandId", "TenantId")
+                        .HasConstraintName("fk_item_detail_brand_brand_id_tenant_id");
+
                     b.HasOne("Retailer.Domain.Legacy.Unit", "DefaultUnit")
                         .WithMany("DefaultUnitItems")
                         .HasForeignKey("DefaultUnitId", "TenantId")
@@ -4028,6 +4530,8 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasForeignKey("SecondaryUnitId", "TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_item_detail_units_secondary_unit_id_tenant_id");
+
+                    b.Navigation("Brand");
 
                     b.Navigation("DefaultUnit");
 
@@ -4238,6 +4742,75 @@ namespace Migrators.MSSQL.Migrations.Application
                     b.Navigation("Account");
 
                     b.Navigation("Narration");
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Legacy.RepairJob", b =>
+                {
+                    b.HasOne("Retailer.Domain.Legacy.HrInfo", "AssignedTechnician")
+                        .WithMany()
+                        .HasForeignKey("AssignedTechnicianId", "TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_repair_job_hr_info_assigned_technician_id_tenant_id");
+
+                    b.HasOne("Retailer.Domain.Legacy.Brand", "Brand")
+                        .WithMany()
+                        .HasForeignKey("BrandId", "TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_repair_job_brand_brand_id_tenant_id");
+
+                    b.HasOne("Retailer.Domain.Legacy.ChartOfAccount", "CustomerAccount")
+                        .WithMany()
+                        .HasForeignKey("CustomerAcc", "TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_repair_job_chart_of_account_customer_acc_tenant_id");
+
+                    b.Navigation("AssignedTechnician");
+
+                    b.Navigation("Brand");
+
+                    b.Navigation("CustomerAccount");
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Legacy.RepairJobPart", b =>
+                {
+                    b.HasOne("Retailer.Domain.Legacy.ItemDetail", "Item")
+                        .WithMany()
+                        .HasForeignKey("ItemId", "TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_repair_job_part_item_detail_item_id_tenant_id");
+
+                    b.HasOne("Retailer.Domain.Legacy.RepairJob", "RepairJob")
+                        .WithMany("Parts")
+                        .HasForeignKey("JobNo", "TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_repair_job_part_repair_job_job_no_tenant_id");
+
+                    b.Navigation("Item");
+
+                    b.Navigation("RepairJob");
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Legacy.RepairJobServiceItem", b =>
+                {
+                    b.HasOne("Retailer.Domain.Legacy.RepairJob", "RepairJob")
+                        .WithMany("Services")
+                        .HasForeignKey("JobNo", "TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_repair_job_service_repair_job_job_no_tenant_id");
+
+                    b.HasOne("Retailer.Domain.Legacy.ItemDetail", "ServiceItem")
+                        .WithMany()
+                        .HasForeignKey("ServiceItemId", "TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_repair_job_service_item_detail_service_item_id_tenant_id");
+
+                    b.Navigation("RepairJob");
+
+                    b.Navigation("ServiceItem");
                 });
 
             modelBuilder.Entity("Retailer.Domain.Legacy.Sale", b =>
@@ -4543,6 +5116,13 @@ namespace Migrators.MSSQL.Migrations.Application
             modelBuilder.Entity("Retailer.Domain.Legacy.PurchaseRetMaster", b =>
                 {
                     b.Navigation("Details");
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Legacy.RepairJob", b =>
+                {
+                    b.Navigation("Parts");
+
+                    b.Navigation("Services");
                 });
 
             modelBuilder.Entity("Retailer.Domain.Legacy.SaleMaster", b =>

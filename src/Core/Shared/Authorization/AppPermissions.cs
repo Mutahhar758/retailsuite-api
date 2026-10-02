@@ -63,6 +63,10 @@ public static class AppResource
     public const string BarcodeReport = nameof(BarcodeReport);
     public const string ShipmentLabelReport = nameof(ShipmentLabelReport);
     public const string MiscReports = nameof(MiscReports);
+    public const string Brands = nameof(Brands);
+    public const string RepairJobs = nameof(RepairJobs);
+    public const string ImeiStock = nameof(ImeiStock);
+    public const string WarrantyLookup = nameof(WarrantyLookup);
 }
 
 public static class AppPermissions
@@ -355,7 +359,29 @@ public static class AppPermissions
         new("View PrepStations", AppAction.View, AppResource.PrepStations),
         new("Create PrepStations", AppAction.Create, AppResource.PrepStations),
         new("Update PrepStations", AppAction.Update, AppResource.PrepStations),
-        new("Delete PrepStations", AppAction.Delete, AppResource.PrepStations)
+        new("Delete PrepStations", AppAction.Delete, AppResource.PrepStations),
+
+        // Brands
+        new("View Brands", AppAction.View, AppResource.Brands),
+        new("Search Brands", AppAction.Search, AppResource.Brands),
+        new("Create Brands", AppAction.Create, AppResource.Brands),
+        new("Update Brands", AppAction.Update, AppResource.Brands),
+        new("Delete Brands", AppAction.Delete, AppResource.Brands),
+
+        // RepairJobs
+        new("View RepairJobs", AppAction.View, AppResource.RepairJobs),
+        new("Search RepairJobs", AppAction.Search, AppResource.RepairJobs),
+        new("Create RepairJobs", AppAction.Create, AppResource.RepairJobs),
+        new("Update RepairJobs", AppAction.Update, AppResource.RepairJobs),
+        new("Delete RepairJobs", AppAction.Delete, AppResource.RepairJobs),
+
+        // ImeiStock
+        new("View ImeiStock", AppAction.View, AppResource.ImeiStock),
+        new("Search ImeiStock", AppAction.Search, AppResource.ImeiStock),
+        new("Export ImeiStock", AppAction.Export, AppResource.ImeiStock),
+
+        // WarrantyLookup
+        new("View WarrantyLookup", AppAction.View, AppResource.WarrantyLookup)
     };
 
     public static IReadOnlyList<AppPermission> Admin { get; } = new ReadOnlyCollection<AppPermission>(_all);

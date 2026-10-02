@@ -36,7 +36,8 @@ public class LicenseController : BaseApiController
             HasSupplyFeature = currentTenant.HasSupplyFeature,
             HasSecondaryQty = currentTenant.HasSecondaryQty,
             HasKotFeature = currentTenant.HasKotFeature,
-            HasVariablePackFeature = currentTenant.HasVariablePackFeature
+            HasVariablePackFeature = currentTenant.HasVariablePackFeature,
+            HasMobileShopFeature = currentTenant.HasMobileShopFeature
         }.ToInformationResponse());
     }
 }
