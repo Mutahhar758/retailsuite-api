@@ -1320,7 +1320,9 @@ internal class ReportService : IReportService
                 Rate = (sd.GrossRate ?? 0m) - (sd.Discount ?? 0m),
                 AddLess = 0m,
                 Carriage = sd.Carriage ?? 0m,
-                Amount = (sd.Qty * ((sd.GrossRate ?? 0m) - (sd.Discount ?? 0m))) + (sd.Carriage ?? 0m) + ((sd.SecQty ?? 0m) * (sd.SecRate ?? 0m)),
+                Amount = _currentTenant.HasVariablePackFeature
+                    ? (sd.Qty * ((sd.GrossRate ?? 0m) - (sd.Discount ?? 0m))) + (sd.Carriage ?? 0m)
+                    : (sd.Qty * ((sd.GrossRate ?? 0m) - (sd.Discount ?? 0m))) + (sd.Carriage ?? 0m) + ((sd.SecQty ?? 0m) * (sd.SecRate ?? 0m)),
                 SecQty = sd.SecQty,
                 SecRate = sd.SecRate,
                 QtyInPack = sd.QtyInPack,

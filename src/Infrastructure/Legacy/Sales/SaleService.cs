@@ -118,7 +118,9 @@ internal class SaleService : ISaleService
                 Rate = d.GrossRate ?? 0,
                 Discount = d.Discount ?? 0,
                 Carriage = d.Carriage ?? 0,
-                Amount = (d.Qty * ((d.GrossRate ?? 0) - (d.Discount ?? 0))) + (d.Carriage ?? 0) + ((d.SecQty ?? 0) * (d.SecRate ?? 0)),
+                Amount = _currentTenant.HasVariablePackFeature
+                    ? (d.Qty * ((d.GrossRate ?? 0) - (d.Discount ?? 0))) + (d.Carriage ?? 0)
+                    : (d.Qty * ((d.GrossRate ?? 0) - (d.Discount ?? 0))) + (d.Carriage ?? 0) + ((d.SecQty ?? 0) * (d.SecRate ?? 0)),
                 SecUnit = d.SecUnitId,
                 SecQty = d.SecQty,
                 SecRate = d.SecRate,
