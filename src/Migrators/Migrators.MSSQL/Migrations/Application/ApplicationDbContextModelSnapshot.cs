@@ -2593,8 +2593,7 @@ namespace Migrators.MSSQL.Migrations.Application
 
                     b.Property<string>("CustomerAcc")
                         .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("customer_acc");
 
                     b.Property<string>("CustomerName")
@@ -2721,14 +2720,12 @@ namespace Migrators.MSSQL.Migrations.Application
 
                     b.Property<string>("ItemId")
                         .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("item_id");
 
                     b.Property<string>("JobNo")
                         .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("job_no");
 
                     b.Property<decimal>("Qty")
@@ -2778,8 +2775,7 @@ namespace Migrators.MSSQL.Migrations.Application
 
                     b.Property<string>("JobNo")
                         .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("job_no");
 
                     b.Property<string>("ServiceItemId")

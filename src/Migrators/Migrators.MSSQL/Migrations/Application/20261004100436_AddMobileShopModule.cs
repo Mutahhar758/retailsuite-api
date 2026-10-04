@@ -229,7 +229,7 @@ namespace Migrators.MSSQL.Migrations.Application
                     id = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     tenant_id = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     job_date = table.Column<DateOnly>(type: "date", nullable: false),
-                    customer_acc = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    customer_acc = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     customer_name = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     customer_phone = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     brand_id = table.Column<string>(type: "nvarchar(450)", nullable: true),
@@ -283,8 +283,8 @@ namespace Migrators.MSSQL.Migrations.Application
                     id = table.Column<long>(type: "bigint", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     tenant_id = table.Column<string>(type: "nvarchar(450)", nullable: false),
-                    job_no = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
-                    item_id = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    job_no = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    item_id = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     qty = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     rate = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     cost_rate = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
@@ -315,7 +315,7 @@ namespace Migrators.MSSQL.Migrations.Application
                     id = table.Column<long>(type: "bigint", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     tenant_id = table.Column<string>(type: "nvarchar(450)", nullable: false),
-                    job_no = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    job_no = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     service_item_id = table.Column<string>(type: "nvarchar(450)", nullable: true),
                     description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
                     amount = table.Column<decimal>(type: "decimal(18,2)", nullable: false),

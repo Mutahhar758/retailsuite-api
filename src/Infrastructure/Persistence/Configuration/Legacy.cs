@@ -723,7 +723,7 @@ public class RepairJobConfig : IEntityTypeConfiguration<RepairJob>
     {
         builder.IsMultiTenant();
         builder.Property(x => x.Id).ValueGeneratedNever();
-        builder.Property(x => x.CustomerAcc).HasMaxLength(20).IsRequired();
+        builder.Property(x => x.CustomerAcc).IsRequired();
         builder.Property(x => x.DeviceModel).HasMaxLength(100).IsRequired();
         builder.Property(x => x.Imei).HasMaxLength(25);
         builder.Property(x => x.FaultDescription).HasMaxLength(500).IsRequired();
@@ -762,8 +762,8 @@ public class RepairJobPartConfig : IEntityTypeConfiguration<RepairJobPart>
     {
         builder.IsMultiTenant();
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
-        builder.Property(x => x.JobNo).HasMaxLength(20).IsRequired();
-        builder.Property(x => x.ItemId).HasMaxLength(20).IsRequired();
+        builder.Property(x => x.JobNo).IsRequired();
+        builder.Property(x => x.ItemId).IsRequired();
 
         builder.HasOne(x => x.Item)
             .WithMany()
@@ -778,7 +778,7 @@ public class RepairJobServiceItemConfig : IEntityTypeConfiguration<RepairJobServ
     {
         builder.IsMultiTenant();
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
-        builder.Property(x => x.JobNo).HasMaxLength(20).IsRequired();
+        builder.Property(x => x.JobNo).IsRequired();
         builder.Property(x => x.Description).HasMaxLength(200).IsRequired();
 
         builder.HasOne(x => x.ServiceItem)
