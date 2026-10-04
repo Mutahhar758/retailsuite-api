@@ -6,6 +6,7 @@ using Retailer.Shared.Authorization;
 namespace Retailer.Host.Controllers.Legacy;
 
 [Route("api/mobile/imei")]
+[Route("api/imei")]
 public class ImeiController : VersionNeutralApiController
 {
     private readonly IImeiService _imeiService;
@@ -16,6 +17,7 @@ public class ImeiController : VersionNeutralApiController
     }
 
     [HttpGet("stock")]
+    [HttpGet("available")]
     [MustHavePermission(AppAction.View, AppResource.ImeiStock)]
     [OpenApiOperation("Get current IMEI handsets stock.", "")]
     public async Task<HttpResponseDto<List<ImeiStockResponse>>> GetImeiStockAsync(CancellationToken cancellationToken)
@@ -25,6 +27,7 @@ public class ImeiController : VersionNeutralApiController
     }
 
     [HttpGet("{imei}")]
+    [HttpGet("history/{imei}")]
     [MustHavePermission(AppAction.View, AppResource.WarrantyLookup)]
     [OpenApiOperation("Get full 360-degree timeline and warranty history of an IMEI.", "")]
     public async Task<HttpResponseDto<ImeiHistoryResponse?>> GetImeiHistoryAsync(string imei, CancellationToken cancellationToken)
@@ -34,6 +37,7 @@ public class ImeiController : VersionNeutralApiController
     }
 
     [HttpPost("cost")]
+    [HttpPost("cost-addition")]
     [MustHavePermission(AppAction.Create, AppResource.ImeiStock)]
     [OpenApiOperation("Capitalize cost / add expense into an in-stock IMEI (PTA tax, screen replacement, refurbishment).", "")]
     public async Task<HttpResponseDto<string>> AddImeiCostAsync(ImeiCostAdditionRequest request, CancellationToken cancellationToken)
