@@ -18,6 +18,7 @@ public class SaleSupplyLineResponse
     public decimal Rate { get; set; }
     public decimal Discount { get; set; }
     public decimal AddLess { get; set; }
+    public decimal Carriage { get; set; }
     public decimal Amount { get; set; }
     public string? SecUnit { get; set; }
     public decimal? SecQty { get; set; }

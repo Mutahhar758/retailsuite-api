@@ -13,6 +13,8 @@ public class CustomerSupplyItem : AuditableEntity, IAggregateRoot
     public decimal? Rate { get; set; }
     /// <summary>Override add/less amount for this customer+item. Null means no override (use 0).</summary>
     public decimal? AddLess { get; set; }
+    /// <summary>Override carriage amount for this customer+item. Null means no override (use 0).</summary>
+    public decimal? Carriage { get; set; }
     /// <summary>Override discount (Rs) for this customer+item. Null means no override (use 0).</summary>
     public decimal? Discount { get; set; }
 

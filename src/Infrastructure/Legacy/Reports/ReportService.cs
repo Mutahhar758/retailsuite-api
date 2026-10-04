@@ -1348,6 +1348,7 @@ internal class ReportService : IReportService
                     Qty = item.Qty,
                     Rate = item.Rate,
                     AddLess = item.AddLess,
+                    Carriage = 0m,
                     Amount = item.Amount,
                     SecQty = item.SecQty,
                     SecRate = item.SecRate,
@@ -1381,7 +1382,8 @@ internal class ReportService : IReportService
                 Qty = ssd.Qty,
                 Rate = (ssd.GrossRate ?? 0m) - (ssd.Discount ?? 0m),
                 AddLess = ssd.AddLess ?? 0m,
-                Amount = (ssd.Qty * ((ssd.GrossRate ?? 0m) - (ssd.Discount ?? 0m))) + (ssd.AddLess ?? 0m),
+                Carriage = ssd.Carriage ?? 0m,
+                Amount = (ssd.Qty * ((ssd.GrossRate ?? 0m) - (ssd.Discount ?? 0m))) + (ssd.Carriage ?? 0m) + (ssd.AddLess ?? 0m),
                 SecQty = ssd.SecQty,
                 SecRate = ssd.SecRate,
                 QtyInPack = ssd.QtyInPack,
@@ -1415,6 +1417,7 @@ internal class ReportService : IReportService
                     Qty = 0,
                     Rate = 0,
                     AddLess = 0,
+                    Carriage = 0,
                     Amount = 0,
                     ReceiptDate = useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate,
                     ReceiptAmount = x.Amount
@@ -1503,6 +1506,13 @@ internal class ReportService : IReportService
         string qrBank = settings.TryGetValue("Bill.QrPayment.BankName", out var qb) ? (qb ?? string.Empty) : string.Empty;
         string thankYou = settings.TryGetValue("Bill.ThankYouMessage", out var ty) ? (ty ?? "Thank you for shopping with us!") : "Thank you for shopping with us!";
 
+        var carriageSetting = await _settingRepository.GetAll()
+            .AsNoTracking()
+            .Where(s => s.Key == "Transaction.EnableCarriage")
+            .Select(s => s.Value)
+            .FirstOrDefaultAsync(cancellationToken);
+        bool enableCarriage = string.Equals(carriageSetting, "true", StringComparison.OrdinalIgnoreCase);
+
         var layout = string.Equals(filter.Layout, "Thermal", StringComparison.OrdinalIgnoreCase)
             ? CustomerBillPrintLayout.Thermal80mm
             : CustomerBillPrintLayout.A4Sheet;
@@ -1527,6 +1537,7 @@ internal class ReportService : IReportService
             ClosingBalance = billResponse.Summary.Balance,
             Layout = layout,
             IsWandaLayout = isWanda,
+            EnableCarriage = enableCarriage,
             ThankyouLine = thankYou,
             QrPayment = new QrPaymentInfo
             {

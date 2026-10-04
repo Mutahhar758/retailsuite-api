@@ -30,4 +30,5 @@ public class CustomerBillHeader
     public QrPaymentInfo? QrPayment { get; set; }
     public bool ShowQrPayment => QrPayment != null && QrPayment.IsEnabled && !string.IsNullOrWhiteSpace(QrPayment.AccountNumber) && ClosingBalance > 0;
     public bool IsWandaLayout { get; set; }
+    public bool EnableCarriage { get; set; }
 }

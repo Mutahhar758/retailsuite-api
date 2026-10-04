@@ -11,6 +11,8 @@ public class CustomerSupplyItemDto
     public decimal? Rate { get; set; }
     /// <summary>Override add/less amount. Null means no override (treat as 0).</summary>
     public decimal? AddLess { get; set; }
+    /// <summary>Override carriage amount. Null means no override (treat as 0).</summary>
+    public decimal? Carriage { get; set; }
     /// <summary>Override discount (Rs). Null means no override (treat as 0).</summary>
     public decimal? Discount { get; set; }
 }

@@ -8,6 +8,7 @@ public class SaleSupplyLineRequest
     public decimal Rate { get; set; }
     public decimal Discount { get; set; }
     public decimal AddLess { get; set; }
+    public decimal? Carriage { get; set; }
     public string? SecUnit { get; set; }
     public decimal? SecQty { get; set; }
     public decimal? SecRate { get; set; }

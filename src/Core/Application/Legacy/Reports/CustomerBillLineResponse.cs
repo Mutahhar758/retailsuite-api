@@ -10,6 +10,7 @@ public class CustomerBillLineResponse
     public decimal Qty { get; set; }
     public decimal Rate { get; set; }
     public decimal AddLess { get; set; }
+    public decimal Carriage { get; set; }
     public decimal Amount { get; set; }
     public decimal? SecQty { get; set; }
     public decimal? SecRate { get; set; }

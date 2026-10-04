@@ -92,6 +92,7 @@ internal class CustomerService : ICustomerService
                     cs.SecQty,
                     cs.Rate,
                     cs.AddLess,
+                    cs.Carriage,
                     cs.Discount
                 })
             .ToListAsync(cancellationToken);
@@ -108,6 +109,7 @@ internal class CustomerService : ICustomerService
                     SecQty = i.SecQty,
                     Rate = i.Rate,
                     AddLess = i.AddLess,
+                    Carriage = i.Carriage,
                     Discount = i.Discount
                 }).ToList());
 
@@ -218,6 +220,7 @@ internal class CustomerService : ICustomerService
                     SecQty = item.SecQty,
                     Rate = item.Rate,
                     AddLess = item.AddLess,
+                    Carriage = item.Carriage,
                     Discount = item.Discount
                 }).ToList();
 
@@ -307,6 +310,7 @@ internal class CustomerService : ICustomerService
                     existing.SecQty = incoming.SecQty;
                     existing.Rate = incoming.Rate;
                     existing.AddLess = incoming.AddLess;
+                    existing.Carriage = incoming.Carriage;
                     existing.Discount = incoming.Discount;
                     itemsToUpdate.Add(existing);
                 }
@@ -320,6 +324,7 @@ internal class CustomerService : ICustomerService
                         SecQty = incoming.SecQty,
                         Rate = incoming.Rate,
                         AddLess = incoming.AddLess,
+                        Carriage = incoming.Carriage,
                         Discount = incoming.Discount
                     });
                 }
@@ -363,6 +368,7 @@ internal class CustomerService : ICustomerService
                     SecQty = cs.SecQty,
                     Rate = cs.Rate,
                     AddLess = cs.AddLess,
+                    Carriage = cs.Carriage,
                     Discount = cs.Discount
                 })
 
