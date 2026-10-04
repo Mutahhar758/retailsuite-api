@@ -125,18 +125,21 @@ public abstract class BaseDbContext : IdentityDbContext<ApplicationUser, Applica
         // Or uncomment the next line if you want to see them in the console
         //optionsBuilder.LogTo(Console.WriteLine, Microsoft.Extensions.Logging.LogLevel.Information);
 
-        // Use tenant-specific connection string when available, fall back to default
-        var tenantInfo = _multiTenantContextAccessor?.MultiTenantContext?.TenantInfo;
-        var tenantConnectionString = tenantInfo?.ConnectionString;
-        var connectionString = !string.IsNullOrWhiteSpace(tenantConnectionString)
-            ? tenantConnectionString
-            : _dbSettings.ConnectionString;
+        if (!optionsBuilder.IsConfigured)
+        {
+            // Use tenant-specific connection string when available, fall back to default
+            var tenantInfo = _multiTenantContextAccessor?.MultiTenantContext?.TenantInfo;
+            var tenantConnectionString = tenantInfo?.ConnectionString;
+            var connectionString = !string.IsNullOrWhiteSpace(tenantConnectionString)
+                ? tenantConnectionString
+                : _dbSettings.ConnectionString;
 
-        var dbProvider = tenantInfo != null && !string.IsNullOrWhiteSpace(tenantInfo.DbProvider)
-            ? tenantInfo.DbProvider
-            : _dbSettings.DBProvider;
+            var dbProvider = tenantInfo != null && !string.IsNullOrWhiteSpace(tenantInfo.DbProvider)
+                ? tenantInfo.DbProvider
+                : _dbSettings.DBProvider;
 
-        optionsBuilder.UseDatabase(dbProvider, connectionString);
+            optionsBuilder.UseDatabase(dbProvider, connectionString);
+        }
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = new CancellationToken())

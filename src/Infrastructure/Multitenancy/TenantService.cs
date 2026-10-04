@@ -77,8 +77,18 @@ internal class TenantService : ITenantService
         _tenantDbContext.TenantInfo.Add(tenant);
         await _tenantDbContext.SaveChangesAsync(cancellationToken);
 
-        _logger.LogInformation("Tenant '{Identifier}' created. Provisioning database.", tenant.Identifier);
-        await _dbInitializer.InitializeTenantDatabaseAsync(tenant, cancellationToken);
+        try
+        {
+            _logger.LogInformation("Tenant '{Identifier}' created. Provisioning database.", tenant.Identifier);
+            await _dbInitializer.InitializeTenantDatabaseAsync(tenant, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to initialize database for tenant '{Identifier}'. Cleaning up tenant record.", tenant.Identifier);
+            _tenantDbContext.TenantInfo.Remove(tenant);
+            await _tenantDbContext.SaveChangesAsync(CancellationToken.None);
+            throw;
+        }
 
         return new CreateTenantResponse { Id = tenant.Id, LicenseKey = tenant.LicenseKey! };
     }
@@ -108,8 +118,8 @@ internal class TenantService : ITenantService
         string providerLower = dbProvider.ToLowerInvariant();
         string baseConnectionString = providerLower switch
         {
-            DbProviderKeys.Npgsql => _multitenancySettings.DefaultConnectionString,
-            DbProviderKeys.SqlServer => _dbSettings.ConnectionString,
+            DbProviderKeys.Npgsql or "npgsql" or "postgres" => _multitenancySettings.DefaultConnectionString,
+            DbProviderKeys.SqlServer or "sqlserver" => _dbSettings.ConnectionString,
             _ => throw new BadRequestException($"Unsupported DB Provider: {dbProvider}")
         };
 
@@ -120,7 +130,7 @@ internal class TenantService : ITenantService
 
         string dbName = tenantIdentifier.ToLowerInvariant();
 
-        if (providerLower == DbProviderKeys.Npgsql)
+        if (providerLower is DbProviderKeys.Npgsql or "npgsql" or "postgres")
         {
             var builder = new NpgsqlConnectionStringBuilder(baseConnectionString)
             {
@@ -128,7 +138,7 @@ internal class TenantService : ITenantService
             };
             return builder.ConnectionString;
         }
-        else if (providerLower == DbProviderKeys.SqlServer)
+        else if (providerLower is DbProviderKeys.SqlServer or "sqlserver")
         {
             var builder = new SqlConnectionStringBuilder(baseConnectionString)
             {

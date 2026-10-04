@@ -35,8 +35,19 @@ internal static class Startup
         return services
             .AddDbContext<ApplicationDbContext>((p, m) =>
             {
+                var tenantAccessor = p.GetService<Finbuckle.MultiTenant.Abstractions.IMultiTenantContextAccessor<Retailer.Domain.Multitenancy.TenantInfo>>();
+                var tenantInfo = tenantAccessor?.MultiTenantContext?.TenantInfo;
                 var databaseSettings = p.GetRequiredService<IOptions<DatabaseSettings>>().Value;
-                m.UseDatabase(databaseSettings.DBProvider, databaseSettings.ConnectionString);
+
+                var dbProvider = tenantInfo != null && !string.IsNullOrWhiteSpace(tenantInfo.DbProvider)
+                    ? tenantInfo.DbProvider
+                    : databaseSettings.DBProvider;
+
+                var connectionString = tenantInfo != null && !string.IsNullOrWhiteSpace(tenantInfo.ConnectionString)
+                    ? tenantInfo.ConnectionString
+                    : databaseSettings.ConnectionString;
+
+                m.UseDatabase(dbProvider, connectionString);
             })
 
             .AddTransient<IDatabaseInitializer, DatabaseInitializer>()
@@ -57,9 +68,9 @@ internal static class Startup
     {
         return dbProvider.ToLowerInvariant() switch
         {
-            DbProviderKeys.Npgsql => builder.UseNpgsql(connectionString, e =>
+            DbProviderKeys.Npgsql or "npgsql" or "postgres" => builder.UseNpgsql(connectionString, e =>
                                  e.MigrationsAssembly(migrationsAssembly ?? "Migrators.PostgreSQL")).UseSnakeCaseNamingConvention(),
-            DbProviderKeys.SqlServer => builder.UseSqlServer(connectionString, e =>
+            DbProviderKeys.SqlServer or "sqlserver" => builder.UseSqlServer(connectionString, e =>
                                  e.MigrationsAssembly(migrationsAssembly ?? "Migrators.MSSQL")).UseSnakeCaseNamingConvention(),
             _ => throw new InvalidOperationException($"DB Provider {dbProvider} is not supported."),
         };
