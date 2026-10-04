@@ -91,14 +91,15 @@ internal class TenantService : ITenantService
         var tenant = await _tenantDbContext.TenantInfo.FirstOrDefaultAsync(t => t.Id == request.Id, cancellationToken)
             ?? throw new NotFoundException($"Tenant with id '{request.Id}' not found.");
 
-        string connectionString = BuildConnectionString(request.DbProvider, tenant.Identifier);
+        if (!string.IsNullOrWhiteSpace(request.DbProvider) && !string.Equals(request.DbProvider, tenant.DbProvider, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new BadRequestException("Updating database provider for an existing tenant is not allowed.");
+        }
 
         tenant.Name = request.Name;
         tenant.AdminEmail = request.AdminEmail;
         tenant.ValidFrom = request.ValidFrom ?? tenant.ValidFrom;
         tenant.ValidUntil = request.ValidUntil;
-        tenant.DbProvider = request.DbProvider;
-        tenant.ConnectionString = connectionString;
         tenant.HasSupplyFeature = request.HasSupplyFeature;
         tenant.HasSecondaryQty = request.HasSecondaryQty;
         tenant.HasKotFeature = request.HasKotFeature;
