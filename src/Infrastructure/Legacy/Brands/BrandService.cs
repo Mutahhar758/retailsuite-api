@@ -69,6 +69,15 @@ internal class BrandService : IBrandService
             throw new ConflictException($"Brand '{request.Title}' already exists.");
 
         string id = request.Id?.Trim() ?? string.Empty;
+        if (!string.IsNullOrWhiteSpace(id) && id != "0")
+        {
+            var existingWithId = await _repository.GetByIdAsync(id, cancellationToken);
+            if (existingWithId != null)
+            {
+                id = string.Empty;
+            }
+        }
+
         if (string.IsNullOrWhiteSpace(id) || id == "0")
         {
             var maxId = await _repository.GetAll()
@@ -96,8 +105,17 @@ internal class BrandService : IBrandService
         if (string.IsNullOrWhiteSpace(request.Title))
             throw new BadRequestException("Brand title is required.");
 
-        var brand = await _repository.GetByIdAsync(id, cancellationToken)
-            ?? throw new NotFoundException($"Brand with id '{id}' not found.");
+        var brand = await _repository.GetByIdAsync(id, cancellationToken);
+        if (brand == null)
+        {
+            await CreateAsync(new BrandCreateRequest
+            {
+                Id = id,
+                Title = request.Title,
+                Active = request.Active
+            }, cancellationToken);
+            return;
+        }
 
         var existingWithTitle = await _repository.GetAll()
             .AnyAsync(x => x.Id != id && x.Title.ToLower() == request.Title.Trim().ToLower(), cancellationToken);
