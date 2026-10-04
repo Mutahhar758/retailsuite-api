@@ -2,7 +2,7 @@ using Retailer.Application.Legacy.Reports;
 
 namespace Retailer.Infrastructure.Reporting.QuestPdf.Models;
 
-public class MilkComparisonHeader
+public class PurchaseSupplyComparisonHeader
 {
     public string CompanyName { get; set; } = "Company";
     public string? CompanyAddress { get; set; }

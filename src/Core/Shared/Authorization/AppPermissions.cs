@@ -57,7 +57,7 @@ public static class AppResource
     public const string ProfitByItem = nameof(ProfitByItem);
     public const string BalanceSheet = nameof(BalanceSheet);
     public const string CustomerBill = nameof(CustomerBill);
-    public const string MilkComparison = nameof(MilkComparison);
+    public const string PurchaseSupplyComparison = nameof(PurchaseSupplyComparison);
     public const string CustomerBalanceRecovery = nameof(CustomerBalanceRecovery);
     public const string EnvelopeReport = nameof(EnvelopeReport);
     public const string BarcodeReport = nameof(BarcodeReport);
@@ -131,9 +131,9 @@ public static class AppPermissions
         new("View Customer Bill", AppAction.View, AppResource.CustomerBill),
         new("Export Customer Bill", AppAction.Export, AppResource.CustomerBill),
 
-        // Milk Comparison
-        new("View Milk Comparison", AppAction.View, AppResource.MilkComparison),
-        new("Export Milk Comparison", AppAction.Export, AppResource.MilkComparison),
+        // Purchase vs Supply Comparison
+        new("View Purchase vs Supply Comparison", AppAction.View, AppResource.PurchaseSupplyComparison),
+        new("Export Purchase vs Supply Comparison", AppAction.Export, AppResource.PurchaseSupplyComparison),
 
         // Customer Balance Recovery
         new("View Customer Balance Recovery", AppAction.View, AppResource.CustomerBalanceRecovery),
@@ -403,7 +403,7 @@ public static class AppPermissions
         p.Resource == AppResource.ProfitByItem ||
         p.Resource == AppResource.BalanceSheet ||
         p.Resource == AppResource.CustomerBill ||
-        p.Resource == AppResource.MilkComparison ||
+        p.Resource == AppResource.PurchaseSupplyComparison ||
         p.Resource == AppResource.CustomerBalanceRecovery ||
         p.Resource == AppResource.EnvelopeReport ||
         p.Resource == AppResource.BarcodeReport ||

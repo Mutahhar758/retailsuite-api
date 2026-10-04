@@ -347,7 +347,7 @@ public class ReportsController : VersionNeutralApiController
     }
 
     [HttpGet("purchase-supply-comparison")]
-    [MustHavePermission(AppAction.View, AppResource.MilkComparison)]
+    [MustHavePermission(AppAction.View, AppResource.PurchaseSupplyComparison, "MilkComparison")]
     [OpenApiOperation("Get purchase vs sale supply comparison report data.", "")]
     public async Task<HttpResponseDto<PurchaseSupplyComparisonResponse>> GetPurchaseSupplyComparisonAsync(
         [FromQuery] PurchaseSupplyComparisonFilter filter,
@@ -358,14 +358,14 @@ public class ReportsController : VersionNeutralApiController
     }
 
     [HttpGet("purchase-supply-comparison/pdf")]
-    [MustHavePermission(AppAction.View, AppResource.MilkComparison)]
+    [MustHavePermission(AppAction.View, AppResource.PurchaseSupplyComparison, "MilkComparison")]
     [OpenApiOperation("Get purchase vs sale supply comparison report as a vector PDF document.", "")]
     public async Task<IActionResult> GetPurchaseSupplyComparisonPdfAsync(
         [FromQuery] PurchaseSupplyComparisonFilter filter,
         CancellationToken cancellationToken)
     {
         var pdfBytes = await _reportService.GetPurchaseSupplyComparisonPdfAsync(filter, cancellationToken);
-        string fileName = $"MilkComparison_{filter.FromDate:yyyyMMdd}_{filter.ToDate:yyyyMMdd}.pdf";
+        string fileName = $"PurchaseSupplyComparison_{filter.FromDate:yyyyMMdd}_{filter.ToDate:yyyyMMdd}.pdf";
         Response.Headers.Append("Content-Disposition", $"inline; filename=\"{fileName}\"");
         return File(pdfBytes, "application/pdf", fileName);
     }

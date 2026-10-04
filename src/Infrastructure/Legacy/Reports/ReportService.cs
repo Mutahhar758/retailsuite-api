@@ -2139,7 +2139,7 @@ internal class ReportService : IReportService
             .AsNoTracking()
             .FirstOrDefaultAsync(cancellationToken);
 
-        var header = new MilkComparisonHeader
+        var header = new PurchaseSupplyComparisonHeader
         {
             CompanyName = company?.CompanyName ?? "Retail Suite Enterprise",
             CompanyAddress = company?.Address,
@@ -2152,7 +2152,7 @@ internal class ReportService : IReportService
             Summary = response.Summary
         };
 
-        var document = new MilkComparisonDocument(header, response.Lines);
+        var document = new PurchaseSupplyComparisonDocument(header, response.Lines);
         return document.GeneratePdf();
     }
 

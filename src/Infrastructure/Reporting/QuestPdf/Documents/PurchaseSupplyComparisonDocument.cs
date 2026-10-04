@@ -7,17 +7,17 @@ using Retailer.Infrastructure.Reporting.QuestPdf.Models;
 namespace Retailer.Infrastructure.Reporting.QuestPdf.Documents;
 
 /// <summary>
-/// Server-side vector PDF document for Milk / Purchase vs Supply Comparison.
+/// Server-side vector PDF document for Purchase vs Supply Comparison.
 /// Landscape A4 layout generated in-memory using QuestPDF and Lato font.
 /// </summary>
-public class MilkComparisonDocument : IDocument
+public class PurchaseSupplyComparisonDocument : IDocument
 {
-    private readonly MilkComparisonHeader _header;
+    private readonly PurchaseSupplyComparisonHeader _header;
     private readonly List<PurchaseSupplyComparisonLineResponse> _items;
 
-    public MilkComparisonDocument(MilkComparisonHeader header, List<PurchaseSupplyComparisonLineResponse> items)
+    public PurchaseSupplyComparisonDocument(PurchaseSupplyComparisonHeader header, List<PurchaseSupplyComparisonLineResponse> items)
     {
-        _header = header ?? new MilkComparisonHeader();
+        _header = header ?? new PurchaseSupplyComparisonHeader();
         _items = items ?? new List<PurchaseSupplyComparisonLineResponse>();
     }
 
@@ -52,7 +52,7 @@ public class MilkComparisonDocument : IDocument
                         .Bold()
                         .FontColor(Colors.Grey.Darken3);
 
-                    brandCol.Item().PaddingTop(2).Text("PURCHASE VS SUPPLY COMPARISON (MILK / COMMODITY)")
+                    brandCol.Item().PaddingTop(2).Text("PURCHASE VS SUPPLY COMPARISON")
                         .FontSize(11)
                         .SemiBold()
                         .FontColor(Colors.Grey.Darken1);
