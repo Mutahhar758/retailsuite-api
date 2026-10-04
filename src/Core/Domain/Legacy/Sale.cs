@@ -14,6 +14,7 @@ public class Sale : AuditableEntity, IAggregateRoot
     public decimal Qty { get; set; }
     public decimal? GrossRate { get; set; }
     public decimal? Discount { get; set; }
+    public decimal? Carriage { get; set; }
     public string? SecUnitId { get; set; }
     public decimal? SecQty { get; set; }
     public decimal? SecRate { get; set; }

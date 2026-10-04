@@ -117,7 +117,8 @@ internal class SaleService : ISaleService
                 Qty = d.Qty,
                 Rate = d.GrossRate ?? 0,
                 Discount = d.Discount ?? 0,
-                Amount = (d.Qty * ((d.GrossRate ?? 0) - (d.Discount ?? 0))) + ((d.SecQty ?? 0) * (d.SecRate ?? 0)),
+                Carriage = d.Carriage ?? 0,
+                Amount = (d.Qty * ((d.GrossRate ?? 0) - (d.Discount ?? 0))) + (d.Carriage ?? 0) + ((d.SecQty ?? 0) * (d.SecRate ?? 0)),
                 SecUnit = d.SecUnitId,
                 SecQty = d.SecQty,
                 SecRate = d.SecRate,
@@ -156,8 +157,8 @@ internal class SaleService : ISaleService
             : ((x.Qty * x.Rate) + ((x.SecQty ?? 0) * (x.SecRate ?? 0))));
         var discountAmount = request.Lines.Sum(x => x.Qty * x.Discount);
         var netAmount = request.Lines.Sum(x => isWanda
-            ? (x.Qty * (x.Rate - x.Discount))
-            : ((x.Qty * (x.Rate - x.Discount)) + ((x.SecQty ?? 0) * (x.SecRate ?? 0))));
+            ? ((x.Qty * (x.Rate - x.Discount)) + (x.Carriage ?? 0))
+            : ((x.Qty * (x.Rate - x.Discount)) + (x.Carriage ?? 0) + ((x.SecQty ?? 0) * (x.SecRate ?? 0))));
 
         var master = new SaleMaster
         {
@@ -200,6 +201,7 @@ internal class SaleService : ISaleService
                 Qty = line.Qty,
                 GrossRate = line.Rate,
                 Discount = line.Discount,
+                Carriage = line.Carriage,
                 SecUnitId = resolvedSecUnitId,
                 SecQty = line.SecQty,
                 SecRate = line.SecRate,
@@ -256,8 +258,8 @@ internal class SaleService : ISaleService
             : ((x.Qty * x.Rate) + ((x.SecQty ?? 0) * (x.SecRate ?? 0))));
         var discountAmount = request.Lines.Sum(x => x.Qty * x.Discount);
         var netAmount = request.Lines.Sum(x => isWanda
-            ? (x.Qty * (x.Rate - x.Discount))
-            : ((x.Qty * (x.Rate - x.Discount)) + ((x.SecQty ?? 0) * (x.SecRate ?? 0))));
+            ? ((x.Qty * (x.Rate - x.Discount)) + (x.Carriage ?? 0))
+            : ((x.Qty * (x.Rate - x.Discount)) + (x.Carriage ?? 0) + ((x.SecQty ?? 0) * (x.SecRate ?? 0))));
 
         master.VDate = request.Date;
         master.VTime = TimeOnly.FromDateTime(DateTime.Now);
@@ -302,6 +304,7 @@ internal class SaleService : ISaleService
                     Qty = line.Qty,
                     GrossRate = line.Rate,
                     Discount = line.Discount,
+                    Carriage = line.Carriage,
                     SecUnitId = resolvedSecUnitId,
                     SecQty = line.SecQty,
                     SecRate = line.SecRate,
@@ -325,6 +328,7 @@ internal class SaleService : ISaleService
                 existing.Qty = line.Qty;
                 existing.GrossRate = line.Rate;
                 existing.Discount = line.Discount;
+                existing.Carriage = line.Carriage;
                 existing.SecUnitId = resolvedSecUnitId;
                 existing.SecQty = line.SecQty;
                 existing.SecRate = line.SecRate;
@@ -406,14 +410,15 @@ internal class SaleService : ISaleService
         if (itemTransaction is not null)
             await _itemTransactionRepository.DeleteAsync(itemTransaction, false);
 
+        var isWanda = _currentTenant.HasVariablePackFeature;
         var totals = await _saleRepository.GetAll()
             .Where(x => x.VType == VType && x.VNo == voucherNo)
             .GroupBy(x => 1)
             .Select(g => new
             {
-                Amount = g.Sum(x => (decimal?)x.Qty * (x.GrossRate ?? 0)) ?? 0,
-                Discount = g.Sum(x => (decimal?)x.Qty * (x.Discount ?? 0)) ?? 0,
-                NetAmount = g.Sum(x => (decimal?)x.Qty * ((x.GrossRate ?? 0) - (x.Discount ?? 0))) ?? 0
+                Amount = g.Sum(x => (decimal?)(isWanda ? (x.Qty * (x.GrossRate ?? 0)) : ((x.Qty * (x.GrossRate ?? 0)) + ((x.SecQty ?? 0) * (x.SecRate ?? 0))))) ?? 0,
+                Discount = g.Sum(x => (decimal?)(x.Qty * (x.Discount ?? 0))) ?? 0,
+                NetAmount = g.Sum(x => (decimal?)((x.Qty * ((x.GrossRate ?? 0) - (x.Discount ?? 0))) + (x.Carriage ?? 0) + (isWanda ? 0 : ((x.SecQty ?? 0) * (x.SecRate ?? 0))))) ?? 0
             })
             .FirstOrDefaultAsync(cancellationToken);
 

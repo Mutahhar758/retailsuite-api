@@ -365,6 +365,7 @@ public class SaleConfig : IEntityTypeConfiguration<Sale>
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
         builder.HasIndex(x => new { x.VType, x.VNo, x.Seq }).IsUnique().HasSoftDeleteFilter();
         mtBuilder.AdjustUniqueIndexes();
+        builder.Property(x => x.Carriage).HasPrecision(18, 2);
 
         builder.HasOne(x => x.SaleMaster)
             .WithMany(x => x.Details)

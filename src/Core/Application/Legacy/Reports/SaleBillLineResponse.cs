@@ -9,5 +9,6 @@ public class SaleBillLineResponse
     public decimal Rate { get; set; }
     public decimal GrossRate { get; set; }
     public decimal Disc { get; set; }
+    public decimal Carriage { get; set; }
     public decimal TAmount { get; set; }
 }

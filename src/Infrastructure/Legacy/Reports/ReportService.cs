@@ -1319,7 +1319,8 @@ internal class ReportService : IReportService
                 Qty = sd.Qty,
                 Rate = (sd.GrossRate ?? 0m) - (sd.Discount ?? 0m),
                 AddLess = 0m,
-                Amount = sd.Qty * ((sd.GrossRate ?? 0m) - (sd.Discount ?? 0m)),
+                Carriage = sd.Carriage ?? 0m,
+                Amount = (sd.Qty * ((sd.GrossRate ?? 0m) - (sd.Discount ?? 0m))) + (sd.Carriage ?? 0m) + ((sd.SecQty ?? 0m) * (sd.SecRate ?? 0m)),
                 SecQty = sd.SecQty,
                 SecRate = sd.SecRate,
                 QtyInPack = sd.QtyInPack,
@@ -1348,7 +1349,7 @@ internal class ReportService : IReportService
                     Qty = item.Qty,
                     Rate = item.Rate,
                     AddLess = item.AddLess,
-                    Carriage = 0m,
+                    Carriage = item.Carriage,
                     Amount = item.Amount,
                     SecQty = item.SecQty,
                     SecRate = item.SecRate,
@@ -1720,6 +1721,7 @@ internal class ReportService : IReportService
                 Rate = (sd.GrossRate ?? 0m) - (sd.Discount ?? 0m),
                 GrossRate = sd.GrossRate ?? 0m,
                 Disc = sd.Discount ?? 0m,
+                Carriage = sd.Carriage ?? 0m,
                 TAmount = sd.Qty * (sd.GrossRate ?? 0m)
             }).ToListAsync(cancellationToken);
 
@@ -2033,7 +2035,7 @@ internal class ReportService : IReportService
                                    sd.Qty,
                                    GrossRate = sd.GrossRate ?? 0m,
                                    Discount = sd.Discount ?? 0m,
-                                   Amount = sd.Qty * ((sd.GrossRate ?? 0m) - (sd.Discount ?? 0m))
+                                   Amount = (sd.Qty * ((sd.GrossRate ?? 0m) - (sd.Discount ?? 0m))) + (sd.Carriage ?? 0m)
                                };
 
         if (!string.IsNullOrWhiteSpace(filter.ItemId))
