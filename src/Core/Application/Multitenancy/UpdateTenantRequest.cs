@@ -8,7 +8,6 @@ public class UpdateTenantRequest
     public string Name { get; set; } = default!;
     public string DbProvider { get; set; } = default!;
     public string? AdminEmail { get; set; }
-    public bool HasSupplyFeature { get; set; }
     public bool HasVariablePackFeature { get; set; }
     public bool HasMobileShopFeature { get; set; }
     public DateTime? ValidFrom { get; set; }
