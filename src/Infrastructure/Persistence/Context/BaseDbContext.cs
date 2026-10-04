@@ -125,6 +125,8 @@ public abstract class BaseDbContext : IdentityDbContext<ApplicationUser, Applica
         // Or uncomment the next line if you want to see them in the console
         //optionsBuilder.LogTo(Console.WriteLine, Microsoft.Extensions.Logging.LogLevel.Information);
 
+        optionsBuilder.ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
+
         if (!optionsBuilder.IsConfigured)
         {
             // Use tenant-specific connection string when available, fall back to default

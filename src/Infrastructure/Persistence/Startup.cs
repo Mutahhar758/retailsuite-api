@@ -66,6 +66,8 @@ internal static class Startup
 
     internal static DbContextOptionsBuilder UseDatabase(this DbContextOptionsBuilder builder, string dbProvider, string connectionString, string? migrationsAssembly)
     {
+        builder.ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
+
         return dbProvider.ToLowerInvariant() switch
         {
             DbProviderKeys.Npgsql or "npgsql" or "postgres" => builder.UseNpgsql(connectionString, e =>

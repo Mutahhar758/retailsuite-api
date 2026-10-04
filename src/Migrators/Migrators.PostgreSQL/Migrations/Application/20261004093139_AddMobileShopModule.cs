@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -261,7 +261,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                     id = table.Column<string>(type: "text", nullable: false),
                     tenant_id = table.Column<string>(type: "text", nullable: false),
                     job_date = table.Column<DateOnly>(type: "date", nullable: false),
-                    customer_acc = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    customer_acc = table.Column<string>(type: "text", nullable: false),
                     customer_name = table.Column<string>(type: "text", nullable: true),
                     customer_phone = table.Column<string>(type: "text", nullable: true),
                     brand_id = table.Column<string>(type: "text", nullable: true),
@@ -319,8 +319,8 @@ namespace Migrators.PostgreSQL.Migrations.Application
                     id = table.Column<long>(type: "bigint", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     tenant_id = table.Column<string>(type: "text", nullable: false),
-                    job_no = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
-                    item_id = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    job_no = table.Column<string>(type: "text", nullable: false),
+                    item_id = table.Column<string>(type: "text", nullable: false),
                     qty = table.Column<decimal>(type: "numeric", nullable: false),
                     rate = table.Column<decimal>(type: "numeric", nullable: false),
                     cost_rate = table.Column<decimal>(type: "numeric", nullable: false),
@@ -354,7 +354,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                     id = table.Column<long>(type: "bigint", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     tenant_id = table.Column<string>(type: "text", nullable: false),
-                    job_no = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    job_no = table.Column<string>(type: "text", nullable: false),
                     service_item_id = table.Column<string>(type: "text", nullable: true),
                     description = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
                     amount = table.Column<decimal>(type: "numeric", nullable: false),
