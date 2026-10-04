@@ -13,6 +13,7 @@ public class TenantDto
     public bool HasSecondaryQty { get; set; }
     public bool HasKotFeature { get; set; }
     public bool HasVariablePackFeature { get; set; }
+    public bool HasMobileShopFeature { get; set; }
     public DateTime ValidFrom { get; set; }
     public DateTime? ValidUntil { get; set; }
 }

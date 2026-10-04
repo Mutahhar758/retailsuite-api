@@ -24,6 +24,7 @@ public class CurrentTenant : ICurrentTenant
     public bool HasKotFeature => _multiTenantContextAccessor.MultiTenantContext?.TenantInfo?.HasKotFeature ?? false;
 
     public bool HasVariablePackFeature => _multiTenantContextAccessor.MultiTenantContext?.TenantInfo?.HasVariablePackFeature ?? false;
+    public bool HasMobileShopFeature => _multiTenantContextAccessor.MultiTenantContext?.TenantInfo?.HasMobileShopFeature ?? false;
 
     public bool IsValid =>
         _multiTenantContextAccessor.MultiTenantContext?.TenantInfo is { } tenant

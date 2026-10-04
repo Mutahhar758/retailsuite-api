@@ -123,6 +123,13 @@ internal class SaleService : ISaleService
                 SecRate = d.SecRate,
                 QtyInPack = d.QtyInPack,
                 Packing = d.Packing,
+                Imei = d.Imei,
+                Imei2 = d.Imei2,
+                PtaStatus = d.PtaStatus,
+                ConditionNote = d.ConditionNote,
+                BatteryHealth = d.BatteryHealth,
+                WarrantyMonths = d.WarrantyMonths,
+                WarrantyExpiryDate = d.WarrantyExpiryDate,
                 CashReceipt = m.CashReceipt,
                 CashBack = m.CashBack ?? 0,
                 CreatedBy = m.CreatedBy,
@@ -197,7 +204,14 @@ internal class SaleService : ISaleService
                 SecQty = line.SecQty,
                 SecRate = line.SecRate,
                 QtyInPack = line.QtyInPack,
-                Packing = line.Packing
+                Packing = line.Packing,
+                Imei = line.Imei,
+                Imei2 = line.Imei2,
+                PtaStatus = line.PtaStatus,
+                ConditionNote = line.ConditionNote,
+                BatteryHealth = line.BatteryHealth,
+                WarrantyMonths = line.WarrantyMonths,
+                WarrantyExpiryDate = line.WarrantyExpiryDate
             }, false);
         }
 
@@ -292,7 +306,14 @@ internal class SaleService : ISaleService
                     SecQty = line.SecQty,
                     SecRate = line.SecRate,
                     QtyInPack = line.QtyInPack,
-                    Packing = line.Packing
+                    Packing = line.Packing,
+                    Imei = line.Imei,
+                    Imei2 = line.Imei2,
+                    PtaStatus = line.PtaStatus,
+                    ConditionNote = line.ConditionNote,
+                    BatteryHealth = line.BatteryHealth,
+                    WarrantyMonths = line.WarrantyMonths,
+                    WarrantyExpiryDate = line.WarrantyExpiryDate
                 }, false);
             }
             else
@@ -309,6 +330,13 @@ internal class SaleService : ISaleService
                 existing.SecRate = line.SecRate;
                 existing.QtyInPack = line.QtyInPack;
                 existing.Packing = line.Packing;
+                existing.Imei = line.Imei;
+                existing.Imei2 = line.Imei2;
+                existing.PtaStatus = line.PtaStatus;
+                existing.ConditionNote = line.ConditionNote;
+                existing.BatteryHealth = line.BatteryHealth;
+                existing.WarrantyMonths = line.WarrantyMonths;
+                existing.WarrantyExpiryDate = line.WarrantyExpiryDate;
 
                 await _saleRepository.UpdateAsync(existing, false);
             }

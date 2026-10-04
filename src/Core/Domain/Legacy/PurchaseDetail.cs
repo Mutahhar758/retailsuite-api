@@ -17,6 +17,11 @@ public class PurchaseDetail : AuditableEntity, IAggregateRoot
     public string? SecUnitId { get; set; }
     public decimal? SecQty { get; set; }
     public decimal? SecRate { get; set; }
+    public string? Imei { get; set; }
+    public string? Imei2 { get; set; }
+    public string? PtaStatus { get; set; }
+    public string? ConditionNote { get; set; }
+    public int? BatteryHealth { get; set; }
 
     public int? PurchaseMasterId { get; set; }
     public string? ItemId { get; set; }

@@ -20,19 +20,22 @@ internal class RoleService : IRoleService
     private readonly ApplicationDbContext _db;
     private readonly IStringLocalizer _localizer;
     private readonly ICurrentUser _currentUser;
+    private readonly ICurrentTenant _currentTenant;
 
     public RoleService(
         RoleManager<ApplicationRole> roleManager,
         UserManager<ApplicationUser> userManager,
         ApplicationDbContext db,
         IStringLocalizer<RoleService> localizer,
-        ICurrentUser currentUser)
+        ICurrentUser currentUser,
+        ICurrentTenant currentTenant)
     {
         _roleManager = roleManager;
         _userManager = userManager;
         _db = db;
         _localizer = localizer;
         _currentUser = currentUser;
+        _currentTenant = currentTenant;
     }
 
     public async Task<List<RoleDto>> GetListAsync(CancellationToken cancellationToken) =>
@@ -56,10 +59,21 @@ internal class RoleService : IRoleService
     {
         var role = await GetByIdAsync(roleId);
 
-        role.Permissions = await _db.RoleClaims
+        var claims = await _db.RoleClaims
             .Where(c => c.RoleId == roleId && c.ClaimType == AppClaims.Permission)
             .Select(c => c.ClaimValue!)
             .ToListAsync(cancellationToken);
+
+        if (!_currentTenant.HasMobileShopFeature)
+        {
+            claims = claims.Where(c =>
+                !c.StartsWith($"Permissions.{AppResource.Brands}.") &&
+                !c.StartsWith($"Permissions.{AppResource.RepairJobs}.") &&
+                !c.StartsWith($"Permissions.{AppResource.ImeiStock}.") &&
+                !c.StartsWith($"Permissions.{AppResource.WarrantyLookup}.")).ToList();
+        }
+
+        role.Permissions = claims;
 
         return role;
     }
@@ -174,7 +188,18 @@ internal class RoleService : IRoleService
 
     public Task<List<PermissionDto>> GetAllPermissionsAsync(CancellationToken cancellationToken)
     {
-        var allPermissions = AppPermissions.Admin.Select(p => new PermissionDto
+        var permissions = AppPermissions.Admin.AsEnumerable();
+
+        if (!_currentTenant.HasMobileShopFeature)
+        {
+            permissions = permissions.Where(p =>
+                p.Resource != AppResource.Brands &&
+                p.Resource != AppResource.RepairJobs &&
+                p.Resource != AppResource.ImeiStock &&
+                p.Resource != AppResource.WarrantyLookup);
+        }
+
+        var allPermissions = permissions.Select(p => new PermissionDto
         {
             Name = p.Name,
             Description = p.Description,

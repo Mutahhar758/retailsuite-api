@@ -12,4 +12,9 @@ public class PurchaseLineRequest
     public decimal? SecRate { get; set; }
     public decimal? QtyInPack { get; set; }
     public decimal? Packing { get; set; }
+    public string? Imei { get; set; }
+    public string? Imei2 { get; set; }
+    public string? PtaStatus { get; set; }
+    public string? ConditionNote { get; set; }
+    public int? BatteryHealth { get; set; }
 }

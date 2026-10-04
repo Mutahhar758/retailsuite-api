@@ -1324,7 +1324,12 @@ internal class ReportService : IReportService
                 SecRate = sd.SecRate,
                 QtyInPack = sd.QtyInPack,
                 SecUnitTitle = sd.SecUnit != null ? sd.SecUnit.Title : (!string.IsNullOrWhiteSpace(sd.SecUnitId) && unitMap.ContainsKey(sd.SecUnitId) ? unitMap[sd.SecUnitId] : (sd.Item != null && sd.Item.SecondaryUnit != null ? sd.Item.SecondaryUnit.Title : (sd.SecUnitId ?? string.Empty))),
-                ReceiptAmount = sm.CashReceipt - (sm.CashBack ?? 0m)
+                ReceiptAmount = sm.CashReceipt - (sm.CashBack ?? 0m),
+                Imei = sd.Imei,
+                Imei2 = sd.Imei2,
+                PtaStatus = sd.PtaStatus,
+                WarrantyMonths = sd.WarrantyMonths,
+                ConditionNote = sd.ConditionNote
             }).ToListAsync(cancellationToken);
 
         var saleLines = new List<CustomerBillLineResponse>();
@@ -1349,7 +1354,12 @@ internal class ReportService : IReportService
                     QtyInPack = item.QtyInPack,
                     SecUnitTitle = item.SecUnitTitle,
                     ReceiptDate = first && item.ReceiptAmount > 0 ? item.Date : null,
-                    ReceiptAmount = first && item.ReceiptAmount > 0 ? item.ReceiptAmount : null
+                    ReceiptAmount = first && item.ReceiptAmount > 0 ? item.ReceiptAmount : null,
+                    Imei = item.Imei,
+                    Imei2 = item.Imei2,
+                    PtaStatus = item.PtaStatus,
+                    WarrantyMonths = item.WarrantyMonths,
+                    ConditionNote = item.ConditionNote
                 });
                 first = false;
             }

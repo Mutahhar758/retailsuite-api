@@ -118,6 +118,8 @@ internal class SaleReturnService : ISaleReturnService
                 SecRate = d.SecRate,
                 QtyInPack = d.QtyInPack,
                 Packing = d.Packing,
+                Imei = d.Imei,
+                Imei2 = d.Imei2,
                 CashReceipt = m.CashReceipt,
                 CashBack = m.CashBack ?? 0,
                 CreatedBy = m.CreatedBy,
@@ -192,7 +194,9 @@ internal class SaleReturnService : ISaleReturnService
                 SecQty = line.SecQty,
                 SecRate = line.SecRate,
                 QtyInPack = line.QtyInPack,
-                Packing = line.Packing
+                Packing = line.Packing,
+                Imei = line.Imei,
+                Imei2 = line.Imei2
             }, false);
         }
 
@@ -267,7 +271,9 @@ internal class SaleReturnService : ISaleReturnService
                     SecQty = line.SecQty,
                     SecRate = line.SecRate,
                     QtyInPack = line.QtyInPack,
-                    Packing = line.Packing
+                    Packing = line.Packing,
+                    Imei = line.Imei,
+                    Imei2 = line.Imei2
                 }, false);
             }
             else
@@ -284,6 +290,8 @@ internal class SaleReturnService : ISaleReturnService
                 existing.SecRate = line.SecRate;
                 existing.QtyInPack = line.QtyInPack;
                 existing.Packing = line.Packing;
+                existing.Imei = line.Imei;
+                existing.Imei2 = line.Imei2;
 
                 await _saleRetDetailRepository.UpdateAsync(existing, false);
             }

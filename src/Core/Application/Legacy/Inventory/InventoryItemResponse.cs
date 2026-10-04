@@ -24,6 +24,13 @@ public class InventoryItemResponse
     public string? MediaId { get; set; }
     public string? MediaUrl { get; set; }
     public string? QuickQtyPresets { get; set; }
+    public bool? RequireImei { get; set; }
+    public string? BrandId { get; set; }
+    public string? BrandTitle { get; set; }
+    public string? ModelName { get; set; }
+    public string? Storage { get; set; }
+    public string? Ram { get; set; }
+    public string? Color { get; set; }
 }
 
 

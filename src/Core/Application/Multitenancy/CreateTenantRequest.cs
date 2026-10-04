@@ -13,6 +13,7 @@ public class CreateTenantRequest
     public bool HasSecondaryQty { get; set; } = false;
     public bool HasKotFeature { get; set; } = false;
     public bool HasVariablePackFeature { get; set; } = false;
+    public bool HasMobileShopFeature { get; set; } = false;
     public DateTime? ValidFrom { get; set; }
     public DateTime? ValidUntil { get; set; }
 }

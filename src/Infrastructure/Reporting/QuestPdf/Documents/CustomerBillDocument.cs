@@ -135,6 +135,15 @@ public class CustomerBillDocument : IDocument
                             {
                                 t.Span($"{line.Date:dd/MM} ").FontSize(8.5f).SemiBold().FontColor(Colors.Black);
                                 t.Span(line.Item).FontSize(8.5f).SemiBold();
+                                if (!string.IsNullOrWhiteSpace(line.Imei))
+                                {
+                                    t.EmptyLine();
+                                    t.Span($"  IMEI: {line.Imei}").FontSize(7.5f).FontColor(Colors.Grey.Darken2);
+                                    if (!string.IsNullOrWhiteSpace(line.PtaStatus))
+                                        t.Span($" [{line.PtaStatus}]").FontSize(7f).Bold().FontColor(Colors.Blue.Darken2);
+                                    if (line.WarrantyMonths > 0)
+                                        t.Span($" (Warr: {line.WarrantyMonths}m)").FontSize(7f).FontColor(Colors.Grey.Darken2);
+                                }
                             });
                             table.Cell().AlignRight().PaddingVertical(1.2f).Text(line.Qty.ToString("#,##0.##")).FontSize(9f).SemiBold();
                             table.Cell().AlignRight().PaddingVertical(1.2f).Text($"{line.Rate:N0}").FontSize(9f).SemiBold();
@@ -388,7 +397,21 @@ public class CustomerBillDocument : IDocument
                         table.Cell().Element(c => BodyCell(c, bg)).AlignCenter().Text((i + 1).ToString()).FontSize(7.5f).FontColor(Colors.Grey.Darken1);
                         table.Cell().Element(c => BodyCell(c, bg)).Text($"{line.Date:dd-MMM-yyyy}").FontSize(7.5f);
                         table.Cell().Element(c => BodyCell(c, bg)).Text(line.VNo).FontSize(7.5f).FontColor(Colors.Grey.Darken2);
-                        table.Cell().Element(c => BodyCell(c, bg)).Text(line.Item).SemiBold();
+                        table.Cell().Element(c => BodyCell(c, bg)).Column(itemCol =>
+                        {
+                            itemCol.Item().Text(line.Item).SemiBold();
+                            if (!string.IsNullOrWhiteSpace(line.Imei))
+                            {
+                                itemCol.Item().Text(t =>
+                                {
+                                    t.Span($"IMEI: {line.Imei}").FontSize(7f).FontColor(Colors.Grey.Darken2);
+                                    if (!string.IsNullOrWhiteSpace(line.PtaStatus))
+                                        t.Span($" [{line.PtaStatus}]").FontSize(6.5f).Bold().FontColor(Colors.Blue.Darken2);
+                                    if (line.WarrantyMonths > 0)
+                                        t.Span($" (Warranty: {line.WarrantyMonths} Mo)").FontSize(6.5f).FontColor(Colors.Grey.Darken2);
+                                });
+                            }
+                        });
                         table.Cell().Element(c => BodyCell(c, bg)).AlignCenter().Text(line.UnitTitle).FontSize(7.5f);
                         table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text(line.Qty.ToString("#,##0.##"));
                         table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text($"{line.Rate:N0}");

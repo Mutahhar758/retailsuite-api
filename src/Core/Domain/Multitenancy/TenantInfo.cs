@@ -23,6 +23,7 @@ public class TenantInfo : ITenantInfo
     public bool HasSecondaryQty { get; set; } = false;
     public bool HasKotFeature { get; set; } = false;
     public bool HasVariablePackFeature { get; set; } = false;
+    public bool HasMobileShopFeature { get; set; } = false;
 
     public DateTime ValidFrom { get; set; } = DateTime.UtcNow;
 

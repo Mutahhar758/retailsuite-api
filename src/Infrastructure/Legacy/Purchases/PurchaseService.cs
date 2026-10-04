@@ -77,6 +77,8 @@ internal class PurchaseService : IPurchaseService
                 VoucherNo = x.Master.VNo,
                 Account = x.Account != null ? x.Account.Title : x.Master.AccountId,
                 Amount = x.Master.Amount ?? 0,
+                SellerCnic = x.Master.SellerCnic,
+                SellerContact = x.Master.SellerContact,
                 CreatedBy = x.Master.CreatedBy,
                 CreatedOn = x.Master.CreatedOn,
                 LastModifiedBy = x.Master.LastModifiedBy,
@@ -120,6 +122,11 @@ internal class PurchaseService : IPurchaseService
                 SecRate = d.SecRate,
                 QtyInPack = d.QtyInPack,
                 Packing = d.Packing,
+                Imei = d.Imei,
+                Imei2 = d.Imei2,
+                PtaStatus = d.PtaStatus,
+                ConditionNote = d.ConditionNote,
+                BatteryHealth = d.BatteryHealth,
                 CashPaid = m.CashPaid,
                 CashBack = m.CashBack ?? 0,
                 CreatedBy = m.CreatedBy,
@@ -157,6 +164,8 @@ internal class PurchaseService : IPurchaseService
             Amount = totalAmount,
             CashPaid = request.CashPaid,
             CashBack = request.CashBack,
+            SellerCnic = request.SellerCnic,
+            SellerContact = request.SellerContact,
             Counter = "001"
         };
 
@@ -188,7 +197,12 @@ internal class PurchaseService : IPurchaseService
                 SecQty = line.SecQty,
                 SecRate = line.SecRate,
                 QtyInPack = line.QtyInPack,
-                Packing = line.Packing
+                Packing = line.Packing,
+                Imei = line.Imei,
+                Imei2 = line.Imei2,
+                PtaStatus = line.PtaStatus,
+                ConditionNote = line.ConditionNote,
+                BatteryHealth = line.BatteryHealth
             }, false);
         }
 
@@ -235,6 +249,8 @@ internal class PurchaseService : IPurchaseService
         master.Amount = totalAmount;
         master.CashPaid = request.CashPaid;
         master.CashBack = request.CashBack;
+        master.SellerCnic = request.SellerCnic;
+        master.SellerContact = request.SellerContact;
 
         await _purchaseMasterRepository.UpdateAsync(master, false);
 
@@ -272,7 +288,12 @@ internal class PurchaseService : IPurchaseService
                     SecQty = line.SecQty,
                     SecRate = line.SecRate,
                     QtyInPack = line.QtyInPack,
-                    Packing = line.Packing
+                    Packing = line.Packing,
+                    Imei = line.Imei,
+                    Imei2 = line.Imei2,
+                    PtaStatus = line.PtaStatus,
+                    ConditionNote = line.ConditionNote,
+                    BatteryHealth = line.BatteryHealth
                 }, false);
             }
             else
@@ -289,6 +310,11 @@ internal class PurchaseService : IPurchaseService
                 existing.SecRate = line.SecRate;
                 existing.QtyInPack = line.QtyInPack;
                 existing.Packing = line.Packing;
+                existing.Imei = line.Imei;
+                existing.Imei2 = line.Imei2;
+                existing.PtaStatus = line.PtaStatus;
+                existing.ConditionNote = line.ConditionNote;
+                existing.BatteryHealth = line.BatteryHealth;
 
                 await _purchaseDetailRepository.UpdateAsync(existing, false);
             }

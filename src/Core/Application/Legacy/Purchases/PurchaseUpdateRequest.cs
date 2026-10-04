@@ -8,5 +8,7 @@ public class PurchaseUpdateRequest
     public string? Narration { get; set; }
     public decimal CashPaid { get; set; }
     public decimal CashBack { get; set; }
+    public string? SellerCnic { get; set; }
+    public string? SellerContact { get; set; }
     public List<PurchaseLineRequest> Lines { get; set; } = [];
 }

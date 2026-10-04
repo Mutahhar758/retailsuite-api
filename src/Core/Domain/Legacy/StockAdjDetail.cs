@@ -17,6 +17,8 @@ public class StockAdjDetail : AuditableEntity, IAggregateRoot
     public decimal? SecRate { get; set; }
     public decimal? QtyInPack { get; set; }
     public decimal? Packing { get; set; }
+    public string? Imei { get; set; }
+    public string? Imei2 { get; set; }
 
     public int? StockAdjMasterId { get; set; }
     public string? CategoryId { get; set; }

@@ -6,6 +6,8 @@ public class PurchaseResponse
     public string VoucherNo { get; set; } = default!;
     public string Account { get; set; } = default!;
     public decimal Amount { get; set; }
+    public string? SellerCnic { get; set; }
+    public string? SellerContact { get; set; }
     public string CreatedBy { get; set; } = default!;
     public DateTime CreatedOn { get; set; }
     public string? LastModifiedBy { get; set; }

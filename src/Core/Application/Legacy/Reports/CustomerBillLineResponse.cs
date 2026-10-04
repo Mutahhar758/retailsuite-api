@@ -17,4 +17,9 @@ public class CustomerBillLineResponse
     public string? SecUnitTitle { get; set; }
     public DateOnly? ReceiptDate { get; set; }
     public decimal? ReceiptAmount { get; set; }
+    public string? Imei { get; set; }
+    public string? Imei2 { get; set; }
+    public string? PtaStatus { get; set; }
+    public int? WarrantyMonths { get; set; }
+    public string? ConditionNote { get; set; }
 }
