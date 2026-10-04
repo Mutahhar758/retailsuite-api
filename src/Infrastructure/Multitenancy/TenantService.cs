@@ -68,8 +68,6 @@ internal class TenantService : ITenantService
             AdminEmail = request.AdminEmail,
             IsActive = true,
             HasSupplyFeature = request.HasSupplyFeature,
-            HasSecondaryQty = request.HasSecondaryQty,
-            HasKotFeature = request.HasKotFeature,
             HasVariablePackFeature = request.HasVariablePackFeature,
             HasMobileShopFeature = request.HasMobileShopFeature,
             ValidFrom = request.ValidFrom ?? DateTime.UtcNow,
@@ -101,8 +99,6 @@ internal class TenantService : ITenantService
         tenant.ValidFrom = request.ValidFrom ?? tenant.ValidFrom;
         tenant.ValidUntil = request.ValidUntil;
         tenant.HasSupplyFeature = request.HasSupplyFeature;
-        tenant.HasSecondaryQty = request.HasSecondaryQty;
-        tenant.HasKotFeature = request.HasKotFeature;
         tenant.HasVariablePackFeature = request.HasVariablePackFeature;
         tenant.HasMobileShopFeature = request.HasMobileShopFeature;
 
