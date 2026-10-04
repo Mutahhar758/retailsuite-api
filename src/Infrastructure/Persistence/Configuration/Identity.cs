@@ -1,4 +1,4 @@
-﻿using Finbuckle.MultiTenant.EntityFrameworkCore.Extensions;
+using Finbuckle.MultiTenant.EntityFrameworkCore.Extensions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -80,7 +80,7 @@ public class UserSessionConfig : IEntityTypeConfiguration<UserSession>
 
         builder
             .Property(s => s.Id)
-            .HasColumnType("nvarchar(36)")
+            .HasMaxLength(36)
             .ValueGeneratedNever();
     }
 }

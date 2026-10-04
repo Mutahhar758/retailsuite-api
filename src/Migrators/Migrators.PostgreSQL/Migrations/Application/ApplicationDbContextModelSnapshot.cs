@@ -361,7 +361,8 @@ namespace Migrators.PostgreSQL.Migrations.Application
             modelBuilder.Entity("Retailer.Domain.Identity.UserSession", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("nvarchar(36)")
+                        .HasMaxLength(36)
+                        .HasColumnType("character varying(36)")
                         .HasColumnName("id");
 
                     b.Property<string>("TenantId")

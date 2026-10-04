@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -918,7 +918,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                 schema: "public",
                 columns: table => new
                 {
-                    id = table.Column<string>(type: "nvarchar(36)", nullable: false),
+                    id = table.Column<string>(type: "character varying(36)", maxLength: 36, nullable: false),
                     tenant_id = table.Column<string>(type: "text", nullable: false),
                     application_user_id = table.Column<string>(type: "text", nullable: true),
                     token = table.Column<string>(type: "text", nullable: true),
