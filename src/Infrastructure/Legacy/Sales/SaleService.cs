@@ -190,6 +190,11 @@ internal class SaleService : ISaleService
         foreach (var line in request.Lines)
         {
             var item = itemMap.GetValueOrDefault(line.ItemId);
+            if (item?.RequireImei == true && string.IsNullOrWhiteSpace(line.Imei))
+            {
+                throw new CustomException($"Item '{item.Title}' requires an IMEI / Serial number.");
+            }
+
             var resolvedUnitId = item?.DefaultUnitId ?? item?.PrimaryUnitId;
             var resolvedSecUnitId = !string.IsNullOrWhiteSpace(line.SecUnit) ? line.SecUnit : item?.SecondaryUnitId;
 
@@ -285,6 +290,11 @@ internal class SaleService : ISaleService
         foreach (var line in request.Lines)
         {
             var item = itemMap.GetValueOrDefault(line.ItemId);
+            if (item?.RequireImei == true && string.IsNullOrWhiteSpace(line.Imei))
+            {
+                throw new CustomException($"Item '{item.Title}' requires an IMEI / Serial number.");
+            }
+
             var resolvedUnitId = item?.DefaultUnitId ?? item?.PrimaryUnitId;
             var resolvedSecUnitId = !string.IsNullOrWhiteSpace(line.SecUnit) ? line.SecUnit : item?.SecondaryUnitId;
 

@@ -129,6 +129,8 @@ internal class PurchaseService : IPurchaseService
                 BatteryHealth = d.BatteryHealth,
                 CashPaid = m.CashPaid,
                 CashBack = m.CashBack ?? 0,
+                SellerCnic = m.SellerCnic,
+                SellerContact = m.SellerContact,
                 CreatedBy = m.CreatedBy,
                 CreatedOn = m.CreatedOn,
                 LastModifiedBy = m.LastModifiedBy,
@@ -180,6 +182,11 @@ internal class PurchaseService : IPurchaseService
         foreach (var line in request.Lines)
         {
             var item = itemMap.GetValueOrDefault(line.ItemId);
+            if (item?.RequireImei == true && string.IsNullOrWhiteSpace(line.Imei))
+            {
+                throw new CustomException($"Item '{item.Title}' requires an IMEI / Serial number.");
+            }
+
             var resolvedUnitId = item?.DefaultUnitId ?? item?.PrimaryUnitId;
             var resolvedSecUnitId = !string.IsNullOrWhiteSpace(line.SecUnit) ? line.SecUnit : item?.SecondaryUnitId;
 
@@ -263,6 +270,11 @@ internal class PurchaseService : IPurchaseService
         foreach (var line in request.Lines)
         {
             var item = itemMap.GetValueOrDefault(line.ItemId);
+            if (item?.RequireImei == true && string.IsNullOrWhiteSpace(line.Imei))
+            {
+                throw new CustomException($"Item '{item.Title}' requires an IMEI / Serial number.");
+            }
+
             var resolvedUnitId = item?.DefaultUnitId ?? item?.PrimaryUnitId;
             var resolvedSecUnitId = !string.IsNullOrWhiteSpace(line.SecUnit) ? line.SecUnit : item?.SecondaryUnitId;
 

@@ -29,6 +29,8 @@ public class PurchaseLineResponse
     public int? BatteryHealth { get; set; }
     public decimal CashPaid { get; set; }
     public decimal CashBack { get; set; }
+    public string? SellerCnic { get; set; }
+    public string? SellerContact { get; set; }
     public string CreatedBy { get; set; } = default!;
     public DateTime CreatedOn { get; set; }
     public string? LastModifiedBy { get; set; }

@@ -157,6 +157,11 @@ internal class StockAdjustmentService : IStockAdjustmentService
         foreach (var line in request.Lines)
         {
             var item = itemMap.GetValueOrDefault(line.ItemId);
+            if (item?.RequireImei == true && (line.QtyIn > 0 || line.QtyOut > 0) && string.IsNullOrWhiteSpace(line.Imei))
+            {
+                throw new CustomException($"Item '{item.Title}' requires an IMEI / Serial number.");
+            }
+
             var resolvedSecUnitId = !string.IsNullOrWhiteSpace(line.SecUnit) ? line.SecUnit : item?.SecondaryUnitId;
 
             await _stockAdjDetailRepository.AddAsync(new StockAdjDetail
@@ -209,6 +214,11 @@ internal class StockAdjustmentService : IStockAdjustmentService
         foreach (var line in request.Lines)
         {
             var item = itemMap.GetValueOrDefault(line.ItemId);
+            if (item?.RequireImei == true && (line.QtyIn > 0 || line.QtyOut > 0) && string.IsNullOrWhiteSpace(line.Imei))
+            {
+                throw new CustomException($"Item '{item.Title}' requires an IMEI / Serial number.");
+            }
+
             var resolvedSecUnitId = !string.IsNullOrWhiteSpace(line.SecUnit) ? line.SecUnit : item?.SecondaryUnitId;
 
             var existing = await _stockAdjDetailRepository.GetAll()
