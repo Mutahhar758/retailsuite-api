@@ -3,7 +3,9 @@ using System.Net.Http;
 using System.Net.Http.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Retailer.Application.Common.Exceptions;
 using Retailer.Application.Common.Interfaces;
 
 namespace Retailer.Infrastructure.FileStorage;
@@ -13,17 +15,27 @@ public class MediaServiceClient : IMediaServiceClient, ITransientService
     private readonly HttpClient _httpClient;
     private readonly MediaServiceSettings _settings;
     private readonly ICurrentTenant _currentTenant;
+    private readonly ILogger<MediaServiceClient> _logger;
 
-    public MediaServiceClient(HttpClient httpClient, IOptions<MediaServiceSettings> settings, ICurrentTenant currentTenant)
+    public MediaServiceClient(
+        HttpClient httpClient,
+        IOptions<MediaServiceSettings> settings,
+        ICurrentTenant currentTenant,
+        ILogger<MediaServiceClient> logger)
     {
         _httpClient = httpClient;
         _settings = settings.Value;
         _currentTenant = currentTenant;
+        _logger = logger;
     }
 
     public async Task<PresignedUploadUrlResponse?> GetUploadUrlAsync(string fileName, string subFolder, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrEmpty(_settings.BaseUrl)) return null;
+        if (string.IsNullOrWhiteSpace(_settings.BaseUrl))
+        {
+            _logger.LogError("Media service BaseUrl is not configured in settings.");
+            throw new InternalServerException("Media storage service is temporarily unavailable. Please report to Bizgrip Solutions.");
+        }
 
         try
         {
@@ -37,14 +49,31 @@ public class MediaServiceClient : IMediaServiceClient, ITransientService
             request.Headers.Add("X-Admin-Key", _settings.AdminKey);
 
             var response = await _httpClient.SendAsync(request, cancellationToken);
-            if (!response.IsSuccessStatusCode) return null;
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
+                _logger.LogError("Media service returned HTTP {StatusCode}: {ErrorBody}", response.StatusCode, errorBody);
+                throw new InternalServerException("The storage service is temporarily unavailable. Please report to Bizgrip Solutions.");
+            }
 
             var result = await response.Content.ReadFromJsonAsync<MediaServiceApiResponse<PresignedUploadUrlResponse>>(cancellationToken: cancellationToken);
-            return result?.Success == true ? result.Data : null;
+            if (result == null || !result.Success || result.Data == null)
+            {
+                var errorMsg = result?.Message ?? result?.Error ?? "Unknown error from media service.";
+                _logger.LogError("Media service returned failure response: {ErrorMessage}", errorMsg);
+                throw new InternalServerException("Unable to prepare media upload. Please report to Bizgrip Solutions.");
+            }
+
+            return result.Data;
         }
-        catch
+        catch (CustomException)
         {
-            return null;
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to connect to media service at {BaseUrl}", _settings.BaseUrl);
+            throw new InternalServerException("Unable to reach the storage server. Please report to Bizgrip Solutions.");
         }
     }
 
@@ -61,13 +90,18 @@ public class MediaServiceClient : IMediaServiceClient, ITransientService
             request.Headers.Add("X-Admin-Key", _settings.AdminKey);
 
             var response = await _httpClient.SendAsync(request, cancellationToken);
-            if (!response.IsSuccessStatusCode) return null;
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("Media service token request for {FileId} returned HTTP {StatusCode}", fileId, response.StatusCode);
+                return null;
+            }
 
             var result = await response.Content.ReadFromJsonAsync<MediaServiceApiResponse<SasTokenResponse>>(cancellationToken: cancellationToken);
             return result?.Success == true ? result.Data : null;
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogWarning(ex, "Failed to retrieve view token for media ID {FileId}", fileId);
             return null;
         }
     }

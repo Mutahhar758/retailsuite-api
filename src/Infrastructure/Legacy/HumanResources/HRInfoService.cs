@@ -94,7 +94,8 @@ public class HRInfoService : IHRInfoService
             throw new BadRequestException("Invalid file name. Only plain file names without paths are allowed.");
         }
 
-        return await _mediaServiceClient.GetUploadUrlAsync(cleanFileName, "employee", cancellationToken);
+        var response = await _mediaServiceClient.GetUploadUrlAsync(cleanFileName, "employee", cancellationToken);
+        return response ?? throw new InternalServerException("Failed to generate upload URL for employee image.");
     }
 
     private async Task PopulateMediaUrlsAsync(List<HRInfoResponse> items, CancellationToken cancellationToken)

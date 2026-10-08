@@ -378,7 +378,8 @@ internal class InventoryService : IInventoryService
             throw new BadRequestException("Invalid file name. Only plain file names without paths are allowed.");
         }
 
-        return await _mediaServiceClient.GetUploadUrlAsync(cleanFileName, "product", cancellationToken);
+        var response = await _mediaServiceClient.GetUploadUrlAsync(cleanFileName, "product", cancellationToken);
+        return response ?? throw new InternalServerException("Failed to generate upload URL for product image.");
     }
 
     private async Task PopulateMediaUrlsAsync(List<InventoryItemResponse> items, CancellationToken cancellationToken)

@@ -116,7 +116,8 @@ internal class ItemCategoryService : IItemCategoryService
             throw new BadRequestException("Invalid file name. Only plain file names without paths are allowed.");
         }
 
-        return await _mediaServiceClient.GetUploadUrlAsync(cleanFileName, "category", cancellationToken);
+        var response = await _mediaServiceClient.GetUploadUrlAsync(cleanFileName, "category", cancellationToken);
+        return response ?? throw new InternalServerException("Failed to generate upload URL for category image.");
     }
 
     private async Task PopulateMediaUrlsAsync(List<ItemCategoryResponse> items, CancellationToken cancellationToken)

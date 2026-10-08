@@ -251,7 +251,8 @@ internal class VendorService : IVendorService
             throw new BadRequestException("Invalid file name. Only plain file names without paths are allowed.");
         }
 
-        return await _mediaServiceClient.GetUploadUrlAsync(cleanFileName, "vendor", cancellationToken);
+        var response = await _mediaServiceClient.GetUploadUrlAsync(cleanFileName, "vendor", cancellationToken);
+        return response ?? throw new InternalServerException("Failed to generate upload URL for vendor image.");
     }
 
     private async Task PopulateMediaUrlsAsync(List<VendorResponse> items, CancellationToken cancellationToken)

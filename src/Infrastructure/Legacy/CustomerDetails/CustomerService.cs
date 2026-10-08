@@ -386,7 +386,8 @@ internal class CustomerService : ICustomerService
             throw new BadRequestException("Invalid file name. Only plain file names without paths are allowed.");
         }
 
-        return await _mediaServiceClient.GetUploadUrlAsync(cleanFileName, "customer", cancellationToken);
+        var response = await _mediaServiceClient.GetUploadUrlAsync(cleanFileName, "customer", cancellationToken);
+        return response ?? throw new InternalServerException("Failed to generate upload URL for customer image.");
     }
 
     private async Task PopulateMediaUrlsAsync(List<CustomerResponse> items, CancellationToken cancellationToken)
