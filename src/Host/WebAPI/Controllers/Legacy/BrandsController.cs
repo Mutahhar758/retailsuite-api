@@ -24,11 +24,26 @@ public class BrandsController : VersionNeutralApiController
     }
 
     [HttpGet("active")]
-    [MustHavePermission(AppAction.View, AppResource.Brands)]
     [OpenApiOperation("Get active brands.", "")]
     public async Task<HttpResponseDto<List<BrandResponse>>> GetActiveAsync(CancellationToken cancellationToken)
     {
         var result = await _brandService.GetActiveAsync(cancellationToken);
+        if (result == null || result.Count == 0)
+        {
+            result = await _brandService.GetAllAsync(cancellationToken);
+        }
+        return result.ToInformationResponse();
+    }
+
+    [HttpGet("lookup")]
+    [OpenApiOperation("Get active brands lookup.", "")]
+    public async Task<HttpResponseDto<List<BrandResponse>>> GetLookupAsync(CancellationToken cancellationToken)
+    {
+        var result = await _brandService.GetActiveAsync(cancellationToken);
+        if (result == null || result.Count == 0)
+        {
+            result = await _brandService.GetAllAsync(cancellationToken);
+        }
         return result.ToInformationResponse();
     }
 
