@@ -59,7 +59,7 @@ public class CustomerBillDocument : IDocument
         {
             page.ContinuousSize(80, Unit.Millimetre);
             page.MarginVertical(2, Unit.Millimetre);
-            page.MarginHorizontal(4, Unit.Millimetre);
+            page.MarginHorizontal(3, Unit.Millimetre);
             page.PageColor(Colors.White);
             page.DefaultTextStyle(x => x.FontSize(8f).FontFamily("Arial").FontColor(Colors.Black));
 
@@ -906,7 +906,7 @@ public class CustomerBillDocument : IDocument
         {
             page.ContinuousSize(80, Unit.Millimetre);
             page.MarginVertical(2, Unit.Millimetre);
-            page.MarginHorizontal(4, Unit.Millimetre);
+            page.MarginHorizontal(3, Unit.Millimetre);
             page.PageColor(Colors.White);
             page.DefaultTextStyle(x => x.FontSize(8f).FontFamily("Arial").FontColor(Colors.Black));
 
