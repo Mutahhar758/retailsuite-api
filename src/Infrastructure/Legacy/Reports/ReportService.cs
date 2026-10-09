@@ -1516,7 +1516,9 @@ internal class ReportService : IReportService
             .FirstOrDefaultAsync(cancellationToken);
         bool enableCarriage = string.Equals(carriageSetting, "true", StringComparison.OrdinalIgnoreCase);
 
-        var layout = string.Equals(filter.Layout, "Thermal", StringComparison.OrdinalIgnoreCase)
+        string defaultFormat = settings.TryGetValue("Bill.DefaultFormat", out var df) ? (df ?? "A4") : "A4";
+        string targetLayout = !string.IsNullOrWhiteSpace(filter.Layout) ? filter.Layout : defaultFormat;
+        var layout = targetLayout.IndexOf("Thermal", StringComparison.OrdinalIgnoreCase) >= 0
             ? CustomerBillPrintLayout.Thermal80mm
             : CustomerBillPrintLayout.A4Sheet;
         bool isWanda = filter.IsWandaLayout ?? _currentTenant.HasVariablePackFeature;
@@ -1595,7 +1597,9 @@ internal class ReportService : IReportService
         string qrBank = settings.TryGetValue("Bill.QrPayment.BankName", out var qb) ? (qb ?? string.Empty) : string.Empty;
         string thankYou = settings.TryGetValue("Bill.ThankYouMessage", out var ty) ? (ty ?? "Thank you for shopping with us!") : "Thank you for shopping with us!";
 
-        var layout = string.Equals(filter.Layout, "Thermal", StringComparison.OrdinalIgnoreCase)
+        string defaultFormat = settings.TryGetValue("Bill.DefaultFormat", out var df) ? (df ?? "A4") : "A4";
+        string targetLayout = !string.IsNullOrWhiteSpace(filter.Layout) ? filter.Layout : defaultFormat;
+        var layout = targetLayout.IndexOf("Thermal", StringComparison.OrdinalIgnoreCase) >= 0
             ? CustomerBillPrintLayout.Thermal80mm
             : CustomerBillPrintLayout.A4Sheet;
 

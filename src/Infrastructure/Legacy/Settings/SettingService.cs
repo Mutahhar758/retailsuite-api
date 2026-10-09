@@ -10,6 +10,9 @@ internal class SettingService : ISettingService
     private const string BillThankYouKey = "Bill.ThankYouMessage";
     private const string BillThankYouDefault = "Thank you for shopping with us!";
 
+    private const string BillDefaultFormatKey = "Bill.DefaultFormat";
+    private const string BillDefaultFormatDefault = "A4";
+
     private readonly IRepository<Setting> _repository;
 
     public SettingService(IRepository<Setting> repository)
@@ -51,6 +54,18 @@ internal class SettingService : ISettingService
             });
         }
 
+        if ((string.IsNullOrWhiteSpace(category) || category.Equals("Bill", StringComparison.OrdinalIgnoreCase)) &&
+            !list.Any(x => x.Key == BillDefaultFormatKey))
+        {
+            list.Add(new SettingResponse
+            {
+                Key = BillDefaultFormatKey,
+                Value = BillDefaultFormatDefault,
+                Description = "Default customer bill layout (A4 or Thermal)",
+                Category = "Bill"
+            });
+        }
+
         return list;
     }
 
@@ -69,6 +84,17 @@ internal class SettingService : ISettingService
                     Key = BillThankYouKey,
                     Value = BillThankYouDefault,
                     Description = "Customer bill and receipt thank you message",
+                    Category = "Bill"
+                };
+            }
+
+            if (key == BillDefaultFormatKey)
+            {
+                return new SettingResponse
+                {
+                    Key = BillDefaultFormatKey,
+                    Value = BillDefaultFormatDefault,
+                    Description = "Default customer bill layout (A4 or Thermal)",
                     Category = "Bill"
                 };
             }
