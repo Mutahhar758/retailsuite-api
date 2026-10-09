@@ -18,12 +18,15 @@ namespace PrinterRelay
     class Program
     {
         private static readonly string Prefix = "http://localhost:5000/";
+        internal static SynchronizationContext? SyncContext { get; private set; }
 
         [STAThread]
         static void Main(string[] args)
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
+            SyncContext = WindowsFormsSynchronizationContext.Current ?? new WindowsFormsSynchronizationContext();
+            SynchronizationContext.SetSynchronizationContext(SyncContext);
 
             RegisterForStartup();
 
@@ -158,11 +161,80 @@ namespace PrinterRelay
                     Console.ResetColor();
                     SendResponse(response, HttpStatusCode.InternalServerError, $"{{\"success\":false,\"message\":\"Internal error: {ex.Message}\"}}");
                 }
+                return;
+            }
+
+            if (request.HttpMethod == "POST" && request.Url?.AbsolutePath == "/print-pdf")
+            {
+                try
+                {
+                    using var reader = new StreamReader(request.InputStream, request.ContentEncoding);
+                    string body = await reader.ReadToEndAsync();
+
+                    var pdfRequest = JsonSerializer.Deserialize(body, SourceGenerationContext.Default.PrintPdfRequest);
+                    if (pdfRequest == null || string.IsNullOrWhiteSpace(pdfRequest.PdfBase64))
+                    {
+                        SendResponse(response, HttpStatusCode.BadRequest, "{\"success\":false,\"message\":\"Invalid request. Missing printerName or pdfBase64.\"}");
+                        return;
+                    }
+
+                    string printerName = pdfRequest.PrinterName ?? "XP-80";
+                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] 🖨️ Received PDF print job for printer: '{printerName}'");
+
+                    bool success = await Program.PrintPdfAsync(pdfRequest);
+                    if (success)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Green;
+                        Console.WriteLine($"✅ Successfully spooled PDF job to '{printerName}'");
+                        Console.ResetColor();
+                        SendResponse(response, HttpStatusCode.OK, "{\"success\":true,\"message\":\"PDF job spooled successfully.\"}");
+                    }
+                    else
+                    {
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.WriteLine($"❌ PrintAsync failed for '{printerName}'");
+                        Console.ResetColor();
+                        SendResponse(response, HttpStatusCode.InternalServerError, "{\"success\":false,\"message\":\"PrintAsync failed to spool PDF.\"}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine($"❌ Error processing PDF print request: {ex.Message}");
+                    Console.ResetColor();
+                    SendResponse(response, HttpStatusCode.InternalServerError, $"{{\"success\":false,\"message\":\"Internal error: {ex.Message}\"}}");
+                }
+                return;
             }
             else
             {
-                SendResponse(response, HttpStatusCode.NotFound, "Not Found. Use POST to /print.");
+                SendResponse(response, HttpStatusCode.NotFound, "Not Found. Use POST to /print or /print-pdf.");
             }
+        }
+
+        public static Task<bool> PrintPdfAsync(PrintPdfRequest request)
+        {
+            var tcs = new TaskCompletionSource<bool>();
+            if (SyncContext != null)
+            {
+                SyncContext.Post(async _ =>
+                {
+                    try
+                    {
+                        bool result = await WebView2PdfPrinter.PrintAsync(request);
+                        tcs.TrySetResult(result);
+                    }
+                    catch (Exception ex)
+                    {
+                        tcs.TrySetException(ex);
+                    }
+                }, null);
+            }
+            else
+            {
+                tcs.TrySetException(new InvalidOperationException("UI SynchronizationContext not available."));
+            }
+            return tcs.Task;
         }
 
         private static void SendResponse(HttpListenerResponse response, HttpStatusCode statusCode, string content)
@@ -368,6 +440,113 @@ namespace PrinterRelay
         public bool CutPaper { get; set; }
     }
 
+    public class PrintPdfRequest
+    {
+        public string? PrinterName { get; set; }
+        public string? PdfBase64 { get; set; }
+        public bool IsThermal { get; set; } = true;
+        public double ScaleFactor { get; set; } = 0.9;
+        public double PageWidth { get; set; } = 3.1496;
+        public double PageHeight { get; set; } = 128.976;
+    }
+
+    public static class WebView2PdfPrinter
+    {
+        private static Microsoft.Web.WebView2.WinForms.WebView2? _webView;
+        private static bool _isInitialized;
+        private static readonly SemaphoreSlim _printLock = new SemaphoreSlim(1, 1);
+
+        public static async Task<bool> PrintAsync(PrintPdfRequest req)
+        {
+            if (string.IsNullOrWhiteSpace(req.PdfBase64))
+            {
+                throw new ArgumentException("PdfBase64 cannot be empty.");
+            }
+
+            await _printLock.WaitAsync();
+            try
+            {
+                byte[] pdfBytes = Convert.FromBase64String(req.PdfBase64);
+                string tempDir = Path.Combine(Path.GetTempPath(), "RetailSuite", "BridgePrint");
+                if (!Directory.Exists(tempDir))
+                {
+                    Directory.CreateDirectory(tempDir);
+                }
+
+                string tempPdfPath = Path.Combine(tempDir, $"bill_{Guid.NewGuid():N}.pdf");
+                await File.WriteAllBytesAsync(tempPdfPath, pdfBytes);
+
+                try
+                {
+                    if (_webView == null)
+                    {
+                        _webView = new Microsoft.Web.WebView2.WinForms.WebView2();
+                        _webView.CreateControl();
+                        string userDataFolder = Path.Combine(Path.GetTempPath(), "RetailSuite", "WV2BridgeData");
+                        var env = await Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(null, userDataFolder);
+                        await _webView.EnsureCoreWebView2Async(env);
+                        _isInitialized = true;
+                    }
+
+                    if (!_isInitialized)
+                    {
+                        await _webView.EnsureCoreWebView2Async();
+                        _isInitialized = true;
+                    }
+
+
+                    var tcs = new TaskCompletionSource<bool>();
+                    EventHandler<Microsoft.Web.WebView2.Core.CoreWebView2NavigationCompletedEventArgs>? navHandler = null;
+                    navHandler = (s, e) =>
+                    {
+                        _webView.NavigationCompleted -= navHandler;
+                        tcs.TrySetResult(e.IsSuccess);
+                    };
+                    _webView.NavigationCompleted += navHandler;
+                    _webView.CoreWebView2.Navigate(tempPdfPath);
+                    await tcs.Task;
+
+                    // Small delay to ensure the PDF DOM is fully rendered
+                    await Task.Delay(250);
+
+                    var printSettings = _webView.CoreWebView2.Environment.CreatePrintSettings();
+                    printSettings.PrinterName = req.PrinterName;
+                    printSettings.ShouldPrintBackgrounds = true;
+                    printSettings.ShouldPrintHeaderAndFooter = false;
+                    printSettings.MarginTop = 0;
+                    printSettings.MarginBottom = 0;
+                    printSettings.MarginLeft = 0;
+                    printSettings.MarginRight = 0;
+
+                    if (req.IsThermal)
+                    {
+                        printSettings.ScaleFactor = req.ScaleFactor > 0 ? req.ScaleFactor : 0.9;
+                        printSettings.PageWidth = req.PageWidth > 0 ? req.PageWidth : 3.1496;
+                        printSettings.PageHeight = req.PageHeight > 0 ? req.PageHeight : 128.976;
+                    }
+
+                    var status = await _webView.CoreWebView2.PrintAsync(printSettings);
+                    return status == Microsoft.Web.WebView2.Core.CoreWebView2PrintStatus.Succeeded;
+                }
+                finally
+                {
+                    try
+                    {
+                        if (File.Exists(tempPdfPath))
+                        {
+                            File.Delete(tempPdfPath);
+                        }
+                    }
+                    catch { }
+                }
+            }
+            finally
+            {
+                _printLock.Release();
+            }
+        }
+    }
+
     public static class RawPrinterHelper
     {
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
@@ -525,6 +704,7 @@ namespace PrinterRelay
 
     [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
     [JsonSerializable(typeof(PrintRequest))]
+    [JsonSerializable(typeof(PrintPdfRequest))]
     [JsonSerializable(typeof(System.Collections.Generic.List<string>))]
     internal partial class SourceGenerationContext : JsonSerializerContext
     {
