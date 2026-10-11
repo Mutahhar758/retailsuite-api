@@ -67,7 +67,7 @@ public class HRInfoService : IHRInfoService
         var employee = await _hrInfoRepository.GetByIdAsync(id, cancellationToken);
 
         if (employee == null)
-            throw new NotFoundException($"HR Info with ID {id} not found.");
+            throw new NotFoundException($"Employee with ID {id} not found.");
 
         request.Adapt(employee);
         await _hrInfoRepository.UpdateAsync(employee);
@@ -78,7 +78,7 @@ public class HRInfoService : IHRInfoService
         var employee = await _hrInfoRepository.GetByIdAsync(id, cancellationToken);
 
         if (employee == null)
-            throw new Exception($"HR Info with ID {id} not found.");
+            throw new Exception($"Employee with ID {id} not found.");
 
         await _hrInfoRepository.DeleteAsync(employee);
     }
