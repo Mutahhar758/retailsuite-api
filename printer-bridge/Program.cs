@@ -17,36 +17,135 @@ namespace PrinterRelay
 {
     class Program
     {
+        public const string CurrentVersion = "1.1.0";
         private static readonly string Prefix = "http://localhost:5000/";
         internal static SynchronizationContext? SyncContext { get; private set; }
 
         [STAThread]
         static void Main(string[] args)
         {
-            Application.EnableVisualStyles();
-            Application.SetCompatibleTextRenderingDefault(false);
-            SyncContext = WindowsFormsSynchronizationContext.Current ?? new WindowsFormsSynchronizationContext();
-            SynchronizationContext.SetSynchronizationContext(SyncContext);
-
-            RegisterForStartup();
-
-            using var listener = new HttpListener();
-            listener.Prefixes.Add(Prefix);
-            
+            string logFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "startup-log.txt");
             try
             {
-                listener.Start();
+                File.AppendAllText(logFile, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Main starting. PID: {Environment.ProcessId}\n");
+
+                Application.EnableVisualStyles();
+                Application.SetCompatibleTextRenderingDefault(false);
+                SyncContext = WindowsFormsSynchronizationContext.Current ?? new WindowsFormsSynchronizationContext();
+                SynchronizationContext.SetSynchronizationContext(SyncContext);
+
+                // Terminate any previous instance to smoothly take over port 5000 (even from legacy version)
+                TerminatePreviousInstances();
+
+                RegisterForStartup();
+
+                var listener = new HttpListener();
+                listener.Prefixes.Add(Prefix);
+                
+                try
+                {
+                    listener.Start();
+                    File.AppendAllText(logFile, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] HttpListener started on {Prefix}\n");
+                }
+                catch (Exception ex)
+                {
+                    File.AppendAllText(logFile, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] HttpListener start error: {ex.Message}\n{ex.StackTrace}\n");
+                    MessageBox.Show($"❌ Failed to start listener: {ex.Message}\nNote: You may need to run this tool as Administrator or allow the port in URLACL.", 
+                        "Thermal Printer Bridge Error", 
+                        MessageBoxButtons.OK, 
+                        MessageBoxIcon.Error);
+                    return;
+                }
+
+                File.AppendAllText(logFile, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Running Application.Run...\n");
+                Application.Run(new PrinterBridgeContext(listener));
+                File.AppendAllText(logFile, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Application.Run exited normally.\n");
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"❌ Failed to start listener: {ex.Message}\nNote: You may need to run this tool as Administrator or allow the port in URLACL.", 
-                    "Thermal Printer Bridge Error", 
-                    MessageBoxButtons.OK, 
-                    MessageBoxIcon.Error);
-                return;
+                File.AppendAllText(logFile, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Fatal Main exception: {ex.Message}\n{ex.StackTrace}\n");
             }
+        }
 
-            Application.Run(new PrinterBridgeContext(listener));
+        private static void TerminatePreviousInstances()
+        {
+            try
+            {
+                int currentId = Environment.ProcessId;
+                string currentProcessName = Process.GetCurrentProcess().ProcessName;
+
+                var targets = new[] { "printer-bridge", "PrinterRelay", currentProcessName }
+                    .Distinct(StringComparer.OrdinalIgnoreCase);
+
+                foreach (var targetName in targets)
+                {
+                    foreach (var p in Process.GetProcessesByName(targetName))
+                    {
+                        if (p.Id != currentId)
+                        {
+                            try
+                            {
+                                p.Kill();
+                                p.WaitForExit(2000);
+                            }
+                            catch { }
+                        }
+                    }
+                }
+            }
+            catch { }
+        }
+
+        private static async Task ExecuteSelfUpdateAsync(string downloadUrl)
+        {
+            try
+            {
+                string? currentExe = Environment.ProcessPath;
+                if (string.IsNullOrEmpty(currentExe) || !File.Exists(currentExe))
+                {
+                    return;
+                }
+
+                string currentDir = Path.GetDirectoryName(currentExe) ?? Path.GetTempPath();
+                string tempDownloadedExe = Path.Combine(currentDir, $"printer-bridge-new_{Guid.NewGuid():N}.exe");
+
+                using (var http = new System.Net.Http.HttpClient())
+                {
+                    http.Timeout = TimeSpan.FromMinutes(3);
+                    byte[] exeBytes = await http.GetByteArrayAsync(downloadUrl);
+                    await File.WriteAllBytesAsync(tempDownloadedExe, exeBytes);
+                }
+
+                string updaterScript = Path.Combine(currentDir, "update-bridge.cmd");
+                string cmdContent = $@"@echo off
+timeout /t 2 /nobreak > nul
+:retry
+move /y ""{tempDownloadedExe}"" ""{currentExe}"" > nul 2>&1
+if errorlevel 1 (
+    timeout /t 1 /nobreak > nul
+    goto retry
+)
+start """" ""{currentExe}""
+del ""%~f0""
+";
+                await File.WriteAllTextAsync(updaterScript, cmdContent);
+
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = "cmd.exe",
+                    Arguments = $"/c \"{updaterScript}\"",
+                    CreateNoWindow = true,
+                    UseShellExecute = false,
+                    WorkingDirectory = currentDir
+                };
+                Process.Start(startInfo);
+
+                Environment.Exit(0);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Self update error: {ex.Message}");
+            }
         }
 
         internal static async Task HandleRequestAsync(HttpListenerContext context)
@@ -77,6 +176,41 @@ namespace PrinterRelay
 
             // Always add CORS header for actual requests
             response.AddHeader("Access-Control-Allow-Origin", "*");
+
+            if (request.HttpMethod == "GET" && request.Url?.AbsolutePath == "/version")
+            {
+                SendResponse(response, HttpStatusCode.OK, $"{{\"version\":\"{CurrentVersion}\"}}");
+                return;
+            }
+
+            if (request.HttpMethod == "POST" && request.Url?.AbsolutePath == "/update")
+            {
+                try
+                {
+                    using var reader = new StreamReader(request.InputStream, request.ContentEncoding);
+                    string body = await reader.ReadToEndAsync();
+                    var updateReq = JsonSerializer.Deserialize(body, SourceGenerationContext.Default.UpdateBridgeRequest);
+                    if (updateReq == null || string.IsNullOrWhiteSpace(updateReq.DownloadUrl))
+                    {
+                        SendResponse(response, HttpStatusCode.BadRequest, "{\"success\":false,\"message\":\"Missing downloadUrl\"}");
+                        return;
+                    }
+
+                    SendResponse(response, HttpStatusCode.OK, "{\"success\":true,\"message\":\"Update started. Restarting bridge...\"}");
+
+                    _ = Task.Run(async () =>
+                    {
+                        await Task.Delay(500);
+                        await ExecuteSelfUpdateAsync(updateReq.DownloadUrl);
+                    });
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    SendResponse(response, HttpStatusCode.InternalServerError, $"{{\"success\":false,\"message\":\"{ex.Message}\"}}");
+                    return;
+                }
+            }
 
             if (request.HttpMethod == "GET" && request.Url?.AbsolutePath == "/printers")
             {
@@ -440,6 +574,11 @@ namespace PrinterRelay
         public bool CutPaper { get; set; }
     }
 
+    public class UpdateBridgeRequest
+    {
+        public string? DownloadUrl { get; set; }
+    }
+
     public class PrintPdfRequest
     {
         public string? PrinterName { get; set; }
@@ -705,6 +844,7 @@ namespace PrinterRelay
     [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
     [JsonSerializable(typeof(PrintRequest))]
     [JsonSerializable(typeof(PrintPdfRequest))]
+    [JsonSerializable(typeof(UpdateBridgeRequest))]
     [JsonSerializable(typeof(System.Collections.Generic.List<string>))]
     internal partial class SourceGenerationContext : JsonSerializerContext
     {
