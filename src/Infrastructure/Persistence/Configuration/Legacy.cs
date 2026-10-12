@@ -61,6 +61,8 @@ public class GlEntryConfig : IEntityTypeConfiguration<GlEntry>
             .WithMany(x => x.GlEntries)
             .HasForeignKey(x => x.NarrationId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasIndex(x => x.RecurringChainId);
     }
 }
 
@@ -466,6 +468,8 @@ public class SaleSupplyMasterConfig : IEntityTypeConfiguration<SaleSupplyMaster>
             .WithMany()
             .HasForeignKey(x => x.SupplyOrderMasterId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasIndex(x => x.RecurringChainId);
     }
 }
 
@@ -813,6 +817,20 @@ public class ImeiCostAdditionConfig : IEntityTypeConfiguration<ImeiCostAddition>
             .WithMany()
             .HasForeignKey(x => x.ConsumedItemId)
             .OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+public class RecurringChainConfig : IEntityTypeConfiguration<RecurringChain>
+{
+    public void Configure(EntityTypeBuilder<RecurringChain> builder)
+    {
+        builder.IsMultiTenant();
+        builder.Property(x => x.Id).ValueGeneratedOnAdd();
+        builder.Property(x => x.Name).HasMaxLength(150).IsRequired();
+        builder.Property(x => x.VoucherType).HasMaxLength(10).IsRequired();
+        builder.Property(x => x.Frequency).HasMaxLength(20).IsRequired();
+        builder.Property(x => x.LastVoucherNo).HasMaxLength(50);
+        builder.Property(x => x.Notes).HasMaxLength(500);
     }
 }
 

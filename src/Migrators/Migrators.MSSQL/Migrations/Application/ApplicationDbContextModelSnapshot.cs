@@ -1053,6 +1053,10 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasColumnType("nvarchar(450)")
                         .HasColumnName("narration_id");
 
+                    b.Property<int?>("RecurringChainId")
+                        .HasColumnType("int")
+                        .HasColumnName("recurring_chain_id");
+
                     b.Property<string>("Remarks")
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("remarks");
@@ -1081,6 +1085,9 @@ namespace Migrators.MSSQL.Migrations.Application
 
                     b.HasKey("Id", "TenantId")
                         .HasName("ak_gl1_id_tenant_id");
+
+                    b.HasIndex("RecurringChainId")
+                        .HasDatabaseName("ix_gl1_recurring_chain_id");
 
                     b.HasIndex("CrAccountId", "TenantId")
                         .HasDatabaseName("ix_gl1_cr_account_id_tenant_id");
@@ -2567,6 +2574,97 @@ namespace Migrators.MSSQL.Migrations.Application
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
 
+            modelBuilder.Entity("Retailer.Domain.Legacy.RecurringChain", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("TenantId")
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_on");
+
+                    b.Property<int?>("DayOfMonth")
+                        .HasColumnType("int")
+                        .HasColumnName("day_of_month");
+
+                    b.Property<int?>("DayOfWeek")
+                        .HasColumnType("int")
+                        .HasColumnName("day_of_week");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("deleted_on");
+
+                    b.Property<string>("Frequency")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("frequency");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("LastModifiedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("last_modified_by");
+
+                    b.Property<DateTime?>("LastModifiedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("last_modified_on");
+
+                    b.Property<DateOnly?>("LastRunDate")
+                        .HasColumnType("date")
+                        .HasColumnName("last_run_date");
+
+                    b.Property<string>("LastVoucherNo")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("last_voucher_no");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("notes");
+
+                    b.Property<string>("VoucherType")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)")
+                        .HasColumnName("voucher_type");
+
+                    b.HasKey("Id", "TenantId")
+                        .HasName("ak_recurring_chains_id_tenant_id");
+
+                    b.ToTable("RecurringChains");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
             modelBuilder.Entity("Retailer.Domain.Legacy.RepairJob", b =>
                 {
                     b.Property<string>("Id")
@@ -3516,6 +3614,10 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasColumnType("decimal(18,2)")
                         .HasColumnName("net_amount");
 
+                    b.Property<int?>("RecurringChainId")
+                        .HasColumnType("int")
+                        .HasColumnName("recurring_chain_id");
+
                     b.Property<int?>("SupplyOrderMasterId")
                         .HasColumnType("int")
                         .HasColumnName("supply_order_master_id");
@@ -3540,6 +3642,9 @@ namespace Migrators.MSSQL.Migrations.Application
 
                     b.HasKey("Id", "TenantId")
                         .HasName("ak_sale_supply_master_id_tenant_id");
+
+                    b.HasIndex("RecurringChainId")
+                        .HasDatabaseName("ix_sale_supply_master_recurring_chain_id");
 
                     b.HasIndex("ItemId", "TenantId")
                         .HasDatabaseName("ix_sale_supply_master_item_id_tenant_id");

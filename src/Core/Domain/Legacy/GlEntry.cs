@@ -21,6 +21,7 @@ public class GlEntry : AuditableEntity, IAggregateRoot
 
     public string? DrAccountId { get; set; }
     public string? CrAccountId { get; set; }
+    public int? RecurringChainId { get; set; }
     public ChartOfAccount? DrAccount { get; set; }
     public ChartOfAccount? CrAccount { get; set; }
     public Narration? Narration { get; set; }

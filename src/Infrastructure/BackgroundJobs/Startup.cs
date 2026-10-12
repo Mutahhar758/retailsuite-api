@@ -71,6 +71,11 @@ internal static class Startup
             DashboardTitle = "RetailSuite Jobs"
         });
 
+        RecurringJob.AddOrUpdate<IDailyRecurringVouchersJob>(
+            "daily-tenant-recurring-vouchers",
+            job => job.ExecuteAsync(CancellationToken.None),
+            Cron.Daily(0, 5));
+
         return app;
     }
 }

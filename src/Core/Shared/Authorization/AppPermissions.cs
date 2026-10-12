@@ -67,6 +67,7 @@ public static class AppResource
     public const string RepairJobs = nameof(RepairJobs);
     public const string ImeiStock = nameof(ImeiStock);
     public const string WarrantyLookup = nameof(WarrantyLookup);
+    public const string RecurringVouchers = nameof(RecurringVouchers);
 }
 
 public static class AppPermissions
@@ -269,6 +270,14 @@ public static class AppPermissions
         new("Delete JournalVouchers", AppAction.Delete, AppResource.JournalVouchers),
         new("Export JournalVouchers", AppAction.Export, AppResource.JournalVouchers),
 
+        // Recurring Vouchers
+        new("View RecurringVouchers", AppAction.View, AppResource.RecurringVouchers),
+        new("Search RecurringVouchers", AppAction.Search, AppResource.RecurringVouchers),
+        new("Create RecurringVouchers", AppAction.Create, AppResource.RecurringVouchers),
+        new("Update RecurringVouchers", AppAction.Update, AppResource.RecurringVouchers),
+        new("Delete RecurringVouchers", AppAction.Delete, AppResource.RecurringVouchers),
+        new("Export RecurringVouchers", AppAction.Export, AppResource.RecurringVouchers),
+
         // Purchases
         new("View Purchases", AppAction.View, AppResource.Purchases),
         new("Search Purchases", AppAction.Search, AppResource.Purchases),
@@ -416,6 +425,7 @@ public static class AppPermissions
         p.Resource == AppResource.PaymentVouchers ||
         p.Resource == AppResource.ReceiptVouchers ||
         p.Resource == AppResource.JournalVouchers ||
+        p.Resource == AppResource.RecurringVouchers ||
         p.Resource == AppResource.BankReconciliations ||
         p.Resource == AppResource.OpeningBalances ||
         p.Resource == AppResource.AccountStatement ||
