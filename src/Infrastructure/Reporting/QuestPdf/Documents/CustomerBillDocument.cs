@@ -59,7 +59,8 @@ public class CustomerBillDocument : IDocument
         {
             page.ContinuousSize(80, Unit.Millimetre);
             page.MarginVertical(2, Unit.Millimetre);
-            page.MarginHorizontal(3, Unit.Millimetre);
+            page.MarginLeft(2.5f, Unit.Millimetre);
+            page.MarginRight(8.5f, Unit.Millimetre);
             page.PageColor(Colors.White);
             page.DefaultTextStyle(x => x.FontSize(8f).FontFamily("Arial").FontColor(Colors.Black));
 
@@ -109,13 +110,13 @@ public class CustomerBillDocument : IDocument
                 {
                     table.ColumnsDefinition(columns =>
                     {
-                        columns.RelativeColumn(2.6f); // Item & Date
+                        columns.RelativeColumn(2.5f); // Item & Date
                         columns.RelativeColumn(0.9f); // Qty
                         columns.RelativeColumn(1.0f); // Rate
                         if (_header.EnableCarriage)
                             columns.RelativeColumn(1.0f); // Carriage
-                        columns.RelativeColumn(1.0f); // Adj
-                        columns.RelativeColumn(1.3f); // Total
+                        columns.RelativeColumn(0.9f); // Adj
+                        columns.RelativeColumn(1.4f); // Total
                     });
 
                     table.Header(header =>
@@ -906,7 +907,8 @@ public class CustomerBillDocument : IDocument
         {
             page.ContinuousSize(80, Unit.Millimetre);
             page.MarginVertical(2, Unit.Millimetre);
-            page.MarginHorizontal(3, Unit.Millimetre);
+            page.MarginLeft(2.5f, Unit.Millimetre);
+            page.MarginRight(8.5f, Unit.Millimetre);
             page.PageColor(Colors.White);
             page.DefaultTextStyle(x => x.FontSize(8f).FontFamily("Arial").FontColor(Colors.Black));
 
@@ -940,7 +942,7 @@ public class CustomerBillDocument : IDocument
                         cols.RelativeColumn(1.0f); // Kg
                         cols.RelativeColumn(0.7f); // Bags
                         cols.RelativeColumn(0.9f); // Rate
-                        cols.RelativeColumn(1.2f); // Total
+                        cols.RelativeColumn(1.3f); // Total
                     });
 
                     table.Header(h =>
