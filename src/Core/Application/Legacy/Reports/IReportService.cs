@@ -21,6 +21,9 @@ public interface IReportService : ITransientService
     Task<CustomerBillResponse> GetCustomerBillAsync(CustomerBillFilter filter, CancellationToken cancellationToken);
     Task<byte[]> GetCustomerBillPdfAsync(CustomerBillFilter filter, CancellationToken cancellationToken);
     Task<byte[]> GetCustomerBillBatchPdfAsync(CustomerBillBatchFilter filter, CancellationToken cancellationToken);
+    Task<WandaCustomerBillResponse> GetWandaCustomerBillAsync(CustomerBillFilter filter, CancellationToken cancellationToken);
+    Task<byte[]> GetWandaCustomerBillPdfAsync(CustomerBillFilter filter, CancellationToken cancellationToken);
+    Task<byte[]> GetWandaCustomerBillBatchPdfAsync(CustomerBillBatchFilter filter, CancellationToken cancellationToken);
     Task<List<EnvelopeLineResponse>> GetEnvelopeAsync(EnvelopeFilter filter, CancellationToken cancellationToken);
     Task<SaleBillResponse> GetSaleBillAsync(SaleBillFilter filter, CancellationToken cancellationToken);
     Task<PurchaseBillResponse> GetPurchaseBillAsync(PurchaseBillFilter filter, CancellationToken cancellationToken);

@@ -291,6 +291,43 @@ public class ReportsController : VersionNeutralApiController
         return File(pdfBytes, "application/pdf", fileName);
     }
 
+    [HttpGet("wanda-customer-bill")]
+    [MustHavePermission(AppAction.View, AppResource.CustomerBill)]
+    [OpenApiOperation("Get Wanda customer bill report data.", "")]
+    public async Task<HttpResponseDto<WandaCustomerBillResponse>> GetWandaCustomerBillAsync(
+        [FromQuery] CustomerBillFilter filter,
+        CancellationToken cancellationToken)
+    {
+        var result = await _reportService.GetWandaCustomerBillAsync(filter, cancellationToken);
+        return result.ToInformationResponse();
+    }
+
+    [HttpGet("wanda-customer-bill/pdf")]
+    [MustHavePermission(AppAction.View, AppResource.CustomerBill)]
+    [OpenApiOperation("Get Wanda customer bill report as a vector PDF document.", "")]
+    public async Task<IActionResult> GetWandaCustomerBillPdfAsync(
+        [FromQuery] CustomerBillFilter filter,
+        CancellationToken cancellationToken)
+    {
+        var pdfBytes = await _reportService.GetWandaCustomerBillPdfAsync(filter, cancellationToken);
+        string fileName = $"WandaCustomerBill_{filter.Account}_{filter.FromDate:yyyyMMdd}_{filter.ToDate:yyyyMMdd}.pdf";
+        Response.Headers.Append("Content-Disposition", $"inline; filename=\"{fileName}\"");
+        return File(pdfBytes, "application/pdf", fileName);
+    }
+
+    [HttpPost("wanda-customer-bill/batch/pdf")]
+    [MustHavePermission(AppAction.View, AppResource.CustomerBill)]
+    [OpenApiOperation("Get batch/bulk Wanda customer bills compiled into a single vector PDF document.", "")]
+    public async Task<IActionResult> GetWandaCustomerBillBatchPdfAsync(
+        [FromBody] CustomerBillBatchFilter filter,
+        CancellationToken cancellationToken)
+    {
+        var pdfBytes = await _reportService.GetWandaCustomerBillBatchPdfAsync(filter, cancellationToken);
+        string fileName = $"WandaCustomerBillBatch_{filter.FromDate:yyyyMMdd}_{filter.ToDate:yyyyMMdd}.pdf";
+        Response.Headers.Append("Content-Disposition", $"inline; filename=\"{fileName}\"");
+        return File(pdfBytes, "application/pdf", fileName);
+    }
+
     [HttpGet("envelope")]
     [MustHavePermission(AppAction.View, AppResource.MiscReports, AppResource.EnvelopeReport)]
     [OpenApiOperation("Get envelope report data.", "")]

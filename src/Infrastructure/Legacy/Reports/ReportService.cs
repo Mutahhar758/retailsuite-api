@@ -1302,17 +1302,17 @@ internal class ReportService : IReportService
             .Distinct()
             .ToDictionaryAsync(x => x.Code, x => x.Title, cancellationToken);
 
-        var saleLinesRaw = await (
+        var saleLines = await (
             from sd in _saleRepository.GetAll().AsNoTracking()
             join sm in _saleMasterRepository.GetAll().AsNoTracking()
                 on new { sd.VType, sd.VNo } equals new { sm.VType, VNo = sm.VNo }
             where sm.AccountId == filter.Account
                   && sm.VDate >= filter.FromDate && sm.VDate <= filter.ToDate
-            select new
+            orderby sm.VDate, sd.VType, sd.VNo, sd.Seq
+            select new CustomerBillLineResponse
             {
                 Date = sm.VDate,
                 VNo = sd.VType + "-" + sd.VNo,
-                Seq = sd.Seq,
                 Item = sd.Item != null ? sd.Item.Title : (sd.ItemId ?? string.Empty),
                 UnitId = sd.UnitId ?? string.Empty,
                 UnitTitle = sd.Unit != null ? sd.Unit.Title : (!string.IsNullOrWhiteSpace(sd.UnitId) && unitMap.ContainsKey(sd.UnitId) ? unitMap[sd.UnitId] : (sd.Item != null && sd.Item.DefaultUnit != null ? sd.Item.DefaultUnit.Title : (sd.Item != null && sd.Item.PrimaryUnit != null ? sd.Item.PrimaryUnit.Title : (sd.UnitId ?? string.Empty)))),
@@ -1320,54 +1320,13 @@ internal class ReportService : IReportService
                 Rate = (sd.GrossRate ?? 0m) - (sd.Discount ?? 0m),
                 AddLess = 0m,
                 Carriage = sd.Carriage ?? 0m,
-                Amount = _currentTenant.HasVariablePackFeature
-                    ? (sd.Qty * ((sd.GrossRate ?? 0m) - (sd.Discount ?? 0m))) + (sd.Carriage ?? 0m)
-                    : (sd.Qty * ((sd.GrossRate ?? 0m) - (sd.Discount ?? 0m))) + (sd.Carriage ?? 0m) + ((sd.SecQty ?? 0m) * (sd.SecRate ?? 0m)),
-                SecQty = sd.SecQty,
-                SecRate = sd.SecRate,
-                QtyInPack = sd.QtyInPack,
-                SecUnitTitle = sd.SecUnit != null ? sd.SecUnit.Title : (!string.IsNullOrWhiteSpace(sd.SecUnitId) && unitMap.ContainsKey(sd.SecUnitId) ? unitMap[sd.SecUnitId] : (sd.Item != null && sd.Item.SecondaryUnit != null ? sd.Item.SecondaryUnit.Title : (sd.SecUnitId ?? string.Empty))),
-                ReceiptAmount = sm.CashReceipt - (sm.CashBack ?? 0m),
+                Amount = (sd.Qty * ((sd.GrossRate ?? 0m) - (sd.Discount ?? 0m))) + (sd.Carriage ?? 0m),
                 Imei = sd.Imei,
                 Imei2 = sd.Imei2,
                 PtaStatus = sd.PtaStatus,
                 WarrantyMonths = sd.WarrantyMonths,
                 ConditionNote = sd.ConditionNote
             }).ToListAsync(cancellationToken);
-
-        var saleLines = new List<CustomerBillLineResponse>();
-        foreach (var group in saleLinesRaw.GroupBy(x => x.VNo))
-        {
-            bool first = true;
-            foreach (var item in group.OrderBy(x => x.Seq))
-            {
-                saleLines.Add(new CustomerBillLineResponse
-                {
-                    Date = item.Date,
-                    VNo = item.VNo,
-                    Item = item.Item,
-                    UnitId = item.UnitId,
-                    UnitTitle = item.UnitTitle,
-                    Qty = item.Qty,
-                    Rate = item.Rate,
-                    AddLess = item.AddLess,
-                    Carriage = item.Carriage,
-                    Amount = item.Amount,
-                    SecQty = item.SecQty,
-                    SecRate = item.SecRate,
-                    QtyInPack = item.QtyInPack,
-                    SecUnitTitle = item.SecUnitTitle,
-                    ReceiptDate = first && item.ReceiptAmount > 0 ? item.Date : null,
-                    ReceiptAmount = first && item.ReceiptAmount > 0 ? item.ReceiptAmount : null,
-                    Imei = item.Imei,
-                    Imei2 = item.Imei2,
-                    PtaStatus = item.PtaStatus,
-                    WarrantyMonths = item.WarrantyMonths,
-                    ConditionNote = item.ConditionNote
-                });
-                first = false;
-            }
-        }
 
         var supplyLines = await (
             from ssd in _saleSupplyDetailRepository.GetAll().AsNoTracking()
@@ -1386,51 +1345,13 @@ internal class ReportService : IReportService
                 Rate = (ssd.GrossRate ?? 0m) - (ssd.Discount ?? 0m),
                 AddLess = ssd.AddLess ?? 0m,
                 Carriage = ssd.Carriage ?? 0m,
-                Amount = (ssd.Qty * ((ssd.GrossRate ?? 0m) - (ssd.Discount ?? 0m))) + (ssd.Carriage ?? 0m) + (ssd.AddLess ?? 0m),
-                SecQty = ssd.SecQty,
-                SecRate = ssd.SecRate,
-                QtyInPack = ssd.QtyInPack,
-                SecUnitTitle = ssd.SecUnit != null ? ssd.SecUnit.Title : (!string.IsNullOrWhiteSpace(ssd.SecUnitId) && unitMap.ContainsKey(ssd.SecUnitId) ? unitMap[ssd.SecUnitId] : (ssm.Item != null && ssm.Item.SecondaryUnit != null ? ssm.Item.SecondaryUnit.Title : (ssd.SecUnitId ?? string.Empty))),
-                ReceiptDate = null,
-                ReceiptAmount = null
+                Amount = (ssd.Qty * ((ssd.GrossRate ?? 0m) - (ssd.Discount ?? 0m))) + (ssd.Carriage ?? 0m) + (ssd.AddLess ?? 0m)
             }).ToListAsync(cancellationToken);
 
         bool useClearingDate = string.Equals(filter.DateBasis, "ClearingDate", StringComparison.OrdinalIgnoreCase);
-        bool isWanda = filter.IsWandaLayout ?? _currentTenant.HasVariablePackFeature;
 
-        IEnumerable<CustomerBillLineResponse> combinedLines = saleLines.Concat(supplyLines);
-
-        // Only Wanda layout displays standalone receipts inline in the table grid (via dedicated Receipt columns).
-        // Normal bills (A4/Thermal/Milk shop) only show sold items in the grid, with receipts summarized in the footer.
-        if (isWanda)
-        {
-            var standaloneReceipts = await _glRepository.GetAll()
-                .AsNoTracking()
-                .Where(x => x.CrAccountId == filter.Account
-                            && (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) >= filter.FromDate
-                            && (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) <= filter.ToDate
-                            && (x.VType == "RV" || x.VType == "JV"))
-                .Select(x => new CustomerBillLineResponse
-                {
-                    Date = useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate,
-                    VNo = x.VType + "-" + x.VoucherNo,
-                    Item = !string.IsNullOrWhiteSpace(x.Remarks) ? x.Remarks : (x.Narration != null ? x.Narration.Title : "Payment Received"),
-                    UnitId = string.Empty,
-                    UnitTitle = string.Empty,
-                    Qty = 0,
-                    Rate = 0,
-                    AddLess = 0,
-                    Carriage = 0,
-                    Amount = 0,
-                    ReceiptDate = useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate,
-                    ReceiptAmount = x.Amount
-                })
-                .ToListAsync(cancellationToken);
-
-            combinedLines = combinedLines.Concat(standaloneReceipts);
-        }
-
-        var lines = combinedLines
+        var lines = saleLines
+            .Concat(supplyLines)
             .OrderBy(x => x.Date)
             .ThenBy(x => x.VNo)
             .ToList();
@@ -1467,12 +1388,15 @@ internal class ReportService : IReportService
             .Select(x => x.DrAccountId == filter.Account ? x.Amount : -x.Amount)
             .SumAsync(cancellationToken);
 
+        decimal totalSales = lines.Sum(x => x.Amount);
+
         return new CustomerBillResponse
         {
             Lines = lines,
             Summary = new CustomerBillSummaryResponse
             {
                 PreviousBalance = previousBalance,
+                TotalSales = totalSales,
                 Payment = payment,
                 Balance = balance
             }
@@ -1521,7 +1445,6 @@ internal class ReportService : IReportService
         var layout = targetLayout.IndexOf("Thermal", StringComparison.OrdinalIgnoreCase) >= 0
             ? CustomerBillPrintLayout.Thermal80mm
             : CustomerBillPrintLayout.A4Sheet;
-        bool isWanda = filter.IsWandaLayout ?? _currentTenant.HasVariablePackFeature;
 
         var header = new CustomerBillHeader
         {
@@ -1537,11 +1460,15 @@ internal class ReportService : IReportService
             DateBasis = filter.DateBasis == "VoucherDate" ? "Voucher Date" : "Clearing Date",
             GeneratedAt = DateTime.Now,
             PreviousBalance = billResponse.Summary.PreviousBalance,
-            TotalBilling = billResponse.Lines.Sum(x => x.Amount),
+            TotalSales = billResponse.Summary.TotalSales,
+            TotalPurchases = 0m,
+            TotalSaleReturns = 0m,
+            TotalPurchaseReturns = 0m,
+            TotalBilling = billResponse.Summary.TotalSales,
             Payment = billResponse.Summary.Payment,
             ClosingBalance = billResponse.Summary.Balance,
             Layout = layout,
-            IsWandaLayout = isWanda,
+            IsWandaLayout = false,
             EnableCarriage = enableCarriage,
             ThankyouLine = thankYou,
             QrPayment = new QrPaymentInfo
@@ -1603,8 +1530,6 @@ internal class ReportService : IReportService
             ? CustomerBillPrintLayout.Thermal80mm
             : CustomerBillPrintLayout.A4Sheet;
 
-        bool isWanda = filter.IsWandaLayout ?? _currentTenant.HasVariablePackFeature;
-
         var batchList = new List<(CustomerBillHeader Header, List<CustomerBillLineResponse> Lines)>();
 
         foreach (var accountId in accountIds)
@@ -1619,12 +1544,11 @@ internal class ReportService : IReportService
                     DateBasis = filter.DateBasis,
                     Layout = filter.Layout,
                     QrEnabled = qrEnabled,
-                    IsWandaLayout = isWanda
+                    IsWandaLayout = false
                 };
 
                 var billResponse = await GetCustomerBillAsync(billFilter, cancellationToken);
 
-                // If OnlyWithActivity is enabled, skip accounts with zero lines and zero balances
                 if (filter.OnlyWithActivity)
                 {
                     bool hasTransactions = billResponse.Lines.Count > 0;
@@ -1651,11 +1575,15 @@ internal class ReportService : IReportService
                     DateBasis = filter.DateBasis == "VoucherDate" ? "Voucher Date" : "Clearing Date",
                     GeneratedAt = DateTime.Now,
                     PreviousBalance = billResponse.Summary.PreviousBalance,
-                    TotalBilling = billResponse.Lines.Sum(x => x.Amount),
+                    TotalSales = billResponse.Summary.TotalSales,
+                    TotalPurchases = 0m,
+                    TotalSaleReturns = 0m,
+                    TotalPurchaseReturns = 0m,
+                    TotalBilling = billResponse.Summary.TotalSales,
                     Payment = billResponse.Summary.Payment,
                     ClosingBalance = billResponse.Summary.Balance,
                     Layout = layout,
-                    IsWandaLayout = isWanda,
+                    IsWandaLayout = false,
                     ThankyouLine = thankYou,
                     QrPayment = new QrPaymentInfo
                     {
@@ -1675,6 +1603,501 @@ internal class ReportService : IReportService
         }
 
         var batchDoc = new CustomerBillBatchDocument(batchList);
+        return batchDoc.GeneratePdf();
+    }
+
+    public async Task<WandaCustomerBillResponse> GetWandaCustomerBillAsync(CustomerBillFilter filter, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(filter.Account))
+            throw new BadRequestException("Account is required.");
+
+        if (filter.ToDate < filter.FromDate)
+            throw new BadRequestException("To date must be greater than or equal to from date.");
+
+        var unitMap = await _itemTransactionRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => !string.IsNullOrWhiteSpace(x.UnitId))
+            .Select(x => new { Code = x.UnitId!, Title = x.Unit != null ? x.Unit.Title : x.UnitId! })
+            .Distinct()
+            .ToDictionaryAsync(x => x.Code, x => x.Title, cancellationToken);
+
+        var saleLinesRaw = await (
+            from sd in _saleRepository.GetAll().AsNoTracking()
+            join sm in _saleMasterRepository.GetAll().AsNoTracking()
+                on new { sd.VType, sd.VNo } equals new { sm.VType, VNo = sm.VNo }
+            where sm.AccountId == filter.Account
+                  && sm.VDate >= filter.FromDate && sm.VDate <= filter.ToDate
+            select new
+            {
+                Date = sm.VDate,
+                VNo = sd.VType + "-" + sd.VNo,
+                Seq = sd.Seq,
+                Item = sd.Item != null ? sd.Item.Title : (sd.ItemId ?? string.Empty),
+                UnitId = sd.UnitId ?? string.Empty,
+                UnitTitle = sd.Unit != null ? sd.Unit.Title : (!string.IsNullOrWhiteSpace(sd.UnitId) && unitMap.ContainsKey(sd.UnitId) ? unitMap[sd.UnitId] : (sd.Item != null && sd.Item.DefaultUnit != null ? sd.Item.DefaultUnit.Title : (sd.Item != null && sd.Item.PrimaryUnit != null ? sd.Item.PrimaryUnit.Title : (sd.UnitId ?? string.Empty)))),
+                Qty = sd.Qty,
+                Rate = (sd.GrossRate ?? 0m) - (sd.Discount ?? 0m),
+                AddLess = 0m,
+                Carriage = sd.Carriage ?? 0m,
+                Amount = _currentTenant.HasVariablePackFeature
+                    ? (sd.Qty * ((sd.GrossRate ?? 0m) - (sd.Discount ?? 0m))) + (sd.Carriage ?? 0m)
+                    : (sd.Qty * ((sd.GrossRate ?? 0m) - (sd.Discount ?? 0m))) + (sd.Carriage ?? 0m) + ((sd.SecQty ?? 0m) * (sd.SecRate ?? 0m)),
+                SecQty = sd.SecQty,
+                SecRate = sd.SecRate,
+                QtyInPack = sd.QtyInPack,
+                SecUnitTitle = sd.SecUnit != null ? sd.SecUnit.Title : (!string.IsNullOrWhiteSpace(sd.SecUnitId) && unitMap.ContainsKey(sd.SecUnitId) ? unitMap[sd.SecUnitId] : (sd.Item != null && sd.Item.SecondaryUnit != null ? sd.Item.SecondaryUnit.Title : (sd.SecUnitId ?? string.Empty))),
+                ReceiptAmount = sm.CashReceipt - (sm.CashBack ?? 0m),
+                Imei = sd.Imei,
+                Imei2 = sd.Imei2,
+                PtaStatus = sd.PtaStatus,
+                WarrantyMonths = sd.WarrantyMonths,
+                ConditionNote = sd.ConditionNote
+            }).ToListAsync(cancellationToken);
+
+        var saleLines = new List<WandaCustomerBillLineResponse>();
+        foreach (var group in saleLinesRaw.GroupBy(x => x.VNo))
+        {
+            bool first = true;
+            foreach (var item in group.OrderBy(x => x.Seq))
+            {
+                saleLines.Add(new WandaCustomerBillLineResponse
+                {
+                    Date = item.Date,
+                    VNo = item.VNo,
+                    Item = item.Item,
+                    UnitId = item.UnitId,
+                    UnitTitle = item.UnitTitle,
+                    Qty = item.Qty,
+                    Rate = item.Rate,
+                    AddLess = item.AddLess,
+                    Carriage = item.Carriage,
+                    Amount = item.Amount,
+                    SecQty = item.SecQty,
+                    SecRate = item.SecRate,
+                    QtyInPack = item.QtyInPack,
+                    SecUnitTitle = item.SecUnitTitle,
+                    ReceiptDate = first && item.ReceiptAmount > 0 ? item.Date : null,
+                    ReceiptAmount = first && item.ReceiptAmount > 0 ? item.ReceiptAmount : null,
+                    Imei = item.Imei,
+                    Imei2 = item.Imei2,
+                    PtaStatus = item.PtaStatus,
+                    WarrantyMonths = item.WarrantyMonths,
+                    ConditionNote = item.ConditionNote,
+                    TransactionType = "Sale"
+                });
+                first = false;
+            }
+        }
+
+        var supplyLines = await (
+            from ssd in _saleSupplyDetailRepository.GetAll().AsNoTracking()
+            join ssm in _saleSupplyMasterRepository.GetAll().AsNoTracking()
+                on new { ssd.VType, ssd.VNo } equals new { ssm.VType, VNo = ssm.VNo }
+            where ssd.CustomerAccountId == filter.Account
+                  && ssm.VDate >= filter.FromDate && ssm.VDate <= filter.ToDate
+            select new WandaCustomerBillLineResponse
+            {
+                Date = ssm.VDate,
+                VNo = ssd.VType + "-" + ssd.VNo,
+                Item = ssm.Item != null ? ssm.Item.Title : (ssm.ItemId ?? string.Empty),
+                UnitId = ssd.UnitId ?? string.Empty,
+                UnitTitle = ssd.Unit != null ? ssd.Unit.Title : (!string.IsNullOrWhiteSpace(ssd.UnitId) && unitMap.ContainsKey(ssd.UnitId) ? unitMap[ssd.UnitId] : (ssm.Item != null && ssm.Item.DefaultUnit != null ? ssm.Item.DefaultUnit.Title : (ssm.Item != null && ssm.Item.PrimaryUnit != null ? ssm.Item.PrimaryUnit.Title : (ssd.UnitId ?? string.Empty)))),
+                Qty = ssd.Qty,
+                Rate = (ssd.GrossRate ?? 0m) - (ssd.Discount ?? 0m),
+                AddLess = ssd.AddLess ?? 0m,
+                Carriage = ssd.Carriage ?? 0m,
+                Amount = (ssd.Qty * ((ssd.GrossRate ?? 0m) - (ssd.Discount ?? 0m))) + (ssd.Carriage ?? 0m) + (ssd.AddLess ?? 0m),
+                SecQty = ssd.SecQty,
+                SecRate = ssd.SecRate,
+                QtyInPack = ssd.QtyInPack,
+                SecUnitTitle = ssd.SecUnit != null ? ssd.SecUnit.Title : (!string.IsNullOrWhiteSpace(ssd.SecUnitId) && unitMap.ContainsKey(ssd.SecUnitId) ? unitMap[ssd.SecUnitId] : (ssm.Item != null && ssm.Item.SecondaryUnit != null ? ssm.Item.SecondaryUnit.Title : (ssd.SecUnitId ?? string.Empty))),
+                ReceiptDate = null,
+                ReceiptAmount = null,
+                TransactionType = "Sale"
+            }).ToListAsync(cancellationToken);
+
+        bool useClearingDate = string.Equals(filter.DateBasis, "ClearingDate", StringComparison.OrdinalIgnoreCase);
+
+        var saleReturnLines = await (
+            from srd in _saleRetDetailRepository.GetAll().AsNoTracking()
+            join srm in _saleRetMasterRepository.GetAll().AsNoTracking()
+                on new { srd.VType, srd.VNo } equals new { srm.VType, VNo = srm.VNo }
+            where srm.AccountId == filter.Account
+                  && srm.VDate >= filter.FromDate && srm.VDate <= filter.ToDate
+            select new WandaCustomerBillLineResponse
+            {
+                Date = srm.VDate,
+                VNo = srd.VType + "-" + srd.VNo,
+                Item = "[Sale Return] " + (srd.Item != null ? srd.Item.Title : (srd.ItemId ?? string.Empty)),
+                UnitId = srd.UnitId ?? string.Empty,
+                UnitTitle = srd.Unit != null ? srd.Unit.Title : (!string.IsNullOrWhiteSpace(srd.UnitId) && unitMap.ContainsKey(srd.UnitId) ? unitMap[srd.UnitId] : (srd.Item != null && srd.Item.DefaultUnit != null ? srd.Item.DefaultUnit.Title : (srd.Item != null && srd.Item.PrimaryUnit != null ? srd.Item.PrimaryUnit.Title : (srd.UnitId ?? string.Empty)))),
+                Qty = srd.Qty,
+                Rate = (srd.GrossRate ?? 0m) - (srd.Discount ?? 0m),
+                AddLess = 0m,
+                Carriage = 0m,
+                Amount = -((srd.Qty * ((srd.GrossRate ?? 0m) - (srd.Discount ?? 0m))) + ((srd.SecQty ?? 0m) * (srd.SecRate ?? 0m))),
+                SecQty = srd.SecQty,
+                SecRate = srd.SecRate,
+                QtyInPack = srd.QtyInPack,
+                SecUnitTitle = srd.SecUnit != null ? srd.SecUnit.Title : (!string.IsNullOrWhiteSpace(srd.SecUnitId) && unitMap.ContainsKey(srd.SecUnitId) ? unitMap[srd.SecUnitId] : (srd.Item != null && srd.Item.SecondaryUnit != null ? srd.Item.SecondaryUnit.Title : (srd.SecUnitId ?? string.Empty))),
+                ReceiptDate = null,
+                ReceiptAmount = null,
+                Imei = srd.Imei,
+                Imei2 = srd.Imei2,
+                TransactionType = "SaleReturn"
+            }).ToListAsync(cancellationToken);
+
+        var purchaseLines = await (
+            from pd in _purchaseDetailRepository.GetAll().AsNoTracking()
+            join pm in _purchaseMasterRepository.GetAll().AsNoTracking()
+                on new { pd.VType, pd.VNo } equals new { pm.VType, VNo = pm.VNo }
+            where pm.AccountId == filter.Account
+                  && pm.VDate >= filter.FromDate && pm.VDate <= filter.ToDate
+            select new WandaCustomerBillLineResponse
+            {
+                Date = pm.VDate,
+                VNo = pd.VType + "-" + pd.VNo,
+                Item = "[Purchase] " + (pd.Item != null ? pd.Item.Title : (pd.ItemId ?? string.Empty)),
+                UnitId = pd.UnitId ?? string.Empty,
+                UnitTitle = pd.Unit != null ? pd.Unit.Title : (!string.IsNullOrWhiteSpace(pd.UnitId) && unitMap.ContainsKey(pd.UnitId) ? unitMap[pd.UnitId] : (pd.Item != null && pd.Item.DefaultUnit != null ? pd.Item.DefaultUnit.Title : (pd.Item != null && pd.Item.PrimaryUnit != null ? pd.Item.PrimaryUnit.Title : (pd.UnitId ?? string.Empty)))),
+                Qty = pd.Qty,
+                Rate = pd.Rate,
+                AddLess = pd.AddLess,
+                Carriage = 0m,
+                Amount = -((pd.Qty * pd.Rate) + pd.AddLess + ((pd.SecQty ?? 0m) * (pd.SecRate ?? 0m))),
+                SecQty = pd.SecQty,
+                SecRate = pd.SecRate,
+                QtyInPack = pd.QtyInPack,
+                SecUnitTitle = pd.SecUnit != null ? pd.SecUnit.Title : (!string.IsNullOrWhiteSpace(pd.SecUnitId) && unitMap.ContainsKey(pd.SecUnitId) ? unitMap[pd.SecUnitId] : (pd.Item != null && pd.Item.SecondaryUnit != null ? pd.Item.SecondaryUnit.Title : (pd.SecUnitId ?? string.Empty))),
+                ReceiptDate = null,
+                ReceiptAmount = null,
+                Imei = pd.Imei,
+                Imei2 = pd.Imei2,
+                PtaStatus = pd.PtaStatus,
+                ConditionNote = pd.ConditionNote,
+                TransactionType = "Purchase"
+            }).ToListAsync(cancellationToken);
+
+        var purchaseRetLines = await (
+            from prd in _purchaseRetDetailRepository.GetAll().AsNoTracking()
+            join prm in _purchaseRetMasterRepository.GetAll().AsNoTracking()
+                on new { prd.VType, prd.VNo } equals new { prm.VType, VNo = prm.VNo }
+            where prm.AccountId == filter.Account
+                  && prm.VDate >= filter.FromDate && prm.VDate <= filter.ToDate
+            select new WandaCustomerBillLineResponse
+            {
+                Date = prm.VDate,
+                VNo = prd.VType + "-" + prd.VNo,
+                Item = "[Purchase Return] " + (prd.Item != null ? prd.Item.Title : (prd.ItemId ?? string.Empty)),
+                UnitId = prd.UnitId ?? string.Empty,
+                UnitTitle = prd.Unit != null ? prd.Unit.Title : (!string.IsNullOrWhiteSpace(prd.UnitId) && unitMap.ContainsKey(prd.UnitId) ? unitMap[prd.UnitId] : (prd.Item != null && prd.Item.DefaultUnit != null ? prd.Item.DefaultUnit.Title : (prd.Item != null && prd.Item.PrimaryUnit != null ? prd.Item.PrimaryUnit.Title : (prd.UnitId ?? string.Empty)))),
+                Qty = prd.Qty,
+                Rate = prd.Rate,
+                AddLess = 0m,
+                Carriage = 0m,
+                Amount = (prd.Qty * prd.Rate) + ((prd.SecQty ?? 0m) * (prd.SecRate ?? 0m)),
+                SecQty = prd.SecQty,
+                SecRate = prd.SecRate,
+                QtyInPack = prd.QtyInPack,
+                SecUnitTitle = prd.SecUnit != null ? prd.SecUnit.Title : (!string.IsNullOrWhiteSpace(prd.SecUnitId) && unitMap.ContainsKey(prd.SecUnitId) ? unitMap[prd.SecUnitId] : (prd.Item != null && prd.Item.SecondaryUnit != null ? prd.Item.SecondaryUnit.Title : (prd.SecUnitId ?? string.Empty))),
+                ReceiptDate = null,
+                ReceiptAmount = null,
+                Imei = prd.Imei,
+                Imei2 = prd.Imei2,
+                TransactionType = "PurchaseReturn"
+            }).ToListAsync(cancellationToken);
+
+        var standaloneReceipts = await _glRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => x.CrAccountId == filter.Account
+                        && (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) >= filter.FromDate
+                        && (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) <= filter.ToDate
+                        && (x.VType == "RV" || x.VType == "JV"))
+            .Select(x => new WandaCustomerBillLineResponse
+            {
+                Date = useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate,
+                VNo = x.VType + "-" + x.VoucherNo,
+                Item = !string.IsNullOrWhiteSpace(x.Remarks) ? x.Remarks : (x.Narration != null ? x.Narration.Title : "Payment Received"),
+                UnitId = string.Empty,
+                UnitTitle = string.Empty,
+                Qty = 0,
+                Rate = 0,
+                AddLess = 0,
+                Carriage = 0,
+                Amount = 0,
+                ReceiptDate = useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate,
+                ReceiptAmount = x.Amount,
+                TransactionType = "Receipt"
+            })
+            .ToListAsync(cancellationToken);
+
+        var combinedLines = saleLines
+            .Concat(supplyLines)
+            .Concat(saleReturnLines)
+            .Concat(purchaseLines)
+            .Concat(purchaseRetLines)
+            .Concat(standaloneReceipts);
+
+        var lines = combinedLines
+            .OrderBy(x => x.Date)
+            .ThenBy(x => x.VNo)
+            .ToList();
+
+        var previousBalance = await _glRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => (x.DrAccountId == filter.Account || x.CrAccountId == filter.Account)
+                        && (x.VType == "Op" || (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) < filter.FromDate))
+            .Select(x => x.DrAccountId == filter.Account ? x.Amount : -x.Amount)
+            .SumAsync(cancellationToken);
+
+        var receipts = await _glRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => x.CrAccountId == filter.Account
+                        && (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) >= filter.FromDate
+                        && (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) <= filter.ToDate
+                        && (x.VType == "SL" || x.VType == "SP" || x.VType == "RV" || x.VType == "JV"))
+            .SumAsync(x => x.Amount, cancellationToken);
+
+        var refunds = await _glRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => x.DrAccountId == filter.Account
+                        && (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) >= filter.FromDate
+                        && (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) <= filter.ToDate
+                        && x.VType == "PV")
+            .SumAsync(x => x.Amount, cancellationToken);
+
+        var payment = receipts - refunds;
+
+        var balance = await _glRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => (x.DrAccountId == filter.Account || x.CrAccountId == filter.Account)
+                        && (x.VType == "Op" || (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) <= filter.ToDate))
+            .Select(x => x.DrAccountId == filter.Account ? x.Amount : -x.Amount)
+            .SumAsync(cancellationToken);
+
+        decimal totalSales = saleLines.Sum(x => x.Amount) + supplyLines.Sum(x => x.Amount);
+        decimal totalPurchases = purchaseLines.Sum(x => Math.Abs(x.Amount));
+        decimal totalSaleReturns = saleReturnLines.Sum(x => Math.Abs(x.Amount));
+        decimal totalPurchaseReturns = purchaseRetLines.Sum(x => x.Amount);
+        decimal totalBill = totalSales - totalPurchases - totalSaleReturns + totalPurchaseReturns;
+
+        return new WandaCustomerBillResponse
+        {
+            Lines = lines,
+            Summary = new WandaCustomerBillSummaryResponse
+            {
+                PreviousBalance = previousBalance,
+                TotalSales = totalSales,
+                TotalPurchases = totalPurchases,
+                TotalSaleReturns = totalSaleReturns,
+                TotalPurchaseReturns = totalPurchaseReturns,
+                TotalBill = totalBill,
+                Payment = payment,
+                Balance = balance
+            }
+        };
+    }
+
+    public async Task<byte[]> GetWandaCustomerBillPdfAsync(CustomerBillFilter filter, CancellationToken cancellationToken)
+    {
+        var billResponse = await GetWandaCustomerBillAsync(filter, cancellationToken);
+
+        var company = await _companyDetailRepository.GetAll()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var customer = await (from c in _chartOfAccountRepository.GetAll().AsNoTracking()
+                              join cd in _customerDetailRepository.GetAll().AsNoTracking() on c.Id equals cd.Id into cdj
+                              from cd in cdj.DefaultIfEmpty()
+                              where c.Id == filter.Account
+                              select new
+                              {
+                                  Title = c.Title,
+                                  Phone = cd != null ? (cd.Phone1 ?? cd.SmsNumber) : null,
+                                  Address = cd != null ? cd.Address : null
+                              }).FirstOrDefaultAsync(cancellationToken);
+
+        var settings = await _settingRepository.GetAll()
+            .AsNoTracking()
+            .Where(s => s.Key.StartsWith("Bill."))
+            .ToDictionaryAsync(s => s.Key, s => s.Value, cancellationToken);
+
+        bool qrEnabled = filter.QrEnabled ?? (settings.TryGetValue("Bill.QrPayment.Enabled", out var qe) && string.Equals(qe, "true", StringComparison.OrdinalIgnoreCase));
+        string qrTitle = settings.TryGetValue("Bill.QrPayment.AccountTitle", out var qt) ? (qt ?? string.Empty) : string.Empty;
+        string qrAcc = settings.TryGetValue("Bill.QrPayment.AccountNumber", out var qa) ? (qa ?? string.Empty) : string.Empty;
+        string qrBank = settings.TryGetValue("Bill.QrPayment.BankName", out var qb) ? (qb ?? string.Empty) : string.Empty;
+        string thankYou = settings.TryGetValue("Bill.ThankYouMessage", out var ty) ? (ty ?? "Thank you for shopping with us!") : "Thank you for shopping with us!";
+
+        var carriageSetting = await _settingRepository.GetAll()
+            .AsNoTracking()
+            .Where(s => s.Key == "Transaction.EnableCarriage")
+            .Select(s => s.Value)
+            .FirstOrDefaultAsync(cancellationToken);
+        bool enableCarriage = string.Equals(carriageSetting, "true", StringComparison.OrdinalIgnoreCase);
+
+        string defaultFormat = settings.TryGetValue("Bill.DefaultFormat", out var df) ? (df ?? "A4") : "A4";
+        string targetLayout = !string.IsNullOrWhiteSpace(filter.Layout) ? filter.Layout : defaultFormat;
+        var layout = targetLayout.IndexOf("Thermal", StringComparison.OrdinalIgnoreCase) >= 0
+            ? CustomerBillPrintLayout.Thermal80mm
+            : CustomerBillPrintLayout.A4Sheet;
+
+        var header = new CustomerBillHeader
+        {
+            CompanyName = company?.CompanyName ?? "Retail Suite Enterprise",
+            CompanyAddress = company?.Address,
+            CompanyPhone = company?.Phone,
+            CustomerAccount = filter.Account,
+            CustomerTitle = customer?.Title ?? filter.Account,
+            CustomerPhone = customer?.Phone,
+            CustomerAddress = customer?.Address,
+            FromDate = filter.FromDate,
+            ToDate = filter.ToDate,
+            DateBasis = filter.DateBasis == "VoucherDate" ? "Voucher Date" : "Clearing Date",
+            GeneratedAt = DateTime.Now,
+            PreviousBalance = billResponse.Summary.PreviousBalance,
+            TotalSales = billResponse.Summary.TotalSales,
+            TotalPurchases = billResponse.Summary.TotalPurchases,
+            TotalSaleReturns = billResponse.Summary.TotalSaleReturns,
+            TotalPurchaseReturns = billResponse.Summary.TotalPurchaseReturns,
+            TotalBilling = billResponse.Summary.TotalBill,
+            Payment = billResponse.Summary.Payment,
+            ClosingBalance = billResponse.Summary.Balance,
+            Layout = layout,
+            IsWandaLayout = true,
+            EnableCarriage = enableCarriage,
+            ThankyouLine = thankYou,
+            QrPayment = new QrPaymentInfo
+            {
+                IsEnabled = qrEnabled,
+                AccountTitle = qrTitle,
+                AccountNumber = qrAcc,
+                BankName = qrBank
+            }
+        };
+
+        var document = new WandaCustomerBillDocument(header, billResponse.Lines);
+        return document.GeneratePdf();
+    }
+
+    public async Task<byte[]> GetWandaCustomerBillBatchPdfAsync(CustomerBillBatchFilter filter, CancellationToken cancellationToken)
+    {
+        if (filter.Accounts == null || filter.Accounts.Count == 0)
+            throw new BadRequestException("At least one customer account is required for batch generation.");
+
+        if (filter.ToDate < filter.FromDate)
+            throw new BadRequestException("To date must be greater than or equal to from date.");
+
+        var company = await _companyDetailRepository.GetAll()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var accountIds = filter.Accounts
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var customerMap = await (from c in _chartOfAccountRepository.GetAll().AsNoTracking()
+                                 join cd in _customerDetailRepository.GetAll().AsNoTracking() on c.Id equals cd.Id into cdj
+                                 from cd in cdj.DefaultIfEmpty()
+                                 where accountIds.Contains(c.Id)
+                                 select new
+                                 {
+                                     c.Id,
+                                     Title = c.Title,
+                                     Phone = cd != null ? (cd.Phone1 ?? cd.SmsNumber) : null,
+                                     Address = cd != null ? cd.Address : null
+                                 }).ToDictionaryAsync(x => x.Id, x => x, cancellationToken);
+
+        var settings = await _settingRepository.GetAll()
+            .AsNoTracking()
+            .Where(s => s.Key.StartsWith("Bill."))
+            .ToDictionaryAsync(s => s.Key, s => s.Value, cancellationToken);
+
+        bool qrEnabled = filter.QrEnabled ?? (settings.TryGetValue("Bill.QrPayment.Enabled", out var qe) && string.Equals(qe, "true", StringComparison.OrdinalIgnoreCase));
+        string qrTitle = settings.TryGetValue("Bill.QrPayment.AccountTitle", out var qt) ? (qt ?? string.Empty) : string.Empty;
+        string qrAcc = settings.TryGetValue("Bill.QrPayment.AccountNumber", out var qa) ? (qa ?? string.Empty) : string.Empty;
+        string qrBank = settings.TryGetValue("Bill.QrPayment.BankName", out var qb) ? (qb ?? string.Empty) : string.Empty;
+        string thankYou = settings.TryGetValue("Bill.ThankYouMessage", out var ty) ? (ty ?? "Thank you for shopping with us!") : "Thank you for shopping with us!";
+
+        string defaultFormat = settings.TryGetValue("Bill.DefaultFormat", out var df) ? (df ?? "A4") : "A4";
+        string targetLayout = !string.IsNullOrWhiteSpace(filter.Layout) ? filter.Layout : defaultFormat;
+        var layout = targetLayout.IndexOf("Thermal", StringComparison.OrdinalIgnoreCase) >= 0
+            ? CustomerBillPrintLayout.Thermal80mm
+            : CustomerBillPrintLayout.A4Sheet;
+
+        var batchList = new List<(CustomerBillHeader Header, List<WandaCustomerBillLineResponse> Lines)>();
+
+        foreach (var accountId in accountIds)
+        {
+            try
+            {
+                var billFilter = new CustomerBillFilter
+                {
+                    Account = accountId,
+                    FromDate = filter.FromDate,
+                    ToDate = filter.ToDate,
+                    DateBasis = filter.DateBasis,
+                    Layout = filter.Layout,
+                    QrEnabled = qrEnabled,
+                    IsWandaLayout = true
+                };
+
+                var billResponse = await GetWandaCustomerBillAsync(billFilter, cancellationToken);
+
+                if (filter.OnlyWithActivity)
+                {
+                    bool hasTransactions = billResponse.Lines.Count > 0;
+                    bool hasBalance = Math.Abs(billResponse.Summary.Balance) > 0.01m || Math.Abs(billResponse.Summary.PreviousBalance) > 0.01m;
+                    if (!hasTransactions && !hasBalance)
+                    {
+                        continue;
+                    }
+                }
+
+                customerMap.TryGetValue(accountId, out var custInfo);
+
+                var header = new CustomerBillHeader
+                {
+                    CompanyName = company?.CompanyName ?? "Retail Suite Enterprise",
+                    CompanyAddress = company?.Address,
+                    CompanyPhone = company?.Phone,
+                    CustomerAccount = accountId,
+                    CustomerTitle = custInfo?.Title ?? accountId,
+                    CustomerPhone = custInfo?.Phone,
+                    CustomerAddress = custInfo?.Address,
+                    FromDate = filter.FromDate,
+                    ToDate = filter.ToDate,
+                    DateBasis = filter.DateBasis == "VoucherDate" ? "Voucher Date" : "Clearing Date",
+                    GeneratedAt = DateTime.Now,
+                    PreviousBalance = billResponse.Summary.PreviousBalance,
+                    TotalSales = billResponse.Summary.TotalSales,
+                    TotalPurchases = billResponse.Summary.TotalPurchases,
+                    TotalSaleReturns = billResponse.Summary.TotalSaleReturns,
+                    TotalPurchaseReturns = billResponse.Summary.TotalPurchaseReturns,
+                    TotalBilling = billResponse.Summary.TotalBill,
+                    Payment = billResponse.Summary.Payment,
+                    ClosingBalance = billResponse.Summary.Balance,
+                    Layout = layout,
+                    IsWandaLayout = true,
+                    ThankyouLine = thankYou,
+                    QrPayment = new QrPaymentInfo
+                    {
+                        IsEnabled = qrEnabled,
+                        AccountTitle = qrTitle,
+                        AccountNumber = qrAcc,
+                        BankName = qrBank
+                    }
+                };
+
+                batchList.Add((header, billResponse.Lines));
+            }
+            catch
+            {
+                // Skip customer on query failure
+            }
+        }
+
+        var batchDoc = new WandaCustomerBillBatchDocument(batchList);
         return batchDoc.GeneratePdf();
     }
 

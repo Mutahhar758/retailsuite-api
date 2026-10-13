@@ -22,6 +22,10 @@ public class CustomerBillHeader
     public string DateBasis { get; set; } = "Clearing Date";
     public DateTime GeneratedAt { get; set; } = DateTime.Now;
     public decimal PreviousBalance { get; set; }
+    public decimal TotalSales { get; set; }
+    public decimal TotalPurchases { get; set; }
+    public decimal TotalSaleReturns { get; set; }
+    public decimal TotalPurchaseReturns { get; set; }
     public decimal TotalBilling { get; set; }
     public decimal Payment { get; set; }
     public decimal ClosingBalance { get; set; }
