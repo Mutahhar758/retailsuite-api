@@ -71,10 +71,21 @@ internal static class Startup
             DashboardTitle = "RetailSuite Jobs"
         });
 
+        TimeZoneInfo pktZone;
+        try
+        {
+            pktZone = TimeZoneInfo.FindSystemTimeZoneById("Pakistan Standard Time");
+        }
+        catch
+        {
+            pktZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Karachi");
+        }
+
         RecurringJob.AddOrUpdate<IDailyRecurringVouchersJob>(
             "daily-tenant-recurring-vouchers",
             job => job.ExecuteAsync(CancellationToken.None),
-            Cron.Daily(0, 5));
+            Cron.Daily(20, 0),
+            new RecurringJobOptions { TimeZone = pktZone });
 
         return app;
     }
