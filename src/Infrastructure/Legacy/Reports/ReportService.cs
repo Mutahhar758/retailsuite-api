@@ -1317,7 +1317,7 @@ internal class ReportService : IReportService
                 UnitId = sd.UnitId ?? string.Empty,
                 UnitTitle = sd.Unit != null ? sd.Unit.Title : (!string.IsNullOrWhiteSpace(sd.UnitId) && unitMap.ContainsKey(sd.UnitId) ? unitMap[sd.UnitId] : (sd.Item != null && sd.Item.DefaultUnit != null ? sd.Item.DefaultUnit.Title : (sd.Item != null && sd.Item.PrimaryUnit != null ? sd.Item.PrimaryUnit.Title : (sd.UnitId ?? string.Empty)))),
                 Qty = sd.Qty,
-                Rate = (sd.GrossRate ?? 0m) - (sd.Discount ?? 0m),
+                Rate = sd.GrossRate ?? 0m,
                 AddLess = 0m,
                 Carriage = sd.Carriage ?? 0m,
                 Amount = sd.Amount ?? 0m,
@@ -1342,7 +1342,7 @@ internal class ReportService : IReportService
                 UnitId = ssd.UnitId ?? string.Empty,
                 UnitTitle = ssd.Unit != null ? ssd.Unit.Title : (!string.IsNullOrWhiteSpace(ssd.UnitId) && unitMap.ContainsKey(ssd.UnitId) ? unitMap[ssd.UnitId] : (ssm.Item != null && ssm.Item.DefaultUnit != null ? ssm.Item.DefaultUnit.Title : (ssm.Item != null && ssm.Item.PrimaryUnit != null ? ssm.Item.PrimaryUnit.Title : (ssd.UnitId ?? string.Empty)))),
                 Qty = ssd.Qty,
-                Rate = (ssd.GrossRate ?? 0m) - (ssd.Discount ?? 0m),
+                Rate = ssd.GrossRate ?? 0m,
                 AddLess = ssd.AddLess ?? 0m,
                 Carriage = ssd.Carriage ?? 0m,
                 Amount = ssd.Amount ?? 0m
@@ -1636,7 +1636,7 @@ internal class ReportService : IReportService
                 UnitId = sd.UnitId ?? string.Empty,
                 UnitTitle = sd.Unit != null ? sd.Unit.Title : (!string.IsNullOrWhiteSpace(sd.UnitId) && unitMap.ContainsKey(sd.UnitId) ? unitMap[sd.UnitId] : (sd.Item != null && sd.Item.DefaultUnit != null ? sd.Item.DefaultUnit.Title : (sd.Item != null && sd.Item.PrimaryUnit != null ? sd.Item.PrimaryUnit.Title : (sd.UnitId ?? string.Empty)))),
                 Qty = sd.Qty,
-                Rate = (sd.GrossRate ?? 0m) - (sd.Discount ?? 0m),
+                Rate = sd.GrossRate ?? 0m,
                 AddLess = 0m,
                 Carriage = sd.Carriage ?? 0m,
                 Amount = sd.Amount ?? 0m,
@@ -1701,7 +1701,7 @@ internal class ReportService : IReportService
                 UnitId = ssd.UnitId ?? string.Empty,
                 UnitTitle = ssd.Unit != null ? ssd.Unit.Title : (!string.IsNullOrWhiteSpace(ssd.UnitId) && unitMap.ContainsKey(ssd.UnitId) ? unitMap[ssd.UnitId] : (ssm.Item != null && ssm.Item.DefaultUnit != null ? ssm.Item.DefaultUnit.Title : (ssm.Item != null && ssm.Item.PrimaryUnit != null ? ssm.Item.PrimaryUnit.Title : (ssd.UnitId ?? string.Empty)))),
                 Qty = ssd.Qty,
-                Rate = (ssd.GrossRate ?? 0m) - (ssd.Discount ?? 0m),
+                Rate = ssd.GrossRate ?? 0m,
                 AddLess = ssd.AddLess ?? 0m,
                 Carriage = ssd.Carriage ?? 0m,
                 Amount = ssd.Amount ?? 0m,
@@ -1730,7 +1730,7 @@ internal class ReportService : IReportService
                 UnitId = srd.UnitId ?? string.Empty,
                 UnitTitle = srd.Unit != null ? srd.Unit.Title : (!string.IsNullOrWhiteSpace(srd.UnitId) && unitMap.ContainsKey(srd.UnitId) ? unitMap[srd.UnitId] : (srd.Item != null && srd.Item.DefaultUnit != null ? srd.Item.DefaultUnit.Title : (srd.Item != null && srd.Item.PrimaryUnit != null ? srd.Item.PrimaryUnit.Title : (srd.UnitId ?? string.Empty)))),
                 Qty = srd.Qty,
-                Rate = (srd.GrossRate ?? 0m) - (srd.Discount ?? 0m),
+                Rate = srd.GrossRate ?? 0m,
                 AddLess = 0m,
                 Carriage = 0m,
                 Amount = -(srd.Amount ?? 0m),
@@ -2145,11 +2145,11 @@ internal class ReportService : IReportService
                 Qty = sd.Qty,
                 UnitId = sd.UnitId ?? string.Empty,
                 UnitTitle = sd.Unit != null ? sd.Unit.Title : (sd.Item != null && sd.Item.DefaultUnit != null ? sd.Item.DefaultUnit.Title : (sd.Item != null && sd.Item.PrimaryUnit != null ? sd.Item.PrimaryUnit.Title : (sd.UnitId ?? string.Empty))),
-                Rate = (sd.GrossRate ?? 0m) - (sd.Discount ?? 0m),
+                Rate = sd.GrossRate ?? 0m,
                 GrossRate = sd.GrossRate ?? 0m,
                 Disc = sd.Discount ?? 0m,
                 Carriage = sd.Carriage ?? 0m,
-                TAmount = sd.Qty * (sd.GrossRate ?? 0m)
+                TAmount = (sd.Qty * (sd.GrossRate ?? 0m)) - (sd.Discount ?? 0m)
             }).ToListAsync(cancellationToken);
 
         var master = await _saleMasterRepository.GetAll()
@@ -2329,9 +2329,9 @@ internal class ReportService : IReportService
                 QtyInPack = sd.QtyInPack ?? 0m,
                 UnitId = sd.UnitId ?? string.Empty,
                 UnitTitle = sd.Unit != null ? sd.Unit.Title : (sd.Item != null && sd.Item.DefaultUnit != null ? sd.Item.DefaultUnit.Title : (sd.Item != null && sd.Item.PrimaryUnit != null ? sd.Item.PrimaryUnit.Title : (sd.UnitId ?? string.Empty))),
-                Rate = (sd.GrossRate ?? 0m) - (sd.Discount ?? 0m),
+                Rate = sd.GrossRate ?? 0m,
                 GrossRate = sd.GrossRate ?? 0m,
-                TAmount = sd.Qty * (sd.GrossRate ?? 0m)
+                TAmount = (sd.Qty * (sd.GrossRate ?? 0m)) - (sd.Discount ?? 0m)
             }).ToListAsync(cancellationToken);
 
         var master = await _saleRetMasterRepository.GetAll()

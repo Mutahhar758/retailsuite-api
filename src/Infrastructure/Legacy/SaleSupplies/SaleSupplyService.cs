@@ -133,10 +133,10 @@ internal class SaleSupplyService : ISaleSupplyService
         var grossAmount = request.Lines.Sum(x => isWanda
             ? (x.Qty * x.Rate)
             : ((x.Qty * x.Rate) + ((x.SecQty ?? 0) * (x.SecRate ?? 0))));
-        var discountAmount = request.Lines.Sum(x => x.Qty * x.Discount);
+        var discountAmount = request.Lines.Sum(x => x.Discount);
         var netAmount = request.Lines.Sum(x => isWanda
-            ? (x.Qty * (x.Rate - x.Discount)) + (x.Carriage ?? 0) + x.AddLess
-            : ((x.Qty * (x.Rate - x.Discount)) + (x.Carriage ?? 0) + x.AddLess + ((x.SecQty ?? 0) * (x.SecRate ?? 0))));
+            ? ((x.Qty * x.Rate) - x.Discount) + (x.Carriage ?? 0) + x.AddLess
+            : (((x.Qty * x.Rate) + ((x.SecQty ?? 0) * (x.SecRate ?? 0))) - x.Discount) + (x.Carriage ?? 0) + x.AddLess);
 
         var master = new SaleSupplyMaster
         {
@@ -166,8 +166,8 @@ internal class SaleSupplyService : ISaleSupplyService
             var resolvedSecUnitId = !string.IsNullOrWhiteSpace(line.SecUnit) ? line.SecUnit : item?.SecondaryUnitId;
 
             var lineAmount = isWanda
-                ? (line.Qty * (line.Rate - line.Discount)) + line.Carriage + line.AddLess
-                : (line.Qty * (line.Rate - line.Discount)) + line.Carriage + line.AddLess + ((line.SecQty ?? 0) * (line.SecRate ?? 0));
+                ? ((line.Qty * line.Rate) - line.Discount) + line.Carriage + line.AddLess
+                : (((line.Qty * line.Rate) + ((line.SecQty ?? 0) * (line.SecRate ?? 0))) - line.Discount) + line.Carriage + line.AddLess;
 
             await _saleSupplyDetailRepository.AddAsync(new SaleSupplyDetail
             {
@@ -209,10 +209,10 @@ internal class SaleSupplyService : ISaleSupplyService
         var grossAmount = request.Lines.Sum(x => isWanda
             ? (x.Qty * x.Rate)
             : ((x.Qty * x.Rate) + ((x.SecQty ?? 0) * (x.SecRate ?? 0))));
-        var discountAmount = request.Lines.Sum(x => x.Qty * x.Discount);
+        var discountAmount = request.Lines.Sum(x => x.Discount);
         var netAmount = request.Lines.Sum(x => isWanda
-            ? (x.Qty * (x.Rate - x.Discount)) + (x.Carriage ?? 0) + x.AddLess
-            : ((x.Qty * (x.Rate - x.Discount)) + (x.Carriage ?? 0) + x.AddLess + ((x.SecQty ?? 0) * (x.SecRate ?? 0))));
+            ? ((x.Qty * x.Rate) - x.Discount) + (x.Carriage ?? 0) + x.AddLess
+            : (((x.Qty * x.Rate) + ((x.SecQty ?? 0) * (x.SecRate ?? 0))) - x.Discount) + (x.Carriage ?? 0) + x.AddLess);
 
         master.VDate = request.Date;
         master.VTime = TimeOnly.FromDateTime(DateTime.Now);
@@ -242,8 +242,8 @@ internal class SaleSupplyService : ISaleSupplyService
                     cancellationToken);
 
             var lineAmount = isWanda
-                ? (line.Qty * (line.Rate - line.Discount)) + line.Carriage + line.AddLess
-                : (line.Qty * (line.Rate - line.Discount)) + line.Carriage + line.AddLess + ((line.SecQty ?? 0) * (line.SecRate ?? 0));
+                ? ((line.Qty * line.Rate) - line.Discount) + line.Carriage + line.AddLess
+                : (((line.Qty * line.Rate) + ((line.SecQty ?? 0) * (line.SecRate ?? 0))) - line.Discount) + line.Carriage + line.AddLess;
 
             if (existing is null)
             {
@@ -340,8 +340,8 @@ internal class SaleSupplyService : ISaleSupplyService
             .Select(g => new
             {
                 Amount = g.Sum(x => (decimal?)((x.Qty * (x.GrossRate ?? 0)) + (isWanda ? 0 : ((x.SecQty ?? 0) * (x.SecRate ?? 0))))) ?? 0,
-                Discount = g.Sum(x => (decimal?)x.Qty * (x.Discount ?? 0)) ?? 0,
-                NetAmount = g.Sum(x => (decimal?)((x.Qty * ((x.GrossRate ?? 0) - (x.Discount ?? 0))) + (x.Carriage ?? 0) + (x.AddLess ?? 0) + (isWanda ? 0 : ((x.SecQty ?? 0) * (x.SecRate ?? 0))))) ?? 0
+                Discount = g.Sum(x => (decimal?)(x.Discount ?? 0)) ?? 0,
+                NetAmount = g.Sum(x => (decimal?)(x.Amount ?? 0)) ?? 0
             })
             .FirstOrDefaultAsync(cancellationToken);
 
@@ -385,7 +385,7 @@ internal class SaleSupplyService : ISaleSupplyService
         var isWanda = _currentTenant.HasVariablePackFeature;
         foreach (var line in lines)
         {
-            var amount = (line.Qty * (line.Rate - line.Discount)) + (line.Carriage ?? 0) + line.AddLess + (isWanda ? 0 : ((line.SecQty ?? 0) * (line.SecRate ?? 0)));
+            var amount = ((line.Qty * line.Rate) - line.Discount) + (line.Carriage ?? 0) + line.AddLess + (isWanda ? 0 : ((line.SecQty ?? 0) * (line.SecRate ?? 0)));
             var gl = await _glRepository.GetAll()
                 .IgnoreQueryFilters([GlobalQueryFilterConstants.SoftDelete])
                 .FirstOrDefaultAsync(
@@ -461,7 +461,7 @@ internal class SaleSupplyService : ISaleSupplyService
             var resolvedUnitId = resolvedDefaultUnitId;
             var resolvedSecUnitId = !string.IsNullOrWhiteSpace(line.SecUnit) ? line.SecUnit : resolvedDefaultSecUnitId;
 
-            var amount = (line.Qty * (line.Rate - line.Discount)) + line.AddLess + (isWanda ? 0 : ((line.SecQty ?? 0) * (line.SecRate ?? 0)));
+            var amount = ((line.Qty * line.Rate) - line.Discount) + line.AddLess + (isWanda ? 0 : ((line.SecQty ?? 0) * (line.SecRate ?? 0)));
             var tx = await _itemTransactionRepository.GetAll()
                 .IgnoreQueryFilters([GlobalQueryFilterConstants.SoftDelete])
                 .FirstOrDefaultAsync(x => x.VType == VType && x.VNo == voucherNo && x.Seq == line.Seq, cancellationToken);
@@ -575,9 +575,9 @@ internal class SaleSupplyService : ISaleSupplyService
                 Discount = x.d.Discount ?? 0,
                 AddLess = x.d.AddLess ?? 0,
                 Carriage = x.d.Carriage ?? 0,
-                Amount = isWanda
-                    ? (x.d.Qty * ((x.d.GrossRate ?? 0) - (x.d.Discount ?? 0))) + (x.d.Carriage ?? 0) + (x.d.AddLess ?? 0)
-                    : (x.d.Qty * ((x.d.GrossRate ?? 0) - (x.d.Discount ?? 0))) + (x.d.Carriage ?? 0) + (x.d.AddLess ?? 0) + ((x.d.SecQty ?? 0) * (x.d.SecRate ?? 0)),
+                Amount = x.d.Amount ?? (isWanda
+                    ? ((x.d.Qty * (x.d.GrossRate ?? 0)) - (x.d.Discount ?? 0)) + (x.d.Carriage ?? 0) + (x.d.AddLess ?? 0)
+                    : ((x.d.Qty * (x.d.GrossRate ?? 0)) - (x.d.Discount ?? 0)) + (x.d.Carriage ?? 0) + (x.d.AddLess ?? 0) + ((x.d.SecQty ?? 0) * (x.d.SecRate ?? 0))),
                 SecUnit = x.d.SecUnitId,
                 SecQty = x.d.SecQty,
                 SecRate = x.d.SecRate,
@@ -623,7 +623,11 @@ internal class SaleSupplyService : ISaleSupplyService
         line.SecQty = request.SecQty;
         line.SecRate = request.SecRate;
         line.QtyInPack = request.QtyInPack;
-        line.Packing = request.Packing;
+        var isWanda = _currentTenant.HasVariablePackFeature;
+        var lineAmount = isWanda
+            ? ((request.Qty * request.Rate) - request.Discount) + (request.Carriage ?? 0) + request.AddLess
+            : ((request.Qty * request.Rate) - request.Discount) + (request.Carriage ?? 0) + request.AddLess + ((request.SecQty ?? 0) * (request.SecRate ?? 0));
+        line.Amount = lineAmount;
 
         await _saleSupplyDetailRepository.UpdateAsync(line, false);
 
@@ -631,14 +635,13 @@ internal class SaleSupplyService : ISaleSupplyService
             .Where(x => x.VType == VType && x.VNo == voucherNo)
             .ToListAsync(cancellationToken);
 
-        var isWanda = _currentTenant.HasVariablePackFeature;
         master.Amount = allDetails.Sum(x => (x.Qty * (x.GrossRate ?? 0)) + (isWanda ? 0 : ((x.SecQty ?? 0) * (x.SecRate ?? 0))));
-        master.Discount = allDetails.Sum(x => x.Qty * (x.Discount ?? 0));
-        master.NetAmount = allDetails.Sum(x => (x.Qty * ((x.GrossRate ?? 0) - (x.Discount ?? 0))) + (x.Carriage ?? 0) + (x.AddLess ?? 0) + (isWanda ? 0 : ((x.SecQty ?? 0) * (x.SecRate ?? 0))));
+        master.Discount = allDetails.Sum(x => x.Discount ?? 0);
+        master.NetAmount = allDetails.Sum(x => ((x.Qty * (x.GrossRate ?? 0)) - (x.Discount ?? 0)) + (x.Carriage ?? 0) + (x.AddLess ?? 0) + (isWanda ? 0 : ((x.SecQty ?? 0) * (x.SecRate ?? 0))));
 
         await _saleSupplyMasterRepository.UpdateAsync(master, false);
 
-        var netLineAmt = (request.Qty * (request.Rate - request.Discount)) + (request.Carriage ?? 0) + request.AddLess + (isWanda ? 0 : ((request.SecQty ?? 0) * (request.SecRate ?? 0)));
+        var netLineAmt = ((request.Qty * request.Rate) - request.Discount) + (request.Carriage ?? 0) + request.AddLess + (isWanda ? 0 : ((request.SecQty ?? 0) * (request.SecRate ?? 0)));
         var tx = await _itemTransactionRepository.GetAll()
             .IgnoreQueryFilters([GlobalQueryFilterConstants.SoftDelete])
             .FirstOrDefaultAsync(x => x.VType == VType && x.VNo == voucherNo && x.Seq == seq, cancellationToken);
