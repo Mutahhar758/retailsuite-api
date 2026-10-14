@@ -432,7 +432,7 @@ public class ReportsController : VersionNeutralApiController
     }
 
     [HttpPost("barcode/pdf")]
-    [MustHavePermission(AppAction.View, AppResource.BarcodeReport)]
+    [MustHavePermission(AppAction.View, AppResource.BarcodeReport, AppResource.InventoryItems)]
     [OpenApiOperation("Generate printable barcode stickers as a vector PDF document.", "")]
     public async Task<IActionResult> GenerateBarcodeLabelsPdfAsync(
         [FromBody] BarcodePrintRequest request,
@@ -445,7 +445,7 @@ public class ReportsController : VersionNeutralApiController
     }
 
     [HttpGet("barcode/pdf")]
-    [MustHavePermission(AppAction.View, AppResource.BarcodeReport)]
+    [MustHavePermission(AppAction.View, AppResource.BarcodeReport, AppResource.InventoryItems)]
     [OpenApiOperation("Generate single product printable barcode sticker as a vector PDF document via GET.", "")]
     public async Task<IActionResult> GetBarcodeLabelPdfAsync(
         [FromQuery] string? barcode,
