@@ -1320,7 +1320,7 @@ internal class ReportService : IReportService
                 Rate = (sd.GrossRate ?? 0m) - (sd.Discount ?? 0m),
                 AddLess = 0m,
                 Carriage = sd.Carriage ?? 0m,
-                Amount = (sd.Qty * ((sd.GrossRate ?? 0m) - (sd.Discount ?? 0m))) + (sd.Carriage ?? 0m),
+                Amount = sd.Amount ?? 0m,
                 Imei = sd.Imei,
                 Imei2 = sd.Imei2,
                 PtaStatus = sd.PtaStatus,
@@ -1345,7 +1345,7 @@ internal class ReportService : IReportService
                 Rate = (ssd.GrossRate ?? 0m) - (ssd.Discount ?? 0m),
                 AddLess = ssd.AddLess ?? 0m,
                 Carriage = ssd.Carriage ?? 0m,
-                Amount = (ssd.Qty * ((ssd.GrossRate ?? 0m) - (ssd.Discount ?? 0m))) + (ssd.Carriage ?? 0m) + (ssd.AddLess ?? 0m)
+                Amount = ssd.Amount ?? 0m
             }).ToListAsync(cancellationToken);
 
         bool useClearingDate = string.Equals(filter.DateBasis, "ClearingDate", StringComparison.OrdinalIgnoreCase);
@@ -1639,9 +1639,7 @@ internal class ReportService : IReportService
                 Rate = (sd.GrossRate ?? 0m) - (sd.Discount ?? 0m),
                 AddLess = 0m,
                 Carriage = sd.Carriage ?? 0m,
-                Amount = _currentTenant.HasVariablePackFeature
-                    ? (sd.Qty * ((sd.GrossRate ?? 0m) - (sd.Discount ?? 0m))) + (sd.Carriage ?? 0m)
-                    : (sd.Qty * ((sd.GrossRate ?? 0m) - (sd.Discount ?? 0m))) + (sd.Carriage ?? 0m) + ((sd.SecQty ?? 0m) * (sd.SecRate ?? 0m)),
+                Amount = sd.Amount ?? 0m,
                 SecQty = sd.SecQty,
                 SecRate = sd.SecRate,
                 QtyInPack = sd.QtyInPack,
@@ -1706,7 +1704,7 @@ internal class ReportService : IReportService
                 Rate = (ssd.GrossRate ?? 0m) - (ssd.Discount ?? 0m),
                 AddLess = ssd.AddLess ?? 0m,
                 Carriage = ssd.Carriage ?? 0m,
-                Amount = (ssd.Qty * ((ssd.GrossRate ?? 0m) - (ssd.Discount ?? 0m))) + (ssd.Carriage ?? 0m) + (ssd.AddLess ?? 0m),
+                Amount = ssd.Amount ?? 0m,
                 SecQty = ssd.SecQty,
                 SecRate = ssd.SecRate,
                 QtyInPack = ssd.QtyInPack,
@@ -1735,7 +1733,7 @@ internal class ReportService : IReportService
                 Rate = (srd.GrossRate ?? 0m) - (srd.Discount ?? 0m),
                 AddLess = 0m,
                 Carriage = 0m,
-                Amount = -((srd.Qty * ((srd.GrossRate ?? 0m) - (srd.Discount ?? 0m))) + ((srd.SecQty ?? 0m) * (srd.SecRate ?? 0m))),
+                Amount = -(srd.Amount ?? 0m),
                 SecQty = srd.SecQty,
                 SecRate = srd.SecRate,
                 QtyInPack = srd.QtyInPack,
@@ -1764,7 +1762,7 @@ internal class ReportService : IReportService
                 Rate = pd.Rate,
                 AddLess = pd.AddLess,
                 Carriage = 0m,
-                Amount = -((pd.Qty * pd.Rate) + pd.AddLess + ((pd.SecQty ?? 0m) * (pd.SecRate ?? 0m))),
+                Amount = -(pd.Amount ?? 0m),
                 SecQty = pd.SecQty,
                 SecRate = pd.SecRate,
                 QtyInPack = pd.QtyInPack,
@@ -1795,7 +1793,7 @@ internal class ReportService : IReportService
                 Rate = prd.Rate,
                 AddLess = 0m,
                 Carriage = 0m,
-                Amount = (prd.Qty * prd.Rate) + ((prd.SecQty ?? 0m) * (prd.SecRate ?? 0m)),
+                Amount = prd.Amount ?? 0m,
                 SecQty = prd.SecQty,
                 SecRate = prd.SecRate,
                 QtyInPack = prd.QtyInPack,
@@ -2413,7 +2411,7 @@ internal class ReportService : IReportService
                                 pd.Qty,
                                 pd.Rate,
                                 pd.AddLess,
-                                Amount = (pd.Qty * pd.Rate) + pd.AddLess
+                                Amount = pd.Amount ?? 0m
                             };
 
         if (!string.IsNullOrWhiteSpace(filter.ItemId))
@@ -2439,7 +2437,7 @@ internal class ReportService : IReportService
                               GrossRate = ssd.GrossRate ?? 0m,
                               Discount = ssd.Discount ?? 0m,
                               AddLess = ssd.AddLess ?? 0m,
-                              Amount = (ssd.Qty * ((ssd.GrossRate ?? 0m) - (ssd.Discount ?? 0m))) + (ssd.AddLess ?? 0m)
+                              Amount = ssd.Amount ?? 0m
                           };
 
         if (!string.IsNullOrWhiteSpace(filter.ItemId))
@@ -2464,7 +2462,7 @@ internal class ReportService : IReportService
                                    sd.Qty,
                                    GrossRate = sd.GrossRate ?? 0m,
                                    Discount = sd.Discount ?? 0m,
-                                   Amount = (sd.Qty * ((sd.GrossRate ?? 0m) - (sd.Discount ?? 0m))) + (sd.Carriage ?? 0m)
+                                   Amount = sd.Amount ?? 0m
                                };
 
         if (!string.IsNullOrWhiteSpace(filter.ItemId))

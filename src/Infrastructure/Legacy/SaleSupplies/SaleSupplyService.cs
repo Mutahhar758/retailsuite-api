@@ -105,9 +105,7 @@ internal class SaleSupplyService : ISaleSupplyService
                 Discount = d.Discount ?? 0,
                 AddLess = d.AddLess ?? 0,
                 Carriage = d.Carriage ?? 0,
-                Amount = _currentTenant.HasVariablePackFeature
-                    ? (d.Qty * ((d.GrossRate ?? 0) - (d.Discount ?? 0))) + (d.Carriage ?? 0) + (d.AddLess ?? 0)
-                    : (d.Qty * ((d.GrossRate ?? 0) - (d.Discount ?? 0))) + (d.Carriage ?? 0) + (d.AddLess ?? 0) + ((d.SecQty ?? 0) * (d.SecRate ?? 0)),
+                Amount = d.Amount ?? 0m,
                 SecUnit = d.SecUnitId,
                 SecQty = d.SecQty,
                 SecRate = d.SecRate,
@@ -167,6 +165,10 @@ internal class SaleSupplyService : ISaleSupplyService
             var resolvedUnitId = item?.DefaultUnitId ?? item?.PrimaryUnitId;
             var resolvedSecUnitId = !string.IsNullOrWhiteSpace(line.SecUnit) ? line.SecUnit : item?.SecondaryUnitId;
 
+            var lineAmount = isWanda
+                ? (line.Qty * (line.Rate - line.Discount)) + line.Carriage + line.AddLess
+                : (line.Qty * (line.Rate - line.Discount)) + line.Carriage + line.AddLess + ((line.SecQty ?? 0) * (line.SecRate ?? 0));
+
             await _saleSupplyDetailRepository.AddAsync(new SaleSupplyDetail
             {
                 VType = VType,
@@ -179,6 +181,7 @@ internal class SaleSupplyService : ISaleSupplyService
                 Discount = line.Discount,
                 AddLess = line.AddLess,
                 Carriage = line.Carriage,
+                Amount = lineAmount,
                 SecUnitId = resolvedSecUnitId,
                 SecQty = line.SecQty,
                 SecRate = line.SecRate,
@@ -238,6 +241,10 @@ internal class SaleSupplyService : ISaleSupplyService
                     x => x.VType == VType && x.VNo == voucherNo && x.Seq == line.Seq,
                     cancellationToken);
 
+            var lineAmount = isWanda
+                ? (line.Qty * (line.Rate - line.Discount)) + line.Carriage + line.AddLess
+                : (line.Qty * (line.Rate - line.Discount)) + line.Carriage + line.AddLess + ((line.SecQty ?? 0) * (line.SecRate ?? 0));
+
             if (existing is null)
             {
                 await _saleSupplyDetailRepository.AddAsync(new SaleSupplyDetail
@@ -252,6 +259,7 @@ internal class SaleSupplyService : ISaleSupplyService
                     Discount = line.Discount,
                     AddLess = line.AddLess,
                     Carriage = line.Carriage,
+                    Amount = lineAmount,
                     SecUnitId = resolvedSecUnitId,
                     SecQty = line.SecQty,
                     SecRate = line.SecRate,
@@ -270,6 +278,7 @@ internal class SaleSupplyService : ISaleSupplyService
                 existing.Discount = line.Discount;
                 existing.AddLess = line.AddLess;
                 existing.Carriage = line.Carriage;
+                existing.Amount = lineAmount;
                 existing.SecUnitId = resolvedSecUnitId;
                 existing.SecQty = line.SecQty;
                 existing.SecRate = line.SecRate;

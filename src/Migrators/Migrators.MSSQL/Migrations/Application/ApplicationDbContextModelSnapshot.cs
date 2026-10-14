@@ -2115,6 +2115,11 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasColumnType("decimal(18,2)")
                         .HasColumnName("add_less");
 
+                    b.Property<decimal?>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("amount");
+
                     b.Property<int?>("BatteryHealth")
                         .HasColumnType("int")
                         .HasColumnName("battery_health");
@@ -2364,6 +2369,11 @@ namespace Migrators.MSSQL.Migrations.Application
                     b.Property<string>("TenantId")
                         .HasColumnType("nvarchar(450)")
                         .HasColumnName("tenant_id");
+
+                    b.Property<decimal?>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("amount");
 
                     b.Property<string>("CreatedBy")
                         .IsRequired()
@@ -2918,6 +2928,11 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasColumnType("nvarchar(450)")
                         .HasColumnName("tenant_id");
 
+                    b.Property<decimal?>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("amount");
+
                     b.Property<int?>("BatteryHealth")
                         .HasColumnType("int")
                         .HasColumnName("battery_health");
@@ -3186,6 +3201,11 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasColumnType("nvarchar(450)")
                         .HasColumnName("tenant_id");
 
+                    b.Property<decimal?>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("amount");
+
                     b.Property<string>("CreatedBy")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)")
@@ -3431,6 +3451,11 @@ namespace Migrators.MSSQL.Migrations.Application
                     b.Property<decimal?>("AddLess")
                         .HasColumnType("decimal(18,2)")
                         .HasColumnName("add_less");
+
+                    b.Property<decimal?>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("amount");
 
                     b.Property<decimal?>("Carriage")
                         .HasPrecision(18, 2)

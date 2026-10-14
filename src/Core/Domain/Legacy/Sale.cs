@@ -25,6 +25,7 @@ public class Sale : AuditableEntity, IAggregateRoot
     public int? BatteryHealth { get; set; }
     public int? WarrantyMonths { get; set; }
     public DateOnly? WarrantyExpiryDate { get; set; }
+    public decimal? Amount { get; set; }
 
     public int? SaleMasterId { get; set; }
     public string? ItemId { get; set; }

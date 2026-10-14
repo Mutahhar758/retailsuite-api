@@ -112,7 +112,7 @@ internal class SaleReturnService : ISaleReturnService
                 Qty = d.Qty,
                 Rate = d.GrossRate ?? 0,
                 Discount = d.Discount ?? 0,
-                Amount = (d.Qty * ((d.GrossRate ?? 0) - (d.Discount ?? 0))) + ((d.SecQty ?? 0) * (d.SecRate ?? 0)),
+                Amount = d.Amount ?? 0m,
                 SecUnit = d.SecUnitId,
                 SecQty = d.SecQty,
                 SecRate = d.SecRate,
@@ -185,6 +185,10 @@ internal class SaleReturnService : ISaleReturnService
             var resolvedUnitId = item?.DefaultUnitId ?? item?.PrimaryUnitId;
             var resolvedSecUnitId = !string.IsNullOrWhiteSpace(line.SecUnit) ? line.SecUnit : item?.SecondaryUnitId;
 
+            var lineAmount = isWanda
+                ? (line.Qty * (line.Rate - line.Discount))
+                : (line.Qty * (line.Rate - line.Discount)) + ((line.SecQty ?? 0) * (line.SecRate ?? 0));
+
             await _saleRetDetailRepository.AddAsync(new SaleRetDetail
             {
                 VType = VType,
@@ -195,6 +199,7 @@ internal class SaleReturnService : ISaleReturnService
                 Qty = line.Qty,
                 GrossRate = line.Rate,
                 Discount = line.Discount,
+                Amount = lineAmount,
                 SecUnitId = resolvedSecUnitId,
                 SecQty = line.SecQty,
                 SecRate = line.SecRate,
@@ -265,6 +270,10 @@ internal class SaleReturnService : ISaleReturnService
                     x => x.VType == VType && x.VNo == voucherNo && x.Seq == line.Seq,
                     cancellationToken);
 
+            var lineAmount = isWanda
+                ? (line.Qty * (line.Rate - line.Discount))
+                : (line.Qty * (line.Rate - line.Discount)) + ((line.SecQty ?? 0) * (line.SecRate ?? 0));
+
             if (existing is null)
             {
                 await _saleRetDetailRepository.AddAsync(new SaleRetDetail
@@ -277,6 +286,7 @@ internal class SaleReturnService : ISaleReturnService
                     Qty = line.Qty,
                     GrossRate = line.Rate,
                     Discount = line.Discount,
+                    Amount = lineAmount,
                     SecUnitId = resolvedSecUnitId,
                     SecQty = line.SecQty,
                     SecRate = line.SecRate,
@@ -295,6 +305,7 @@ internal class SaleReturnService : ISaleReturnService
                 existing.Qty = line.Qty;
                 existing.GrossRate = line.Rate;
                 existing.Discount = line.Discount;
+                existing.Amount = lineAmount;
                 existing.SecUnitId = resolvedSecUnitId;
                 existing.SecQty = line.SecQty;
                 existing.SecRate = line.SecRate;

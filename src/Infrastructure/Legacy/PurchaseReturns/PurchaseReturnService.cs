@@ -110,7 +110,7 @@ internal class PurchaseReturnService : IPurchaseReturnService
                 Unit = d.UnitId,
                 Qty = d.Qty,
                 Rate = d.Rate,
-                Amount = (d.Qty * d.Rate) + ((d.SecQty ?? 0) * (d.SecRate ?? 0)),
+                Amount = d.Amount ?? 0m,
                 SecUnit = d.SecUnitId,
                 SecQty = d.SecQty,
                 SecRate = d.SecRate,
@@ -172,6 +172,10 @@ internal class PurchaseReturnService : IPurchaseReturnService
             var resolvedUnitId = item?.DefaultUnitId ?? item?.PrimaryUnitId;
             var resolvedSecUnitId = !string.IsNullOrWhiteSpace(line.SecUnit) ? line.SecUnit : item?.SecondaryUnitId;
 
+            var lineAmount = isWanda
+                ? (line.Qty * line.Rate)
+                : (line.Qty * line.Rate) + ((line.SecQty ?? 0) * (line.SecRate ?? 0));
+
             await _purchaseRetDetailRepository.AddAsync(new PurchaseRetDetail
             {
                 VType = VType,
@@ -181,6 +185,7 @@ internal class PurchaseReturnService : IPurchaseReturnService
                 UnitId = resolvedUnitId,
                 Qty = line.Qty,
                 Rate = line.Rate,
+                Amount = lineAmount,
                 SecUnitId = resolvedSecUnitId,
                 SecQty = line.SecQty,
                 SecRate = line.SecRate,
@@ -243,6 +248,10 @@ internal class PurchaseReturnService : IPurchaseReturnService
                     x => x.VType == VType && x.VNo == voucherNo && x.Seq == line.Seq,
                     cancellationToken);
 
+            var lineAmount = isWanda
+                ? (line.Qty * line.Rate)
+                : (line.Qty * line.Rate) + ((line.SecQty ?? 0) * (line.SecRate ?? 0));
+
             if (existing is null)
             {
                 await _purchaseRetDetailRepository.AddAsync(new PurchaseRetDetail
@@ -254,6 +263,7 @@ internal class PurchaseReturnService : IPurchaseReturnService
                     UnitId = resolvedUnitId,
                     Qty = line.Qty,
                     Rate = line.Rate,
+                    Amount = lineAmount,
                     SecUnitId = resolvedSecUnitId,
                     SecQty = line.SecQty,
                     SecRate = line.SecRate,
@@ -271,6 +281,7 @@ internal class PurchaseReturnService : IPurchaseReturnService
                 existing.UnitId = resolvedUnitId;
                 existing.Qty = line.Qty;
                 existing.Rate = line.Rate;
+                existing.Amount = lineAmount;
                 existing.SecUnitId = resolvedSecUnitId;
                 existing.SecQty = line.SecQty;
                 existing.SecRate = line.SecRate;

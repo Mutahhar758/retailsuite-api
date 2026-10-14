@@ -118,9 +118,7 @@ internal class SaleService : ISaleService
                 Rate = d.GrossRate ?? 0,
                 Discount = d.Discount ?? 0,
                 Carriage = d.Carriage ?? 0,
-                Amount = _currentTenant.HasVariablePackFeature
-                    ? (d.Qty * ((d.GrossRate ?? 0) - (d.Discount ?? 0))) + (d.Carriage ?? 0)
-                    : (d.Qty * ((d.GrossRate ?? 0) - (d.Discount ?? 0))) + (d.Carriage ?? 0) + ((d.SecQty ?? 0) * (d.SecRate ?? 0)),
+                Amount = d.Amount ?? 0m,
                 SecUnit = d.SecUnitId,
                 SecQty = d.SecQty,
                 SecRate = d.SecRate,
@@ -198,6 +196,10 @@ internal class SaleService : ISaleService
             var resolvedUnitId = item?.DefaultUnitId ?? item?.PrimaryUnitId;
             var resolvedSecUnitId = !string.IsNullOrWhiteSpace(line.SecUnit) ? line.SecUnit : item?.SecondaryUnitId;
 
+            var lineAmount = isWanda
+                ? (line.Qty * (line.Rate - line.Discount)) + line.Carriage
+                : (line.Qty * (line.Rate - line.Discount)) + line.Carriage + ((line.SecQty ?? 0) * (line.SecRate ?? 0));
+
             await _saleRepository.AddAsync(new Sale
             {
                 VType = VType,
@@ -209,6 +211,7 @@ internal class SaleService : ISaleService
                 GrossRate = line.Rate,
                 Discount = line.Discount,
                 Carriage = line.Carriage,
+                Amount = lineAmount,
                 SecUnitId = resolvedSecUnitId,
                 SecQty = line.SecQty,
                 SecRate = line.SecRate,
@@ -304,6 +307,10 @@ internal class SaleService : ISaleService
                     x => x.VType == VType && x.VNo == voucherNo && x.Seq == line.Seq,
                     cancellationToken);
 
+            var lineAmount = isWanda
+                ? (line.Qty * (line.Rate - line.Discount)) + line.Carriage
+                : (line.Qty * (line.Rate - line.Discount)) + line.Carriage + ((line.SecQty ?? 0) * (line.SecRate ?? 0));
+
             if (existing is null)
             {
                 await _saleRepository.AddAsync(new Sale
@@ -317,6 +324,7 @@ internal class SaleService : ISaleService
                     GrossRate = line.Rate,
                     Discount = line.Discount,
                     Carriage = line.Carriage,
+                    Amount = lineAmount,
                     SecUnitId = resolvedSecUnitId,
                     SecQty = line.SecQty,
                     SecRate = line.SecRate,
@@ -341,6 +349,7 @@ internal class SaleService : ISaleService
                 existing.GrossRate = line.Rate;
                 existing.Discount = line.Discount;
                 existing.Carriage = line.Carriage;
+                existing.Amount = lineAmount;
                 existing.SecUnitId = resolvedSecUnitId;
                 existing.SecQty = line.SecQty;
                 existing.SecRate = line.SecRate;

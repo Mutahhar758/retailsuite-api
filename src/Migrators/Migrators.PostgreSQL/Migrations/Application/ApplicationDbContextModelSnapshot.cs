@@ -1052,6 +1052,10 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnType("text")
                         .HasColumnName("narration_id");
 
+                    b.Property<int?>("RecurringChainId")
+                        .HasColumnType("integer")
+                        .HasColumnName("recurring_chain_id");
+
                     b.Property<string>("Remarks")
                         .HasColumnType("text")
                         .HasColumnName("remarks");
@@ -1080,6 +1084,9 @@ namespace Migrators.PostgreSQL.Migrations.Application
 
                     b.HasKey("Id", "TenantId")
                         .HasName("ak_gl1_id_tenant_id");
+
+                    b.HasIndex("RecurringChainId")
+                        .HasDatabaseName("ix_gl1_recurring_chain_id");
 
                     b.HasIndex("CrAccountId", "TenantId")
                         .HasDatabaseName("ix_gl1_cr_account_id_tenant_id");
@@ -2107,6 +2114,11 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnType("numeric")
                         .HasColumnName("add_less");
 
+                    b.Property<decimal?>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("amount");
+
                     b.Property<int?>("BatteryHealth")
                         .HasColumnType("integer")
                         .HasColumnName("battery_health");
@@ -2357,6 +2369,11 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnType("text")
                         .HasColumnName("tenant_id");
 
+                    b.Property<decimal?>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("amount");
+
                     b.Property<string>("CreatedBy")
                         .IsRequired()
                         .HasColumnType("text")
@@ -2562,6 +2579,97 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasFilter("deleted_on IS NULL");
 
                     b.ToTable("PurchaseRetMaster", "public");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Legacy.RecurringChain", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("TenantId")
+                        .HasColumnType("text")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_on");
+
+                    b.Property<int?>("DayOfMonth")
+                        .HasColumnType("integer")
+                        .HasColumnName("day_of_month");
+
+                    b.Property<int?>("DayOfWeek")
+                        .HasColumnType("integer")
+                        .HasColumnName("day_of_week");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("text")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_on");
+
+                    b.Property<string>("Frequency")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("frequency");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("LastModifiedBy")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("last_modified_by");
+
+                    b.Property<DateTime?>("LastModifiedOn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_modified_on");
+
+                    b.Property<DateOnly?>("LastRunDate")
+                        .HasColumnType("date")
+                        .HasColumnName("last_run_date");
+
+                    b.Property<string>("LastVoucherNo")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("last_voucher_no");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("notes");
+
+                    b.Property<string>("VoucherType")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("voucher_type");
+
+                    b.HasKey("Id", "TenantId")
+                        .HasName("ak_recurring_chains_id_tenant_id");
+
+                    b.ToTable("RecurringChains", "public");
 
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
@@ -2818,6 +2926,11 @@ namespace Migrators.PostgreSQL.Migrations.Application
                     b.Property<string>("TenantId")
                         .HasColumnType("text")
                         .HasColumnName("tenant_id");
+
+                    b.Property<decimal?>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("amount");
 
                     b.Property<int?>("BatteryHealth")
                         .HasColumnType("integer")
@@ -3087,6 +3200,11 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnType("text")
                         .HasColumnName("tenant_id");
 
+                    b.Property<decimal?>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("amount");
+
                     b.Property<string>("CreatedBy")
                         .IsRequired()
                         .HasColumnType("text")
@@ -3333,6 +3451,11 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnType("numeric")
                         .HasColumnName("add_less");
 
+                    b.Property<decimal?>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("amount");
+
                     b.Property<decimal?>("Carriage")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)")
@@ -3515,6 +3638,10 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnType("numeric")
                         .HasColumnName("net_amount");
 
+                    b.Property<int?>("RecurringChainId")
+                        .HasColumnType("integer")
+                        .HasColumnName("recurring_chain_id");
+
                     b.Property<int?>("SupplyOrderMasterId")
                         .HasColumnType("integer")
                         .HasColumnName("supply_order_master_id");
@@ -3539,6 +3666,9 @@ namespace Migrators.PostgreSQL.Migrations.Application
 
                     b.HasKey("Id", "TenantId")
                         .HasName("ak_sale_supply_master_id_tenant_id");
+
+                    b.HasIndex("RecurringChainId")
+                        .HasDatabaseName("ix_sale_supply_master_recurring_chain_id");
 
                     b.HasIndex("ItemId", "TenantId")
                         .HasDatabaseName("ix_sale_supply_master_item_id_tenant_id");

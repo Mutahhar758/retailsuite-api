@@ -22,6 +22,7 @@ public class PurchaseDetail : AuditableEntity, IAggregateRoot
     public string? PtaStatus { get; set; }
     public string? ConditionNote { get; set; }
     public int? BatteryHealth { get; set; }
+    public decimal? Amount { get; set; }
 
     public int? PurchaseMasterId { get; set; }
     public string? ItemId { get; set; }

@@ -264,6 +264,7 @@ public class PurchaseDetailConfig : IEntityTypeConfiguration<PurchaseDetail>
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
         builder.HasIndex(x => new { x.VType, x.VNo, x.Seq }).IsUnique().HasSoftDeleteFilter();
         mtBuilder.AdjustUniqueIndexes();
+        builder.Property(x => x.Amount).HasPrecision(18, 2);
 
         builder.HasOne(x => x.PurchaseMaster)
             .WithMany(x => x.Details)
@@ -316,6 +317,7 @@ public class PurchaseRetDetailConfig : IEntityTypeConfiguration<PurchaseRetDetai
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
         builder.HasIndex(x => new { x.VType, x.VNo, x.Seq }).IsUnique().HasSoftDeleteFilter();
         mtBuilder.AdjustUniqueIndexes();
+        builder.Property(x => x.Amount).HasPrecision(18, 2);
 
         builder.HasOne(x => x.PurchaseRetMaster)
             .WithMany(x => x.Details)
@@ -370,6 +372,7 @@ public class SaleConfig : IEntityTypeConfiguration<Sale>
         mtBuilder.AdjustUniqueIndexes();
         builder.Property(x => x.GrossRate).HasPrecision(18, 8);
         builder.Property(x => x.Carriage).HasPrecision(18, 2);
+        builder.Property(x => x.Amount).HasPrecision(18, 2);
 
         builder.HasOne(x => x.SaleMaster)
             .WithMany(x => x.Details)
@@ -422,6 +425,7 @@ public class SaleRetDetailConfig : IEntityTypeConfiguration<SaleRetDetail>
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
         builder.HasIndex(x => new { x.VType, x.VNo, x.Seq }).IsUnique().HasSoftDeleteFilter();
         mtBuilder.AdjustUniqueIndexes();
+        builder.Property(x => x.Amount).HasPrecision(18, 2);
 
         builder.HasOne(x => x.SaleRetMaster)
             .WithMany(x => x.Details)
@@ -483,6 +487,7 @@ public class SaleSupplyDetailConfig : IEntityTypeConfiguration<SaleSupplyDetail>
         mtBuilder.AdjustUniqueIndexes();
         builder.Property(x => x.GrossRate).HasPrecision(18, 8);
         builder.Property(x => x.Carriage).HasPrecision(18, 2);
+        builder.Property(x => x.Amount).HasPrecision(18, 2);
 
         builder.HasOne(x => x.SaleSupplyMaster)
             .WithMany(x => x.Details)

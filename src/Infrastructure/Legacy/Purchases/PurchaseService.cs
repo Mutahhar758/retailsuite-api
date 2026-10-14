@@ -116,7 +116,7 @@ internal class PurchaseService : IPurchaseService
                 Qty = d.Qty,
                 Rate = d.Rate,
                 AddLess = d.AddLess,
-                Amount = (d.Qty * d.Rate) + d.AddLess + ((d.SecQty ?? 0) * (d.SecRate ?? 0)),
+                Amount = d.Amount ?? 0m,
                 SecUnit = d.SecUnitId,
                 SecQty = d.SecQty,
                 SecRate = d.SecRate,
@@ -190,6 +190,10 @@ internal class PurchaseService : IPurchaseService
             var resolvedUnitId = item?.DefaultUnitId ?? item?.PrimaryUnitId;
             var resolvedSecUnitId = !string.IsNullOrWhiteSpace(line.SecUnit) ? line.SecUnit : item?.SecondaryUnitId;
 
+            var lineAmount = isWanda
+                ? (line.Qty * line.Rate) + line.AddLess
+                : (line.Qty * line.Rate) + line.AddLess + ((line.SecQty ?? 0) * (line.SecRate ?? 0));
+
             await _purchaseDetailRepository.AddAsync(new PurchaseDetail
             {
                 VType = VType,
@@ -200,6 +204,7 @@ internal class PurchaseService : IPurchaseService
                 Qty = line.Qty,
                 Rate = line.Rate,
                 AddLess = line.AddLess,
+                Amount = lineAmount,
                 SecUnitId = resolvedSecUnitId,
                 SecQty = line.SecQty,
                 SecRate = line.SecRate,
@@ -284,6 +289,10 @@ internal class PurchaseService : IPurchaseService
                     x => x.VType == VType && x.VNo == voucherNo && x.Seq == line.Seq,
                     cancellationToken);
 
+            var lineAmount = isWanda
+                ? (line.Qty * line.Rate) + line.AddLess
+                : (line.Qty * line.Rate) + line.AddLess + ((line.SecQty ?? 0) * (line.SecRate ?? 0));
+
             if (existing is null)
             {
                 await _purchaseDetailRepository.AddAsync(new PurchaseDetail
@@ -296,6 +305,7 @@ internal class PurchaseService : IPurchaseService
                     Qty = line.Qty,
                     Rate = line.Rate,
                     AddLess = line.AddLess,
+                    Amount = lineAmount,
                     SecUnitId = resolvedSecUnitId,
                     SecQty = line.SecQty,
                     SecRate = line.SecRate,
@@ -317,6 +327,7 @@ internal class PurchaseService : IPurchaseService
                 existing.Qty = line.Qty;
                 existing.Rate = line.Rate;
                 existing.AddLess = line.AddLess;
+                existing.Amount = lineAmount;
                 existing.SecUnitId = resolvedSecUnitId;
                 existing.SecQty = line.SecQty;
                 existing.SecRate = line.SecRate;
