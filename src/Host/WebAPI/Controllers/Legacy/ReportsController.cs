@@ -430,4 +430,50 @@ public class ReportsController : VersionNeutralApiController
         Response.Headers.Append("Content-Disposition", $"inline; filename=\"{fileName}\"");
         return File(pdfBytes, "application/pdf", fileName);
     }
+
+    [HttpPost("barcode/pdf")]
+    [MustHavePermission(AppAction.View, AppResource.BarcodeReport)]
+    [OpenApiOperation("Generate printable barcode stickers as a vector PDF document.", "")]
+    public async Task<IActionResult> GenerateBarcodeLabelsPdfAsync(
+        [FromBody] BarcodePrintRequest request,
+        CancellationToken cancellationToken)
+    {
+        var pdfBytes = await _reportService.GetBarcodeLabelsPdfAsync(request, cancellationToken);
+        string fileName = $"BarcodeLabels_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
+        Response.Headers.Append("Content-Disposition", $"inline; filename=\"{fileName}\"");
+        return File(pdfBytes, "application/pdf", fileName);
+    }
+
+    [HttpGet("barcode/pdf")]
+    [MustHavePermission(AppAction.View, AppResource.BarcodeReport)]
+    [OpenApiOperation("Generate single product printable barcode sticker as a vector PDF document via GET.", "")]
+    public async Task<IActionResult> GetBarcodeLabelPdfAsync(
+        [FromQuery] string? barcode,
+        [FromQuery] string? title,
+        [FromQuery] decimal rate = 0,
+        [FromQuery] int copies = 1,
+        [FromQuery] string layout = "ThermalRoll",
+        CancellationToken cancellationToken = default)
+    {
+        var request = new BarcodePrintRequest
+        {
+            Layout = layout,
+            Items = new List<BarcodePrintItemDto>
+            {
+                new()
+                {
+                    Barcode = barcode,
+                    Title = title,
+                    Rate = rate,
+                    Copies = copies
+                }
+            }
+        };
+
+        var pdfBytes = await _reportService.GetBarcodeLabelsPdfAsync(request, cancellationToken);
+        string fileName = $"BarcodeLabel_{barcode}_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
+        Response.Headers.Append("Content-Disposition", $"inline; filename=\"{fileName}\"");
+        return File(pdfBytes, "application/pdf", fileName);
+    }
 }
+

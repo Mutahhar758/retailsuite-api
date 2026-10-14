@@ -37,4 +37,6 @@ public interface IReportService : ITransientService
     Task<byte[]> GetProfitByCustomerPdfAsync(ProfitByCustomerFilter filter, CancellationToken cancellationToken);
     Task<ProfitByItemResponse> GetProfitByItemAsync(ProfitByItemFilter filter, CancellationToken cancellationToken);
     Task<byte[]> GetProfitByItemPdfAsync(ProfitByItemFilter filter, CancellationToken cancellationToken);
+    Task<byte[]> GetBarcodeLabelsPdfAsync(BarcodePrintRequest request, CancellationToken cancellationToken);
 }
+

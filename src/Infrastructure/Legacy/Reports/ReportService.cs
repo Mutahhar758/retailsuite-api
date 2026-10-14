@@ -3175,4 +3175,19 @@ internal class ReportService : IReportService
         var document = new ProfitByItemDocument(header, items);
         return document.GeneratePdf();
     }
+
+    public async Task<byte[]> GetBarcodeLabelsPdfAsync(
+        BarcodePrintRequest request,
+        CancellationToken cancellationToken)
+    {
+        var company = await _companyDetailRepository.GetAll()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(cancellationToken);
+
+        string companyName = company?.CompanyName ?? "Retail Suite";
+
+        var document = new BarcodeDocument(request, companyName);
+        return document.GeneratePdf();
+    }
 }
+
