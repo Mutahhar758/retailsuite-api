@@ -447,6 +447,199 @@ namespace Migrators.MSSQL.Migrations.Application
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
 
+            modelBuilder.Entity("Retailer.Domain.Legacy.BomDetail", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("TenantId")
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<int>("BomMasterId")
+                        .HasColumnType("int")
+                        .HasColumnName("bom_master_id");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_on");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("deleted_on");
+
+                    b.Property<bool>("IsOptional")
+                        .HasColumnType("bit")
+                        .HasColumnName("is_optional");
+
+                    b.Property<string>("LastModifiedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("last_modified_by");
+
+                    b.Property<DateTime?>("LastModifiedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("last_modified_on");
+
+                    b.Property<decimal>("Qty")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
+                        .HasColumnName("qty");
+
+                    b.Property<string>("RawItemId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("raw_item_id");
+
+                    b.Property<decimal>("ScrapPercentage")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)")
+                        .HasColumnName("scrap_percentage");
+
+                    b.Property<int>("Seq")
+                        .HasColumnType("int")
+                        .HasColumnName("seq");
+
+                    b.Property<string>("UnitId")
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("unit_id");
+
+                    b.HasKey("Id", "TenantId")
+                        .HasName("ak_bom_detail_id_tenant_id");
+
+                    b.HasIndex("BomMasterId", "TenantId")
+                        .HasDatabaseName("ix_bom_detail_bom_master_id_tenant_id");
+
+                    b.HasIndex("RawItemId", "TenantId")
+                        .HasDatabaseName("ix_bom_detail_raw_item_id_tenant_id");
+
+                    b.HasIndex("UnitId", "TenantId")
+                        .HasDatabaseName("ix_bom_detail_unit_id_tenant_id");
+
+                    b.ToTable("BomDetail");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Legacy.BomMaster", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("TenantId")
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("code");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_on");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("deleted_on");
+
+                    b.Property<string>("FinishedItemId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("finished_item_id");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit")
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("bit")
+                        .HasColumnName("is_default");
+
+                    b.Property<decimal>("LaborCost")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
+                        .HasColumnName("labor_cost");
+
+                    b.Property<string>("LastModifiedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("last_modified_by");
+
+                    b.Property<DateTime?>("LastModifiedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("last_modified_on");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("notes");
+
+                    b.Property<decimal>("OutputQty")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
+                        .HasColumnName("output_qty");
+
+                    b.Property<decimal>("OverheadCost")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
+                        .HasColumnName("overhead_cost");
+
+                    b.Property<decimal>("PackagingCost")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
+                        .HasColumnName("packaging_cost");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("title");
+
+                    b.Property<string>("UnitId")
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("unit_id");
+
+                    b.HasKey("Id", "TenantId")
+                        .HasName("ak_bom_master_id_tenant_id");
+
+                    b.HasIndex("FinishedItemId", "TenantId")
+                        .HasDatabaseName("ix_bom_master_finished_item_id_tenant_id");
+
+                    b.HasIndex("UnitId", "TenantId")
+                        .HasDatabaseName("ix_bom_master_unit_id_tenant_id");
+
+                    b.ToTable("BomMaster");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
             modelBuilder.Entity("Retailer.Domain.Legacy.Brand", b =>
                 {
                     b.Property<string>("Id")
@@ -2094,6 +2287,281 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasName("ak_prep_stations_id_tenant_id");
 
                     b.ToTable("PrepStations");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Legacy.ProductionDetail", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("TenantId")
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<decimal>("ActualQty")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
+                        .HasColumnName("actual_qty");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_on");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("deleted_on");
+
+                    b.Property<bool>("IsIssued")
+                        .HasColumnType("bit")
+                        .HasColumnName("is_issued");
+
+                    b.Property<string>("LastModifiedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("last_modified_by");
+
+                    b.Property<DateTime?>("LastModifiedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("last_modified_on");
+
+                    b.Property<decimal>("PlannedQty")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
+                        .HasColumnName("planned_qty");
+
+                    b.Property<int>("ProductionMasterId")
+                        .HasColumnType("int")
+                        .HasColumnName("production_master_id");
+
+                    b.Property<string>("RawItemId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("raw_item_id");
+
+                    b.Property<int>("Seq")
+                        .HasColumnType("int")
+                        .HasColumnName("seq");
+
+                    b.Property<decimal>("TotalCost")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
+                        .HasColumnName("total_cost");
+
+                    b.Property<decimal>("UnitCost")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
+                        .HasColumnName("unit_cost");
+
+                    b.Property<string>("UnitId")
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("unit_id");
+
+                    b.Property<string>("VNo")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("v_no");
+
+                    b.Property<string>("VType")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)")
+                        .HasColumnName("v_type");
+
+                    b.HasKey("Id", "TenantId")
+                        .HasName("ak_production_detail_id_tenant_id");
+
+                    b.HasIndex("ProductionMasterId", "TenantId")
+                        .HasDatabaseName("ix_production_detail_production_master_id_tenant_id");
+
+                    b.HasIndex("RawItemId", "TenantId")
+                        .HasDatabaseName("ix_production_detail_raw_item_id_tenant_id");
+
+                    b.HasIndex("UnitId", "TenantId")
+                        .HasDatabaseName("ix_production_detail_unit_id_tenant_id");
+
+                    b.HasIndex("VType", "VNo", "Seq", "TenantId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_production_detail_v_type_v_no_seq")
+                        .HasFilter("deleted_on IS NULL");
+
+                    b.ToTable("ProductionDetail");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Legacy.ProductionMaster", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("TenantId")
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("BatchNo")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("batch_no");
+
+                    b.Property<int?>("BomMasterId")
+                        .HasColumnType("int")
+                        .HasColumnName("bom_master_id");
+
+                    b.Property<DateTime?>("CompletedDate")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("completed_date");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_on");
+
+                    b.Property<string>("CurrentStage")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("current_stage");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("deleted_on");
+
+                    b.Property<DateOnly?>("ExpiryDate")
+                        .HasColumnType("date")
+                        .HasColumnName("expiry_date");
+
+                    b.Property<string>("FinishedItemId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("finished_item_id");
+
+                    b.Property<DateTime?>("IssuedDate")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("issued_date");
+
+                    b.Property<string>("LastModifiedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("last_modified_by");
+
+                    b.Property<DateTime?>("LastModifiedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("last_modified_on");
+
+                    b.Property<string>("NarrationId")
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("narration_id");
+
+                    b.Property<decimal>("ProducedQty")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
+                        .HasColumnName("produced_qty");
+
+                    b.Property<string>("Remarks")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("remarks");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("status");
+
+                    b.Property<decimal>("TargetQty")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
+                        .HasColumnName("target_qty");
+
+                    b.Property<decimal>("TotalMaterialCost")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
+                        .HasColumnName("total_material_cost");
+
+                    b.Property<decimal>("TotalOverheadCost")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
+                        .HasColumnName("total_overhead_cost");
+
+                    b.Property<decimal>("TotalProductionCost")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
+                        .HasColumnName("total_production_cost");
+
+                    b.Property<string>("UnitId")
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("unit_id");
+
+                    b.Property<decimal>("UnitProductionCost")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
+                        .HasColumnName("unit_production_cost");
+
+                    b.Property<DateOnly>("VDate")
+                        .HasColumnType("date")
+                        .HasColumnName("v_date");
+
+                    b.Property<string>("VNo")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("v_no");
+
+                    b.Property<TimeOnly>("VTime")
+                        .HasColumnType("time")
+                        .HasColumnName("v_time");
+
+                    b.Property<string>("VType")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)")
+                        .HasColumnName("v_type");
+
+                    b.HasKey("Id", "TenantId")
+                        .HasName("ak_production_master_id_tenant_id");
+
+                    b.HasIndex("BomMasterId", "TenantId")
+                        .HasDatabaseName("ix_production_master_bom_master_id_tenant_id");
+
+                    b.HasIndex("FinishedItemId", "TenantId")
+                        .HasDatabaseName("ix_production_master_finished_item_id_tenant_id");
+
+                    b.HasIndex("NarrationId", "TenantId")
+                        .HasDatabaseName("ix_production_master_narration_id_tenant_id");
+
+                    b.HasIndex("UnitId", "TenantId")
+                        .HasDatabaseName("ix_production_master_unit_id_tenant_id");
+
+                    b.HasIndex("VType", "VNo", "TenantId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_production_master_v_type_v_no")
+                        .HasFilter("deleted_on IS NULL");
+
+                    b.ToTable("ProductionMaster");
 
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
@@ -4518,6 +4986,55 @@ namespace Migrators.MSSQL.Migrations.Application
                     b.Navigation("ApplicationUser");
                 });
 
+            modelBuilder.Entity("Retailer.Domain.Legacy.BomDetail", b =>
+                {
+                    b.HasOne("Retailer.Domain.Legacy.BomMaster", "BomMaster")
+                        .WithMany("Details")
+                        .HasForeignKey("BomMasterId", "TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_bom_detail_bom_master_bom_master_id_tenant_id");
+
+                    b.HasOne("Retailer.Domain.Legacy.ItemDetail", "RawItem")
+                        .WithMany()
+                        .HasForeignKey("RawItemId", "TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_bom_detail_item_detail_raw_item_id_tenant_id");
+
+                    b.HasOne("Retailer.Domain.Legacy.Unit", "Unit")
+                        .WithMany()
+                        .HasForeignKey("UnitId", "TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_bom_detail_units_unit_id_tenant_id");
+
+                    b.Navigation("BomMaster");
+
+                    b.Navigation("RawItem");
+
+                    b.Navigation("Unit");
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Legacy.BomMaster", b =>
+                {
+                    b.HasOne("Retailer.Domain.Legacy.ItemDetail", "FinishedItem")
+                        .WithMany()
+                        .HasForeignKey("FinishedItemId", "TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_bom_master_item_detail_finished_item_id_tenant_id");
+
+                    b.HasOne("Retailer.Domain.Legacy.Unit", "Unit")
+                        .WithMany()
+                        .HasForeignKey("UnitId", "TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_bom_master_units_unit_id_tenant_id");
+
+                    b.Navigation("FinishedItem");
+
+                    b.Navigation("Unit");
+                });
+
             modelBuilder.Entity("Retailer.Domain.Legacy.ChartOfAccount", b =>
                 {
                     b.HasOne("Retailer.Domain.Legacy.ChartOfAccount", "ParentAccount")
@@ -4779,6 +5296,71 @@ namespace Migrators.MSSQL.Migrations.Application
                     b.Navigation("HrInfo");
 
                     b.Navigation("PayableAccount");
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Legacy.ProductionDetail", b =>
+                {
+                    b.HasOne("Retailer.Domain.Legacy.ProductionMaster", "ProductionMaster")
+                        .WithMany("Details")
+                        .HasForeignKey("ProductionMasterId", "TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_production_detail_production_master_production_master_id_tenant_id");
+
+                    b.HasOne("Retailer.Domain.Legacy.ItemDetail", "RawItem")
+                        .WithMany()
+                        .HasForeignKey("RawItemId", "TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_production_detail_item_detail_raw_item_id_tenant_id");
+
+                    b.HasOne("Retailer.Domain.Legacy.Unit", "Unit")
+                        .WithMany()
+                        .HasForeignKey("UnitId", "TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_production_detail_units_unit_id_tenant_id");
+
+                    b.Navigation("ProductionMaster");
+
+                    b.Navigation("RawItem");
+
+                    b.Navigation("Unit");
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Legacy.ProductionMaster", b =>
+                {
+                    b.HasOne("Retailer.Domain.Legacy.BomMaster", "BomMaster")
+                        .WithMany()
+                        .HasForeignKey("BomMasterId", "TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_production_master_bom_master_bom_master_id_tenant_id");
+
+                    b.HasOne("Retailer.Domain.Legacy.ItemDetail", "FinishedItem")
+                        .WithMany()
+                        .HasForeignKey("FinishedItemId", "TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_production_master_item_detail_finished_item_id_tenant_id");
+
+                    b.HasOne("Retailer.Domain.Legacy.Narration", "Narration")
+                        .WithMany()
+                        .HasForeignKey("NarrationId", "TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_production_master_narration_narration_id_tenant_id");
+
+                    b.HasOne("Retailer.Domain.Legacy.Unit", "Unit")
+                        .WithMany()
+                        .HasForeignKey("UnitId", "TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_production_master_units_unit_id_tenant_id");
+
+                    b.Navigation("BomMaster");
+
+                    b.Navigation("FinishedItem");
+
+                    b.Navigation("Narration");
+
+                    b.Navigation("Unit");
                 });
 
             modelBuilder.Entity("Retailer.Domain.Legacy.PurchaseDetail", b =>
@@ -5219,6 +5801,11 @@ namespace Migrators.MSSQL.Migrations.Application
                     b.Navigation("UserSessions");
                 });
 
+            modelBuilder.Entity("Retailer.Domain.Legacy.BomMaster", b =>
+                {
+                    b.Navigation("Details");
+                });
+
             modelBuilder.Entity("Retailer.Domain.Legacy.ChartOfAccount", b =>
                 {
                     b.Navigation("ChildAccounts");
@@ -5251,6 +5838,11 @@ namespace Migrators.MSSQL.Migrations.Application
                     b.Navigation("SaleSupplyMasters");
 
                     b.Navigation("StockAdjMasters");
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Legacy.ProductionMaster", b =>
+                {
+                    b.Navigation("Details");
                 });
 
             modelBuilder.Entity("Retailer.Domain.Legacy.PurchaseMaster", b =>

@@ -839,6 +839,134 @@ public class RecurringChainConfig : IEntityTypeConfiguration<RecurringChain>
     }
 }
 
+public class BomMasterConfig : IEntityTypeConfiguration<BomMaster>
+{
+    public void Configure(EntityTypeBuilder<BomMaster> builder)
+    {
+        builder.IsMultiTenant();
+        builder.Property(x => x.Id).ValueGeneratedOnAdd();
+        builder.Property(x => x.Code).HasMaxLength(50).IsRequired();
+        builder.Property(x => x.Title).HasMaxLength(200).IsRequired();
+        builder.Property(x => x.FinishedItemId).IsRequired();
+        builder.Property(x => x.OutputQty).HasPrecision(18, 4);
+        builder.Property(x => x.LaborCost).HasPrecision(18, 4);
+        builder.Property(x => x.OverheadCost).HasPrecision(18, 4);
+        builder.Property(x => x.PackagingCost).HasPrecision(18, 4);
+
+        builder.HasOne(x => x.FinishedItem)
+            .WithMany()
+            .HasForeignKey(x => x.FinishedItemId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(x => x.Unit)
+            .WithMany()
+            .HasForeignKey(x => x.UnitId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasMany(x => x.Details)
+            .WithOne(x => x.BomMaster)
+            .HasForeignKey(x => x.BomMasterId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public class BomDetailConfig : IEntityTypeConfiguration<BomDetail>
+{
+    public void Configure(EntityTypeBuilder<BomDetail> builder)
+    {
+        builder.IsMultiTenant();
+        builder.Property(x => x.Id).ValueGeneratedOnAdd();
+        builder.Property(x => x.RawItemId).IsRequired();
+        builder.Property(x => x.Qty).HasPrecision(18, 4);
+        builder.Property(x => x.ScrapPercentage).HasPrecision(5, 2);
+
+        builder.HasOne(x => x.RawItem)
+            .WithMany()
+            .HasForeignKey(x => x.RawItemId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(x => x.Unit)
+            .WithMany()
+            .HasForeignKey(x => x.UnitId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+public class ProductionMasterConfig : IEntityTypeConfiguration<ProductionMaster>
+{
+    public void Configure(EntityTypeBuilder<ProductionMaster> builder)
+    {
+        var mtBuilder = builder.IsMultiTenant();
+        builder.Property(x => x.Id).ValueGeneratedOnAdd();
+        builder.Property(x => x.VType).HasMaxLength(10).IsRequired();
+        builder.Property(x => x.VNo).HasMaxLength(50).IsRequired();
+        builder.Property(x => x.TargetQty).HasPrecision(18, 4);
+        builder.Property(x => x.ProducedQty).HasPrecision(18, 4);
+        builder.Property(x => x.TotalMaterialCost).HasPrecision(18, 4);
+        builder.Property(x => x.TotalOverheadCost).HasPrecision(18, 4);
+        builder.Property(x => x.TotalProductionCost).HasPrecision(18, 4);
+        builder.Property(x => x.UnitProductionCost).HasPrecision(18, 4);
+        builder.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
+
+        builder.HasIndex(x => new { x.VType, x.VNo }).IsUnique().HasSoftDeleteFilter();
+        mtBuilder.AdjustUniqueIndexes();
+
+        builder.HasOne(x => x.FinishedItem)
+            .WithMany()
+            .HasForeignKey(x => x.FinishedItemId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(x => x.BomMaster)
+            .WithMany()
+            .HasForeignKey(x => x.BomMasterId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(x => x.Unit)
+            .WithMany()
+            .HasForeignKey(x => x.UnitId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(x => x.Narration)
+            .WithMany()
+            .HasForeignKey(x => x.NarrationId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasMany(x => x.Details)
+            .WithOne(x => x.ProductionMaster)
+            .HasForeignKey(x => x.ProductionMasterId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public class ProductionDetailConfig : IEntityTypeConfiguration<ProductionDetail>
+{
+    public void Configure(EntityTypeBuilder<ProductionDetail> builder)
+    {
+        var mtBuilder = builder.IsMultiTenant();
+        builder.Property(x => x.Id).ValueGeneratedOnAdd();
+        builder.Property(x => x.VType).HasMaxLength(10).IsRequired();
+        builder.Property(x => x.VNo).HasMaxLength(50).IsRequired();
+        builder.Property(x => x.RawItemId).IsRequired();
+        builder.Property(x => x.PlannedQty).HasPrecision(18, 4);
+        builder.Property(x => x.ActualQty).HasPrecision(18, 4);
+        builder.Property(x => x.UnitCost).HasPrecision(18, 4);
+        builder.Property(x => x.TotalCost).HasPrecision(18, 4);
+
+        builder.HasIndex(x => new { x.VType, x.VNo, x.Seq }).IsUnique().HasSoftDeleteFilter();
+        mtBuilder.AdjustUniqueIndexes();
+
+        builder.HasOne(x => x.RawItem)
+            .WithMany()
+            .HasForeignKey(x => x.RawItemId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(x => x.Unit)
+            .WithMany()
+            .HasForeignKey(x => x.UnitId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
 internal static class IndexBuilderExtensions
 {
     /// <summary>

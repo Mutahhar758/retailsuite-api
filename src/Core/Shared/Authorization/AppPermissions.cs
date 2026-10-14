@@ -68,6 +68,8 @@ public static class AppResource
     public const string ImeiStock = nameof(ImeiStock);
     public const string WarrantyLookup = nameof(WarrantyLookup);
     public const string RecurringVouchers = nameof(RecurringVouchers);
+    public const string BillOfMaterials = nameof(BillOfMaterials);
+    public const string Manufacturing = nameof(Manufacturing);
 }
 
 public static class AppPermissions
@@ -390,7 +392,24 @@ public static class AppPermissions
         new("Export ImeiStock", AppAction.Export, AppResource.ImeiStock),
 
         // WarrantyLookup
-        new("View WarrantyLookup", AppAction.View, AppResource.WarrantyLookup)
+        new("View WarrantyLookup", AppAction.View, AppResource.WarrantyLookup),
+
+        // BillOfMaterials
+        new("View Bill of Materials", AppAction.View, AppResource.BillOfMaterials),
+        new("Search Bill of Materials", AppAction.Search, AppResource.BillOfMaterials),
+        new("Create Bill of Materials", AppAction.Create, AppResource.BillOfMaterials),
+        new("Update Bill of Materials", AppAction.Update, AppResource.BillOfMaterials),
+        new("Delete Bill of Materials", AppAction.Delete, AppResource.BillOfMaterials),
+        new("Export Bill of Materials", AppAction.Export, AppResource.BillOfMaterials),
+
+        // Manufacturing
+        new("View Manufacturing Vouchers", AppAction.View, AppResource.Manufacturing),
+        new("Search Manufacturing Vouchers", AppAction.Search, AppResource.Manufacturing),
+        new("Create Manufacturing Vouchers", AppAction.Create, AppResource.Manufacturing),
+        new("Update Manufacturing Vouchers", AppAction.Update, AppResource.Manufacturing),
+        new("Delete Manufacturing Vouchers", AppAction.Delete, AppResource.Manufacturing),
+        new("Export Manufacturing Vouchers", AppAction.Export, AppResource.Manufacturing),
+        new("Print Manufacturing Vouchers", AppAction.Print, AppResource.Manufacturing)
     };
 
     public static IReadOnlyList<AppPermission> Admin { get; } = new ReadOnlyCollection<AppPermission>(_all);
@@ -413,6 +432,8 @@ public static class AppPermissions
         p.Resource == AppResource.Purchases ||
         p.Resource == AppResource.PurchaseReturns ||
         p.Resource == AppResource.StockAdjustments ||
+        p.Resource == AppResource.BillOfMaterials ||
+        p.Resource == AppResource.Manufacturing ||
         p.Resource == AppResource.Vendors
     ).ToArray());
 
