@@ -119,6 +119,59 @@ public static class BarcodeGenerator
         new byte[] { 2, 3, 3, 1, 1, 1, 2 } // 106 (Stop)
     };
 
+    public readonly record struct BarcodeSlice(int Width, bool IsBlack);
+
+    /// <summary>
+    /// Generates the sequence of alternating black bars and white spaces for Code 128 (Subset B).
+    /// Used for direct vector PDF rendering without relying on SVG aspect-ratio scaling.
+    /// </summary>
+    public static List<BarcodeSlice> GenerateSlices(string text, int quietZone = 4)
+    {
+        if (string.IsNullOrWhiteSpace(text)) text = "1000001";
+
+        var encodedValues = new List<int>
+        {
+            104 // Start B
+        };
+
+        int checkSum = 104;
+        for (int i = 0; i < text.Length; i++)
+        {
+            int code = text[i] - 32;
+            if (code < 0 || code > 95) code = 0; // Default to space if unencodable in Subset B
+            encodedValues.Add(code);
+            checkSum += code * (i + 1);
+        }
+
+        encodedValues.Add(checkSum % 103);
+        encodedValues.Add(106); // Stop
+
+        var slices = new List<BarcodeSlice>();
+        if (quietZone > 0)
+        {
+            slices.Add(new BarcodeSlice(quietZone, false));
+        }
+
+        foreach (var val in encodedValues)
+        {
+            var pattern = Patterns[val];
+            bool isBar = true;
+
+            for (int p = 0; p < pattern.Length; p++)
+            {
+                slices.Add(new BarcodeSlice(pattern[p], isBar));
+                isBar = !isBar;
+            }
+        }
+
+        if (quietZone > 0)
+        {
+            slices.Add(new BarcodeSlice(quietZone, false));
+        }
+
+        return slices;
+    }
+
     /// <summary>
     /// Generates a scalable vector SVG string representing a Code 128 barcode.
     /// </summary>
