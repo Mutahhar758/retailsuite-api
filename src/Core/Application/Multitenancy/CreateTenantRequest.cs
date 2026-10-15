@@ -11,6 +11,8 @@ public class CreateTenantRequest
     public string? AdminEmail { get; set; }
     public bool HasVariablePackFeature { get; set; } = false;
     public bool HasMobileShopFeature { get; set; } = false;
+    public string? IndustryType { get; set; }
+    public string? BusinessSubType { get; set; }
     public DateTime? ValidFrom { get; set; }
     public DateTime? ValidUntil { get; set; }
 }

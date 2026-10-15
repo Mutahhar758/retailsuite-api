@@ -1,0 +1,131 @@
+{
+  "industry": "general",
+  "subCategory": "general_store",
+  "name": "General Store / Mart (FMCG, Groceries, Staples & Provisions)",
+  "brands": [
+    { "id": "001", "title": "National Foods", "active": true },
+    { "id": "002", "title": "Shan Foods", "active": true },
+    { "id": "003", "title": "Unilever", "active": true },
+    { "id": "004", "title": "Procter & Gamble", "active": true },
+    { "id": "005", "title": "Tapal Tea", "active": true },
+    { "id": "006", "title": "Dalda Foods", "active": true },
+    { "id": "007", "title": "Nestle", "active": true },
+    { "id": "008", "title": "General / Commodities", "active": true }
+  ],
+  "categories": [
+    { "id": "001", "title": "Grocery & Staples", "itemType": "Grocery", "active": true },
+    { "id": "002", "title": "Spices & Recipe Mixes", "itemType": "Spices", "active": true },
+    { "id": "003", "title": "Cooking Oil & Banaspati", "itemType": "Oil", "active": true },
+    { "id": "004", "title": "Tea, Coffee & Beverages", "itemType": "Drinks", "active": true },
+    { "id": "005", "title": "Biscuits & Confectionery", "itemType": "Food", "active": true },
+    { "id": "006", "title": "Soaps & Personal Hygiene", "itemType": "PersonalCare", "active": true },
+    { "id": "007", "title": "Detergents & Cleaning", "itemType": "Household", "active": true }
+  ],
+  "products": [
+    {
+      "id": "000001",
+      "title": "Super Basmati Rice (1 Kg)",
+      "barcode": "8964000200011",
+      "categoryId": "001",
+      "brandId": "008",
+      "itemType": "Product",
+      "primaryUnitId": "002",
+      "secondaryUnitId": null,
+      "defaultUnitId": "002",
+      "priRate": 340.00,
+      "secRate": 0
+    },
+    {
+      "id": "000002",
+      "title": "Fine Wheat Flour / Atta (10 Kg Bag)",
+      "barcode": "8964000200028",
+      "categoryId": "001",
+      "brandId": "008",
+      "itemType": "Product",
+      "primaryUnitId": "004",
+      "secondaryUnitId": "007",
+      "defaultUnitId": "004",
+      "qtyInPack": 1,
+      "priRate": 1350.00,
+      "secRate": 0
+    },
+    {
+      "id": "000003",
+      "title": "White Sugar / Cheeni (1 Kg)",
+      "barcode": "8964000200035",
+      "categoryId": "001",
+      "brandId": "008",
+      "itemType": "Product",
+      "primaryUnitId": "002",
+      "secondaryUnitId": null,
+      "defaultUnitId": "002",
+      "priRate": 155.00,
+      "secRate": 0
+    },
+    {
+      "id": "000004",
+      "title": "Dalda Cooking Oil 1 Litre Pouch",
+      "barcode": "8961014001015",
+      "categoryId": "003",
+      "brandId": "006",
+      "itemType": "Product",
+      "primaryUnitId": "004",
+      "secondaryUnitId": null,
+      "defaultUnitId": "004",
+      "priRate": 520.00,
+      "secRate": 0
+    },
+    {
+      "id": "000005",
+      "title": "Tapal Danedar Tea 430g",
+      "barcode": "8961013000019",
+      "categoryId": "004",
+      "brandId": "005",
+      "itemType": "Product",
+      "primaryUnitId": "004",
+      "secondaryUnitId": null,
+      "defaultUnitId": "004",
+      "priRate": 720.00,
+      "secRate": 0
+    },
+    {
+      "id": "000006",
+      "title": "Shan Bombay Biryani Masala 50g",
+      "barcode": "788821000108",
+      "categoryId": "002",
+      "brandId": "002",
+      "itemType": "Product",
+      "primaryUnitId": "004",
+      "secondaryUnitId": null,
+      "defaultUnitId": "004",
+      "priRate": 120.00,
+      "secRate": 0
+    },
+    {
+      "id": "000007",
+      "title": "Lux Beauty Soap 140g",
+      "barcode": "8961011000021",
+      "categoryId": "006",
+      "brandId": "003",
+      "itemType": "Product",
+      "primaryUnitId": "005",
+      "secondaryUnitId": null,
+      "defaultUnitId": "005",
+      "priRate": 160.00,
+      "secRate": 0
+    },
+    {
+      "id": "000008",
+      "title": "Surf Excel Detergent Powder 1 Kg",
+      "barcode": "8961012000014",
+      "categoryId": "007",
+      "brandId": "003",
+      "itemType": "Product",
+      "primaryUnitId": "004",
+      "secondaryUnitId": null,
+      "defaultUnitId": "004",
+      "priRate": 640.00,
+      "secRate": 0
+    }
+  ]
+}

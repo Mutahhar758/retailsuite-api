@@ -32,6 +32,8 @@ public class TenantDbContext : EFCoreStoreDbContext<Domain.Multitenancy.TenantIn
             entity.Property(t => t.HasKotFeature).HasDefaultValue(false);
             entity.Property(t => t.HasVariablePackFeature).HasDefaultValue(false);
             entity.Property(t => t.HasMobileShopFeature).HasDefaultValue(false);
+            entity.Property(t => t.IndustryType).HasMaxLength(64);
+            entity.Property(t => t.BusinessSubType).HasMaxLength(64);
         });
     }
 }

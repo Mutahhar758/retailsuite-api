@@ -75,6 +75,9 @@
       <None Update="OpenApi\cache-swagger-payloads.js">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
+      <Content Include="Persistence\Initialization\SeedData\*.json">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </Content>
     </ItemGroup>
     <ItemGroup>
       <PackageReference Update="Roslynator.Analyzers" Version="4.2.0">

@@ -58,6 +58,19 @@ internal class TenantService : ITenantService
 
         string connectionString = BuildConnectionString(request.DbProvider, request.Identifier);
 
+        string rawIndustry = request.IndustryType?.Trim().ToLowerInvariant() ?? string.Empty;
+        string industry = !string.IsNullOrWhiteSpace(rawIndustry)
+            ? rawIndustry
+            : (request.HasVariablePackFeature ? "wanda" : request.HasMobileShopFeature ? "mobile" : "general");
+
+        string? rawSubCategory = request.BusinessSubType?.Trim().ToLowerInvariant();
+        string? subCategory = !string.IsNullOrWhiteSpace(rawSubCategory)
+            ? rawSubCategory
+            : (industry == "general" ? "general_store" : null);
+
+        bool isWanda = industry == "wanda" || request.HasVariablePackFeature;
+        bool isMobile = industry == "mobile" || request.HasMobileShopFeature;
+
         var tenant = new AppTenantInfo
         {
             Id = request.Id,
@@ -67,8 +80,10 @@ internal class TenantService : ITenantService
             ConnectionString = connectionString,
             AdminEmail = request.AdminEmail,
             IsActive = true,
-            HasVariablePackFeature = request.HasVariablePackFeature,
-            HasMobileShopFeature = request.HasMobileShopFeature,
+            IndustryType = industry,
+            BusinessSubType = subCategory,
+            HasVariablePackFeature = isWanda,
+            HasMobileShopFeature = isMobile,
             ValidFrom = request.ValidFrom ?? DateTime.UtcNow,
             ValidUntil = request.ValidUntil,
             LicenseKey = Guid.NewGuid().ToString("N").ToUpper()
@@ -79,7 +94,7 @@ internal class TenantService : ITenantService
 
         try
         {
-            _logger.LogInformation("Tenant '{Identifier}' created. Provisioning database.", tenant.Identifier);
+            _logger.LogInformation("Tenant '{Identifier}' created with industry '{Industry}' and subcategory '{SubCategory}'. Provisioning database.", tenant.Identifier, tenant.IndustryType, tenant.BusinessSubType);
             await _dbInitializer.InitializeTenantDatabaseAsync(tenant, cancellationToken);
         }
         catch (Exception ex)
@@ -103,12 +118,38 @@ internal class TenantService : ITenantService
             throw new BadRequestException("Updating database provider for an existing tenant is not allowed.");
         }
 
+        if (!string.IsNullOrWhiteSpace(request.IndustryType)
+            && !string.IsNullOrWhiteSpace(tenant.IndustryType)
+            && !string.Equals(request.IndustryType.Trim(), tenant.IndustryType.Trim(), StringComparison.OrdinalIgnoreCase))
+        {
+            throw new BadRequestException("Updating industry type for an existing tenant is not allowed. Industry and sub type must remain the same.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.BusinessSubType)
+            && !string.IsNullOrWhiteSpace(tenant.BusinessSubType)
+            && !string.Equals(request.BusinessSubType.Trim(), tenant.BusinessSubType.Trim(), StringComparison.OrdinalIgnoreCase))
+        {
+            throw new BadRequestException("Updating business sub-category for an existing tenant is not allowed. Industry and sub type must remain the same.");
+        }
+
         tenant.Name = request.Name;
         tenant.AdminEmail = request.AdminEmail;
         tenant.ValidFrom = request.ValidFrom ?? tenant.ValidFrom;
         tenant.ValidUntil = request.ValidUntil;
-        tenant.HasVariablePackFeature = request.HasVariablePackFeature;
-        tenant.HasMobileShopFeature = request.HasMobileShopFeature;
+
+        // If previously unassigned (e.g. legacy tenant), assign once
+        if (string.IsNullOrWhiteSpace(tenant.IndustryType) && !string.IsNullOrWhiteSpace(request.IndustryType))
+        {
+            tenant.IndustryType = request.IndustryType.Trim().ToLowerInvariant();
+        }
+
+        if (string.IsNullOrWhiteSpace(tenant.BusinessSubType) && !string.IsNullOrWhiteSpace(request.BusinessSubType))
+        {
+            tenant.BusinessSubType = request.BusinessSubType.Trim().ToLowerInvariant();
+        }
+
+        tenant.HasVariablePackFeature = tenant.IndustryType == "wanda" || request.HasVariablePackFeature;
+        tenant.HasMobileShopFeature = tenant.IndustryType == "mobile" || request.HasMobileShopFeature;
 
         await _tenantDbContext.SaveChangesAsync(cancellationToken);
     }

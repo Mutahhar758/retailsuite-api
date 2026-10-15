@@ -25,6 +25,9 @@ public class TenantInfo : ITenantInfo
     public bool HasVariablePackFeature { get; set; } = false;
     public bool HasMobileShopFeature { get; set; } = false;
 
+    public string? IndustryType { get; set; }
+    public string? BusinessSubType { get; set; }
+
     public DateTime ValidFrom { get; set; } = DateTime.UtcNow;
 
     public DateTime? ValidUntil { get; set; }

@@ -110,6 +110,8 @@ internal class TenantDatabaseInitializer
             ConnectionString = _databaseSettings.ConnectionString,
             DbProvider = _databaseSettings.DBProvider,
             IsActive = true,
+            IndustryType = "general",
+            BusinessSubType = "general_store",
             ValidFrom = DateTime.UtcNow
         };
 

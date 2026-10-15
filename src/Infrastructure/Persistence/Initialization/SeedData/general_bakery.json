@@ -1,0 +1,126 @@
+{
+  "industry": "general",
+  "subCategory": "bakery",
+  "name": "General Retail: Bakery",
+  "brands": [
+    { "id": "001", "title": "In-House Bakery", "active": true },
+    { "id": "002", "title": "Dawn", "active": true },
+    { "id": "003", "title": "Gourmet", "active": true },
+    { "id": "004", "title": "Shezan", "active": true },
+    { "id": "005", "title": "Mitchell's", "active": true }
+  ],
+  "categories": [
+    { "id": "001", "title": "Breads & Rusk", "itemType": "Bakery", "active": true },
+    { "id": "002", "title": "Cakes & Pastries", "itemType": "Bakery", "active": true },
+    { "id": "003", "title": "Biscuits & Cookies", "itemType": "Bakery", "active": true },
+    { "id": "004", "title": "Fast Food & Savouries", "itemType": "Snacks", "active": true },
+    { "id": "005", "title": "Traditional Sweets / Mithai", "itemType": "Sweets", "active": true },
+    { "id": "006", "title": "Beverages & Cold Drinks", "itemType": "Drinks", "active": true }
+  ],
+  "products": [
+    {
+      "id": "000001",
+      "title": "Plain Bread Large",
+      "barcode": "8964001100013",
+      "categoryId": "001",
+      "brandId": "002",
+      "itemType": "Product",
+      "primaryUnitId": "004",
+      "secondaryUnitId": null,
+      "defaultUnitId": "004",
+      "priRate": 170.00,
+      "secRate": 0
+    },
+    {
+      "id": "000002",
+      "title": "Milky Bread Small",
+      "barcode": "8964001100020",
+      "categoryId": "001",
+      "brandId": "002",
+      "itemType": "Product",
+      "primaryUnitId": "004",
+      "secondaryUnitId": null,
+      "defaultUnitId": "004",
+      "priRate": 110.00,
+      "secRate": 0
+    },
+    {
+      "id": "000003",
+      "title": "Burger Buns (Pack of 4)",
+      "barcode": "8964001100037",
+      "categoryId": "001",
+      "brandId": "002",
+      "itemType": "Product",
+      "primaryUnitId": "004",
+      "secondaryUnitId": null,
+      "defaultUnitId": "004",
+      "priRate": 120.00,
+      "secRate": 0
+    },
+    {
+      "id": "000004",
+      "title": "Chocolate Fudge Cake (2 Lbs)",
+      "barcode": "BAK-CK-0004",
+      "categoryId": "002",
+      "brandId": "001",
+      "itemType": "Product",
+      "primaryUnitId": "005",
+      "secondaryUnitId": null,
+      "defaultUnitId": "005",
+      "priRate": 1600.00,
+      "secRate": 0
+    },
+    {
+      "id": "000005",
+      "title": "Black Forest Pastry",
+      "barcode": "BAK-PS-0005",
+      "categoryId": "002",
+      "brandId": "001",
+      "itemType": "Product",
+      "primaryUnitId": "005",
+      "secondaryUnitId": null,
+      "defaultUnitId": "005",
+      "priRate": 150.00,
+      "secRate": 0
+    },
+    {
+      "id": "000006",
+      "title": "Zeera Butter Cookies 500g",
+      "barcode": "8964001200065",
+      "categoryId": "003",
+      "brandId": "001",
+      "itemType": "Product",
+      "primaryUnitId": "004",
+      "secondaryUnitId": null,
+      "defaultUnitId": "004",
+      "priRate": 380.00,
+      "secRate": 0
+    },
+    {
+      "id": "000007",
+      "title": "Crispy Chicken Patty",
+      "barcode": "BAK-PT-0007",
+      "categoryId": "004",
+      "brandId": "001",
+      "itemType": "Product",
+      "primaryUnitId": "005",
+      "secondaryUnitId": null,
+      "defaultUnitId": "005",
+      "priRate": 120.00,
+      "secRate": 0
+    },
+    {
+      "id": "000008",
+      "title": "Mix Sweets / Mithai Special (1 Kg)",
+      "barcode": "BAK-SW-0008",
+      "categoryId": "005",
+      "brandId": "001",
+      "itemType": "Product",
+      "primaryUnitId": "002",
+      "secondaryUnitId": null,
+      "defaultUnitId": "002",
+      "priRate": 1200.00,
+      "secRate": 0
+    }
+  ]
+}

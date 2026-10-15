@@ -11,4 +11,6 @@ public interface ICurrentTenant
     bool HasKotFeature { get; }
     bool HasVariablePackFeature { get; }
     bool HasMobileShopFeature { get; }
+    string? IndustryType { get; }
+    string? BusinessSubType { get; }
 }

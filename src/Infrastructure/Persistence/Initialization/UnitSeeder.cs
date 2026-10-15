@@ -21,7 +21,7 @@ public class UnitSeeder : ICustomSeeder
     {
         if (!await _repository.GetAll().IgnoreQueryFilters([GlobalQueryFilterConstants.SoftDelete]).AnyAsync(cancellationToken))
         {
-            _logger.LogInformation("Seeding Units for Milk Shop.");
+            _logger.LogInformation("Seeding standard Units.");
             var units = new List<Unit>
             {
                 new() { Id = "001", Title = "Litre" },
@@ -29,7 +29,8 @@ public class UnitSeeder : ICustomSeeder
                 new() { Id = "003", Title = "Gram" },
                 new() { Id = "004", Title = "Pack" },
                 new() { Id = "005", Title = "Piece" },
-                new() { Id = "006", Title = "Dozen" }
+                new() { Id = "006", Title = "Dozen" },
+                new() { Id = "007", Title = "Bag" }
             };
 
             await _repository.AddRangeAsync(units);
