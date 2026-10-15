@@ -310,7 +310,7 @@ internal class ManufacturingService : IManufacturingService
             FinishedItemId = request.FinishedItemId,
             TargetQty = request.TargetQty,
             ProducedQty = request.ProducedQty,
-            UnitId = request.UnitId,
+            UnitId = string.IsNullOrWhiteSpace(request.UnitId) ? null : request.UnitId,
             BatchNo = request.BatchNo,
             ExpiryDate = request.ExpiryDate,
             TotalMaterialCost = totalMaterialCost,
@@ -335,7 +335,7 @@ internal class ManufacturingService : IManufacturingService
                 RawItemId = line.RawItemId,
                 PlannedQty = line.PlannedQty,
                 ActualQty = line.ActualQty,
-                UnitId = line.UnitId,
+                UnitId = string.IsNullOrWhiteSpace(line.UnitId) ? null : line.UnitId,
                 UnitCost = line.UnitCost,
                 TotalCost = line.TotalCost,
                 IsIssued = request.Status == ProductionStatus.InProgress || request.Status == ProductionStatus.Completed
@@ -387,7 +387,7 @@ internal class ManufacturingService : IManufacturingService
         master.FinishedItemId = request.FinishedItemId;
         master.TargetQty = request.TargetQty;
         master.ProducedQty = request.ProducedQty;
-        master.UnitId = request.UnitId;
+        master.UnitId = string.IsNullOrWhiteSpace(request.UnitId) ? null : request.UnitId;
         master.BatchNo = request.BatchNo;
         master.ExpiryDate = request.ExpiryDate;
         master.TotalMaterialCost = totalMaterialCost;
@@ -417,7 +417,7 @@ internal class ManufacturingService : IManufacturingService
                 RawItemId = line.RawItemId,
                 PlannedQty = line.PlannedQty,
                 ActualQty = line.ActualQty,
-                UnitId = line.UnitId,
+                UnitId = string.IsNullOrWhiteSpace(line.UnitId) ? null : line.UnitId,
                 UnitCost = line.UnitCost,
                 TotalCost = line.TotalCost,
                 IsIssued = master.Status == ProductionStatus.InProgress || master.Status == ProductionStatus.Completed

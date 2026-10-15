@@ -131,7 +131,7 @@ internal class BomService : IBomService
             Title = request.Title,
             FinishedItemId = request.FinishedItemId,
             OutputQty = request.OutputQty > 0 ? request.OutputQty : 1.0m,
-            UnitId = request.UnitId,
+            UnitId = string.IsNullOrWhiteSpace(request.UnitId) ? null : request.UnitId,
             IsActive = request.IsActive,
             IsDefault = request.IsDefault,
             LaborCost = request.LaborCost,
@@ -147,7 +147,7 @@ internal class BomService : IBomService
                 Seq = line.Seq,
                 RawItemId = line.RawItemId,
                 Qty = line.Qty,
-                UnitId = line.UnitId,
+                UnitId = string.IsNullOrWhiteSpace(line.UnitId) ? null : line.UnitId,
                 ScrapPercentage = line.ScrapPercentage,
                 IsOptional = line.IsOptional
             });
@@ -183,7 +183,7 @@ internal class BomService : IBomService
         master.Title = request.Title;
         master.FinishedItemId = request.FinishedItemId;
         master.OutputQty = request.OutputQty > 0 ? request.OutputQty : 1.0m;
-        master.UnitId = request.UnitId;
+        master.UnitId = string.IsNullOrWhiteSpace(request.UnitId) ? null : request.UnitId;
         master.IsActive = request.IsActive;
         master.IsDefault = request.IsDefault;
         master.LaborCost = request.LaborCost;
@@ -201,7 +201,7 @@ internal class BomService : IBomService
                 Seq = line.Seq,
                 RawItemId = line.RawItemId,
                 Qty = line.Qty,
-                UnitId = line.UnitId,
+                UnitId = string.IsNullOrWhiteSpace(line.UnitId) ? null : line.UnitId,
                 ScrapPercentage = line.ScrapPercentage,
                 IsOptional = line.IsOptional
             });
