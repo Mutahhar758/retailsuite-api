@@ -35,6 +35,8 @@ jobs:
           robocopy "./publish" "D:\Websites\Retailer_API" /E /R:5 /W:2 /NP /NFL /NDL
           if ($LASTEXITCODE -ge 8) {
             throw "Robocopy failed with exit code $LASTEXITCODE"
+          } else {
+            $LASTEXITCODE = 0
           }
         }
         finally {
