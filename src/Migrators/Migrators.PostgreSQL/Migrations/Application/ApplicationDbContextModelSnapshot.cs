@@ -3395,18 +3395,22 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnType("text")
                         .HasColumnName("tenant_id");
 
-                    b.Property<decimal?>("Amount")
+                    b.Property<decimal>("Amount")
+                        .ValueGeneratedOnAdd()
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)")
+                        .HasDefaultValue(0m)
                         .HasColumnName("amount");
 
                     b.Property<int?>("BatteryHealth")
                         .HasColumnType("integer")
                         .HasColumnName("battery_health");
 
-                    b.Property<decimal?>("Carriage")
+                    b.Property<decimal>("Carriage")
+                        .ValueGeneratedOnAdd()
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)")
+                        .HasDefaultValue(0m)
                         .HasColumnName("carriage");
 
                     b.Property<string>("ConditionNote")
@@ -3430,13 +3434,18 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("deleted_on");
 
-                    b.Property<decimal?>("Discount")
-                        .HasColumnType("numeric")
+                    b.Property<decimal>("Discount")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasDefaultValue(0m)
                         .HasColumnName("discount");
 
-                    b.Property<decimal?>("GrossRate")
+                    b.Property<decimal>("GrossRate")
+                        .ValueGeneratedOnAdd()
                         .HasPrecision(18, 8)
                         .HasColumnType("numeric(18,8)")
+                        .HasDefaultValue(0m)
                         .HasColumnName("gross_rate");
 
                     b.Property<string>("Imei")
@@ -3915,18 +3924,25 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnType("text")
                         .HasColumnName("tenant_id");
 
-                    b.Property<decimal?>("AddLess")
-                        .HasColumnType("numeric")
+                    b.Property<decimal>("AddLess")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasDefaultValue(0m)
                         .HasColumnName("add_less");
 
-                    b.Property<decimal?>("Amount")
+                    b.Property<decimal>("Amount")
+                        .ValueGeneratedOnAdd()
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)")
+                        .HasDefaultValue(0m)
                         .HasColumnName("amount");
 
-                    b.Property<decimal?>("Carriage")
+                    b.Property<decimal>("Carriage")
+                        .ValueGeneratedOnAdd()
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)")
+                        .HasDefaultValue(0m)
                         .HasColumnName("carriage");
 
                     b.Property<string>("CreatedBy")
@@ -3950,13 +3966,18 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("deleted_on");
 
-                    b.Property<decimal?>("Discount")
-                        .HasColumnType("numeric")
+                    b.Property<decimal>("Discount")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasDefaultValue(0m)
                         .HasColumnName("discount");
 
-                    b.Property<decimal?>("GrossRate")
+                    b.Property<decimal>("GrossRate")
+                        .ValueGeneratedOnAdd()
                         .HasPrecision(18, 8)
                         .HasColumnType("numeric(18,8)")
+                        .HasDefaultValue(0m)
                         .HasColumnName("gross_rate");
 
                     b.Property<string>("LastModifiedBy")
