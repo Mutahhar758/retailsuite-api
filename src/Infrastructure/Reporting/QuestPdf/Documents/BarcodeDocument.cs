@@ -187,6 +187,9 @@ public class BarcodeDocument : IDocument
         string title = item.Title ?? string.Empty;
         if (title.Length > 22) title = title.Substring(0, 20) + "..";
 
+        bool isVariable = item.IsVariableWeight || (item.Qty.HasValue && item.Qty.Value > 0);
+        float effectiveBarcodeHeight = isVariable ? Math.Max(5f, barcodeHeightMm - 1.2f) : barcodeHeightMm;
+
         container
             .PaddingHorizontal(0.5f, Unit.Millimetre)
             .PaddingVertical(0.5f, Unit.Millimetre)
@@ -210,11 +213,11 @@ public class BarcodeDocument : IDocument
 
                 // Vector barcode bars via QuestPDF Row - no SVG aspect-ratio wrapping or scaling conflicts!
                 col.Item()
-                    .PaddingTop(1)
+                    .PaddingTop(0.5f)
                     .PaddingBottom(0.5f)
                     .AlignCenter()
                     .Width(maxLabelWidthMm - 3, Unit.Millimetre)
-                    .Height(barcodeHeightMm, Unit.Millimetre)
+                    .Height(effectiveBarcodeHeight, Unit.Millimetre)
                     .Row(row =>
                     {
                         foreach (var slice in slices)
@@ -227,15 +230,31 @@ public class BarcodeDocument : IDocument
                     });
 
                 col.Item().AlignCenter().Text(barcode)
-                    .FontSize(5.5f)
+                    .FontSize(5f)
                     .FontColor(Colors.Grey.Darken2);
 
                 if (_request.IncludePrice)
                 {
-                    col.Item().AlignCenter().Text($"Rs. {item.Rate:#,##0.00}")
-                        .FontSize(priceFontSize)
-                        .Bold()
-                        .FontColor(Colors.Black);
+                    if (isVariable)
+                    {
+                        decimal total = item.TotalAmount ?? ((item.Qty ?? 1) * item.Rate);
+                        string unitStr = !string.IsNullOrWhiteSpace(item.Unit) ? item.Unit : "kg";
+                        col.Item().AlignCenter().Text($"Qty: {item.Qty:0.###} {unitStr}  •  Rs. {total:#,##0.00}")
+                            .FontSize(priceFontSize - 0.5f)
+                            .Bold()
+                            .FontColor(Colors.Black);
+
+                        col.Item().AlignCenter().Text($"Rate: Rs. {item.Rate:#,##0.00}/{unitStr}")
+                            .FontSize(companyFontSize - 0.5f)
+                            .FontColor(Colors.Grey.Darken2);
+                    }
+                    else
+                    {
+                        col.Item().AlignCenter().Text($"Rs. {item.Rate:#,##0.00}")
+                            .FontSize(priceFontSize)
+                            .Bold()
+                            .FontColor(Colors.Black);
+                    }
                 }
             });
     }

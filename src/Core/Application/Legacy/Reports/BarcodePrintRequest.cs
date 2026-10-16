@@ -7,6 +7,10 @@ public class BarcodePrintItemDto
     public string? Barcode { get; set; }
     public decimal Rate { get; set; }
     public int Copies { get; set; } = 1;
+    public decimal? Qty { get; set; }
+    public string? Unit { get; set; }
+    public decimal? TotalAmount { get; set; }
+    public bool IsVariableWeight { get; set; }
 }
 
 public class BarcodePrintRequest
