@@ -237,20 +237,21 @@ public class BarcodeDocument : IDocument
                 {
                     if (isVariable)
                     {
-                        decimal total = item.TotalAmount ?? ((item.Qty ?? 1) * item.Rate);
+                        decimal total = Math.Round(item.TotalAmount ?? ((item.Qty ?? 1) * item.Rate));
+                        decimal rate = Math.Round(item.Rate);
                         string unitStr = !string.IsNullOrWhiteSpace(item.Unit) && !decimal.TryParse(item.Unit, out _) ? item.Unit : "kg";
-                        col.Item().AlignCenter().Text($"Qty: {item.Qty:0.###} {unitStr}  •  Rs. {total:#,##0.00}")
+                        col.Item().AlignCenter().Text($"Qty: {item.Qty:0.###} {unitStr}  •  Rs. {total:#,##0}")
                             .FontSize(priceFontSize - 0.5f)
                             .Bold()
                             .FontColor(Colors.Black);
 
-                        col.Item().AlignCenter().Text($"Rate: Rs. {item.Rate:#,##0.00}/{unitStr}")
+                        col.Item().AlignCenter().Text($"Rate: Rs. {rate:#,##0}/{unitStr}")
                             .FontSize(companyFontSize - 0.5f)
                             .FontColor(Colors.Grey.Darken2);
                     }
                     else
                     {
-                        col.Item().AlignCenter().Text($"Rs. {item.Rate:#,##0.00}")
+                        col.Item().AlignCenter().Text($"Rs. {Math.Round(item.Rate):#,##0}")
                             .FontSize(priceFontSize)
                             .Bold()
                             .FontColor(Colors.Black);
