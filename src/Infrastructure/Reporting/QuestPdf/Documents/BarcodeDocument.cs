@@ -238,7 +238,7 @@ public class BarcodeDocument : IDocument
                     if (isVariable)
                     {
                         decimal total = item.TotalAmount ?? ((item.Qty ?? 1) * item.Rate);
-                        string unitStr = !string.IsNullOrWhiteSpace(item.Unit) ? item.Unit : "kg";
+                        string unitStr = !string.IsNullOrWhiteSpace(item.Unit) && !decimal.TryParse(item.Unit, out _) ? item.Unit : "kg";
                         col.Item().AlignCenter().Text($"Qty: {item.Qty:0.###} {unitStr}  •  Rs. {total:#,##0.00}")
                             .FontSize(priceFontSize - 0.5f)
                             .Bold()

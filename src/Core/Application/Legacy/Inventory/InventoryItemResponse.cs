@@ -13,8 +13,11 @@ public class InventoryItemResponse
     public decimal PriRate { get; set; }
     public decimal SecRate { get; set; }
     public string? PrimaryUnit { get; set; }
+    public string? PrimaryUnitTitle { get; set; }
     public string? SecondaryUnit { get; set; }
+    public string? SecondaryUnitTitle { get; set; }
     public string? DefaultUnit { get; set; }
+    public string? DefaultUnitTitle { get; set; }
     public decimal? QtyInPack { get; set; }
     public bool Alert { get; set; }
     public bool? LowStockAlert { get; set; }

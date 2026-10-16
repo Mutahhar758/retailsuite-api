@@ -82,6 +82,9 @@ internal class InventoryService : IInventoryService
         var items = await query
             .Include(x => x.ItemCategory)
             .Include(x => x.Brand)
+            .Include(x => x.PrimaryUnit)
+            .Include(x => x.SecondaryUnit)
+            .Include(x => x.DefaultUnit)
             .OrderBy(x => x.ItemCategoryId)
             .ThenBy(x => x.Title)
             .ToListAsync(cancellationToken);
@@ -97,8 +100,11 @@ internal class InventoryService : IInventoryService
             PriRate = x.PriRate,
             SecRate = x.SecRate,
             PrimaryUnit = x.PrimaryUnitId,
+            PrimaryUnitTitle = x.PrimaryUnit?.Title,
             SecondaryUnit = x.SecondaryUnitId,
+            SecondaryUnitTitle = x.SecondaryUnit?.Title,
             DefaultUnit = x.DefaultUnitId,
+            DefaultUnitTitle = x.DefaultUnit?.Title,
             QtyInPack = x.QtyInPack,
             Alert = x.Alert ?? false,
             LowStockAlert = x.LowStockAlert,
@@ -127,6 +133,9 @@ internal class InventoryService : IInventoryService
             .AsNoTracking()
             .Include(x => x.ItemCategory)
             .Include(x => x.Brand)
+            .Include(x => x.PrimaryUnit)
+            .Include(x => x.SecondaryUnit)
+            .Include(x => x.DefaultUnit)
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (item is null) return null;
 
@@ -141,8 +150,11 @@ internal class InventoryService : IInventoryService
             PriRate = item.PriRate,
             SecRate = item.SecRate,
             PrimaryUnit = item.PrimaryUnitId,
+            PrimaryUnitTitle = item.PrimaryUnit?.Title,
             SecondaryUnit = item.SecondaryUnitId,
+            SecondaryUnitTitle = item.SecondaryUnit?.Title,
             DefaultUnit = item.DefaultUnitId,
+            DefaultUnitTitle = item.DefaultUnit?.Title,
             QtyInPack = item.QtyInPack,
             Alert = item.Alert ?? false,
             LowStockAlert = item.LowStockAlert,
