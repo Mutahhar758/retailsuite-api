@@ -50,4 +50,13 @@ public class VendorsController : VersionNeutralApiController
         var response = await _vendorService.GetPresignedUploadUrlAsync(fileName, cancellationToken);
         return response.ToInformationResponse();
     }
+
+    [HttpPost("bulk")]
+    [MustHavePermission(new[] { AppAction.Create, AppAction.Update }, AppResource.Vendors)]
+    [OpenApiOperation("Bulk create and update vendors.", "")]
+    public async Task<HttpResponseDto<BulkOperationResult>> BulkUpsertAsync(VendorBulkUpsertRequest request, CancellationToken cancellationToken)
+    {
+        var response = await _vendorService.BulkUpsertAsync(request, cancellationToken);
+        return response.ToInformationResponse($"Bulk operation completed: {response.CreatedCount} created, {response.UpdatedCount} updated.");
+    }
 }

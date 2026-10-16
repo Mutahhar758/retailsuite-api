@@ -9,5 +9,6 @@ public interface ICustomerService : ITransientService
     Task UpdateAsync(string account, CustomerUpdateRequest request, CancellationToken cancellationToken);
     Task<PresignedUploadUrlResponse?> GetPresignedUploadUrlAsync(string fileName, CancellationToken cancellationToken);
     Task<List<CustomerSupplyItemDto>> GetSupplyItemsAsync(string? customerId, string? itemId, CancellationToken cancellationToken);
+    Task<BulkOperationResult> BulkUpsertAsync(CustomerBulkUpsertRequest request, CancellationToken cancellationToken);
 }
 

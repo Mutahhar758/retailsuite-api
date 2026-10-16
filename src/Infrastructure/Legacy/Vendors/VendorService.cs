@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Retailer.Application.Common.Exceptions;
 using Retailer.Application.Common.Persistence;
 using Retailer.Application.Common.Interfaces;
+using Retailer.Application.Common.Models;
 using Retailer.Application.Legacy.Vendors;
 using Retailer.Domain.Legacy;
 using Retailer.Shared.Common.Constants;
@@ -326,5 +327,179 @@ internal class VendorService : IVendorService
         vendorDetail.Active = request.Active;
         vendorDetail.ShowInSales = request.ShowInSales;
         vendorDetail.MediaId = request.MediaId;
+    }
+
+    public async Task<BulkOperationResult> BulkUpsertAsync(VendorBulkUpsertRequest request, CancellationToken cancellationToken)
+    {
+        var result = new BulkOperationResult();
+        if (request.Vendors == null || request.Vendors.Count == 0)
+        {
+            return result;
+        }
+
+        result.TotalProcessed = request.Vendors.Count;
+        var vendorAccountPrefix = await GetVendorAccountPrefixAsync(cancellationToken);
+        var parent = await _chartOfAccountRepository.GetByIdAsync(vendorAccountPrefix, cancellationToken);
+        if (parent is null)
+            throw new NotFoundException($"Parent vendor account '{vendorAccountPrefix}' not found in Chart of Accounts.");
+
+        var maxChildId = await _chartOfAccountRepository.GetAll()
+            .IgnoreQueryFilters([GlobalQueryFilterConstants.SoftDelete])
+            .AsNoTracking()
+            .Where(x => x.ParentId == vendorAccountPrefix)
+            .Select(x => x.Id)
+            .OrderByDescending(x => x.Length)
+            .ThenByDescending(x => x)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var currentSuffix = 0L;
+        if (!string.IsNullOrWhiteSpace(maxChildId) && maxChildId.Length > vendorAccountPrefix.Length)
+        {
+            long.TryParse(maxChildId[vendorAccountPrefix.Length..], out currentSuffix);
+        }
+
+        var accLevel = parent.AccLevel + 1;
+
+        var updateCandidates = request.Vendors
+            .Select((v, idx) => new { Item = v, RowIndex = idx + 1 })
+            .Where(x => !string.IsNullOrWhiteSpace(x.Item.Account))
+            .ToList();
+
+        var updateAccountIds = updateCandidates.Select(x => x.Item.Account!.Trim()).Distinct().ToList();
+
+        var existingCoas = await _chartOfAccountRepository.GetAll()
+            .Where(x => updateAccountIds.Contains(x.Id) && x.AccLevel == 5 && x.Id.StartsWith(vendorAccountPrefix))
+            .ToDictionaryAsync(x => x.Id, cancellationToken);
+
+        var existingDetails = await _vendorDetailRepository.GetAll()
+            .Where(x => updateAccountIds.Contains(x.Id))
+            .ToDictionaryAsync(x => x.Id, cancellationToken);
+
+        var newCoasToAdd = new List<ChartOfAccount>();
+        var newDetailsToAdd = new List<SupplierDetail>();
+        var coasToUpdate = new List<ChartOfAccount>();
+        var detailsToUpdate = new List<SupplierDetail>();
+
+        for (int i = 0; i < request.Vendors.Count; i++)
+        {
+            var item = request.Vendors[i];
+            var rowIndex = i + 1;
+
+            if (string.IsNullOrWhiteSpace(item.Title))
+            {
+                result.FailedCount++;
+                result.Errors.Add(new BulkItemError
+                {
+                    RowIndex = rowIndex,
+                    Identifier = item.Account ?? $"Row #{rowIndex}",
+                    ErrorMessage = "Vendor name/title is required."
+                });
+                continue;
+            }
+
+            var account = item.Account?.Trim();
+            if (!string.IsNullOrWhiteSpace(account) && existingCoas.TryGetValue(account, out var coa))
+            {
+                if (coa.Title != item.Title)
+                {
+                    coa.Title = item.Title;
+                    coasToUpdate.Add(coa);
+                }
+
+                if (existingDetails.TryGetValue(account, out var detail))
+                {
+                    detail.Email = item.Email;
+                    detail.Fax = item.Fax;
+                    detail.Cnic = item.Cnic;
+                    detail.Address = item.Address;
+                    detail.Qualification = item.Qualification;
+                    detail.Phone1 = item.Phone1;
+                    detail.Phone2 = item.Phone2;
+                    detail.SmsNumber = item.SmsNumber;
+                    detail.Iban = item.Iban;
+                    detail.SmsAlert = item.SmsAlert;
+                    detail.EmailAlert = item.EmailAlert;
+                    detail.Active = item.Active;
+                    detail.ShowInSales = item.ShowInSales;
+                    detailsToUpdate.Add(detail);
+                }
+                else
+                {
+                    var newDetail = new SupplierDetail
+                    {
+                        Id = account,
+                        Email = item.Email,
+                        Fax = item.Fax,
+                        Cnic = item.Cnic,
+                        Address = item.Address,
+                        Qualification = item.Qualification,
+                        Phone1 = item.Phone1,
+                        Phone2 = item.Phone2,
+                        SmsNumber = item.SmsNumber,
+                        Iban = item.Iban,
+                        SmsAlert = item.SmsAlert,
+                        EmailAlert = item.EmailAlert,
+                        Active = item.Active,
+                        ShowInSales = item.ShowInSales
+                    };
+                    newDetailsToAdd.Add(newDetail);
+                }
+
+                result.UpdatedCount++;
+            }
+            else
+            {
+                currentSuffix++;
+                var newAccountCode = vendorAccountPrefix + currentSuffix.ToString("D3");
+
+                var newAccount = new ChartOfAccount
+                {
+                    Id = newAccountCode,
+                    Title = item.Title,
+                    ParentId = vendorAccountPrefix,
+                    AccLevel = accLevel,
+                    AccType = "Detail"
+                };
+                newCoasToAdd.Add(newAccount);
+
+                var newDetail = new SupplierDetail
+                {
+                    Id = newAccountCode,
+                    Email = item.Email,
+                    Fax = item.Fax,
+                    Cnic = item.Cnic,
+                    Address = item.Address,
+                    Qualification = item.Qualification,
+                    Phone1 = item.Phone1,
+                    Phone2 = item.Phone2,
+                    SmsNumber = item.SmsNumber,
+                    Iban = item.Iban,
+                    SmsAlert = item.SmsAlert,
+                    EmailAlert = item.EmailAlert,
+                    Active = item.Active,
+                    ShowInSales = item.ShowInSales
+                };
+                newDetailsToAdd.Add(newDetail);
+
+                result.CreatedCount++;
+            }
+        }
+
+        if (newCoasToAdd.Count > 0)
+            await _chartOfAccountRepository.AddRangeAsync(newCoasToAdd, doSaveChanges: false);
+
+        if (newDetailsToAdd.Count > 0)
+            await _vendorDetailRepository.AddRangeAsync(newDetailsToAdd, doSaveChanges: false);
+
+        if (coasToUpdate.Count > 0)
+            await _chartOfAccountRepository.UpdateRangeAsync(coasToUpdate, doSaveChanges: false);
+
+        if (detailsToUpdate.Count > 0)
+            await _vendorDetailRepository.UpdateRangeAsync(detailsToUpdate, doSaveChanges: false);
+
+        await _chartOfAccountRepository.SaveChangesAsync(cancellationToken);
+        await _vendorDetailRepository.SaveChangesAsync(cancellationToken);
+
+        return result;
     }
 }

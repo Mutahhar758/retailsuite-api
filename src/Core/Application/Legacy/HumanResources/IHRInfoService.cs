@@ -10,4 +10,5 @@ public interface IHRInfoService : ITransientService
     Task UpdateAsync(string id, HRInfoUpsertRequest request, CancellationToken cancellationToken);
     Task DeleteAsync(string id, CancellationToken cancellationToken);
     Task<PresignedUploadUrlResponse?> GetPresignedUploadUrlAsync(string fileName, CancellationToken cancellationToken);
+    Task<BulkOperationResult> BulkUpsertAsync(HRInfoBulkUpsertRequest request, CancellationToken cancellationToken);
 }

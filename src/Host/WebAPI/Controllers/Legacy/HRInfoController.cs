@@ -71,4 +71,13 @@ public class HRInfoController : VersionNeutralApiController
         var response = await _hrInfoService.GetPresignedUploadUrlAsync(fileName, cancellationToken);
         return response.ToInformationResponse();
     }
+
+    [HttpPost("bulk")]
+    [MustHavePermission(new[] { AppAction.Create, AppAction.Update }, AppResource.HRInfo)]
+    [OpenApiOperation("Bulk create and update employees.", "")]
+    public async Task<HttpResponseDto<BulkOperationResult>> BulkUpsertAsync(HRInfoBulkUpsertRequest request, CancellationToken cancellationToken)
+    {
+        var response = await _hrInfoService.BulkUpsertAsync(request, cancellationToken);
+        return response.ToInformationResponse($"Bulk operation completed: {response.CreatedCount} created, {response.UpdatedCount} updated.");
+    }
 }

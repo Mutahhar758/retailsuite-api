@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Retailer.Application.Common.Exceptions;
 using Retailer.Application.Common.Persistence;
 using Retailer.Application.Common.Interfaces;
+using Retailer.Application.Common.Models;
 using Retailer.Application.Legacy.CustomerDetails;
 using Retailer.Domain.Legacy;
 using Retailer.Shared.Common.Constants;
@@ -441,7 +442,177 @@ internal class CustomerService : ICustomerService
         customerDetail.SmsAlert = request.SmsAlert;
         customerDetail.EmailAlert = request.EmailAlert;
         customerDetail.Active = request.Active;
-        customerDetail.MediaId = request.MediaId;
+    }
+
+    public async Task<BulkOperationResult> BulkUpsertAsync(CustomerBulkUpsertRequest request, CancellationToken cancellationToken)
+    {
+        var result = new BulkOperationResult();
+        if (request.Customers == null || request.Customers.Count == 0)
+        {
+            return result;
+        }
+
+        result.TotalProcessed = request.Customers.Count;
+        var customerAccountPrefix = await GetCustomerAccountPrefixAsync(cancellationToken);
+        var parent = await _chartOfAccountRepository.GetByIdAsync(customerAccountPrefix, cancellationToken);
+        if (parent is null)
+            throw new NotFoundException($"Parent customer account '{customerAccountPrefix}' not found in Chart of Accounts.");
+
+        var maxChildId = await _chartOfAccountRepository.GetAll()
+            .IgnoreQueryFilters([GlobalQueryFilterConstants.SoftDelete])
+            .AsNoTracking()
+            .Where(x => x.ParentId == customerAccountPrefix)
+            .Select(x => x.Id)
+            .OrderByDescending(x => x.Length)
+            .ThenByDescending(x => x)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var currentSuffix = 0L;
+        if (!string.IsNullOrWhiteSpace(maxChildId) && maxChildId.Length > customerAccountPrefix.Length)
+        {
+            long.TryParse(maxChildId[customerAccountPrefix.Length..], out currentSuffix);
+        }
+
+        var accLevel = parent.AccLevel + 1;
+
+        var updateCandidates = request.Customers
+            .Select((c, idx) => new { Item = c, RowIndex = idx + 1 })
+            .Where(x => !string.IsNullOrWhiteSpace(x.Item.Account))
+            .ToList();
+
+        var updateAccountIds = updateCandidates.Select(x => x.Item.Account!.Trim()).Distinct().ToList();
+
+        var existingCoas = await _chartOfAccountRepository.GetAll()
+            .Where(x => updateAccountIds.Contains(x.Id) && x.AccLevel == 5 && x.Id.StartsWith(customerAccountPrefix))
+            .ToDictionaryAsync(x => x.Id, cancellationToken);
+
+        var existingDetails = await _customerDetailRepository.GetAll()
+            .Where(x => updateAccountIds.Contains(x.Id))
+            .ToDictionaryAsync(x => x.Id, cancellationToken);
+
+        var newCoasToAdd = new List<ChartOfAccount>();
+        var newDetailsToAdd = new List<CustomerDetail>();
+        var coasToUpdate = new List<ChartOfAccount>();
+        var detailsToUpdate = new List<CustomerDetail>();
+
+        for (int i = 0; i < request.Customers.Count; i++)
+        {
+            var item = request.Customers[i];
+            var rowIndex = i + 1;
+
+            if (string.IsNullOrWhiteSpace(item.Title))
+            {
+                result.FailedCount++;
+                result.Errors.Add(new BulkItemError
+                {
+                    RowIndex = rowIndex,
+                    Identifier = item.Account ?? $"Row #{rowIndex}",
+                    ErrorMessage = "Customer name/title is required."
+                });
+                continue;
+            }
+
+            var account = item.Account?.Trim();
+            if (!string.IsNullOrWhiteSpace(account) && existingCoas.TryGetValue(account, out var coa))
+            {
+                if (coa.Title != item.Title)
+                {
+                    coa.Title = item.Title;
+                    coasToUpdate.Add(coa);
+                }
+
+                if (existingDetails.TryGetValue(account, out var detail))
+                {
+                    detail.Email = item.Email;
+                    detail.Fax = item.Fax;
+                    detail.Cnic = item.Cnic;
+                    detail.Address = item.Address;
+                    detail.Qualification = item.Qualification;
+                    detail.Phone1 = item.Phone1;
+                    detail.Phone2 = item.Phone2;
+                    detail.SmsNumber = item.SmsNumber;
+                    detail.Iban = item.Iban;
+                    detail.SmsAlert = item.SmsAlert;
+                    detail.EmailAlert = item.EmailAlert;
+                    detail.Active = item.Active;
+                    detailsToUpdate.Add(detail);
+                }
+                else
+                {
+                    var newDetail = new CustomerDetail
+                    {
+                        Id = account,
+                        Email = item.Email,
+                        Fax = item.Fax,
+                        Cnic = item.Cnic,
+                        Address = item.Address,
+                        Qualification = item.Qualification,
+                        Phone1 = item.Phone1,
+                        Phone2 = item.Phone2,
+                        SmsNumber = item.SmsNumber,
+                        Iban = item.Iban,
+                        SmsAlert = item.SmsAlert,
+                        EmailAlert = item.EmailAlert,
+                        Active = item.Active
+                    };
+                    newDetailsToAdd.Add(newDetail);
+                }
+
+                result.UpdatedCount++;
+            }
+            else
+            {
+                currentSuffix++;
+                var newAccountCode = customerAccountPrefix + currentSuffix.ToString("D3");
+
+                var newAccount = new ChartOfAccount
+                {
+                    Id = newAccountCode,
+                    Title = item.Title,
+                    ParentId = customerAccountPrefix,
+                    AccLevel = accLevel,
+                    AccType = "Detail"
+                };
+                newCoasToAdd.Add(newAccount);
+
+                var newDetail = new CustomerDetail
+                {
+                    Id = newAccountCode,
+                    Email = item.Email,
+                    Fax = item.Fax,
+                    Cnic = item.Cnic,
+                    Address = item.Address,
+                    Qualification = item.Qualification,
+                    Phone1 = item.Phone1,
+                    Phone2 = item.Phone2,
+                    SmsNumber = item.SmsNumber,
+                    Iban = item.Iban,
+                    SmsAlert = item.SmsAlert,
+                    EmailAlert = item.EmailAlert,
+                    Active = item.Active
+                };
+                newDetailsToAdd.Add(newDetail);
+
+                result.CreatedCount++;
+            }
+        }
+
+        if (newCoasToAdd.Count > 0)
+            await _chartOfAccountRepository.AddRangeAsync(newCoasToAdd, doSaveChanges: false);
+
+        if (newDetailsToAdd.Count > 0)
+            await _customerDetailRepository.AddRangeAsync(newDetailsToAdd, doSaveChanges: false);
+
+        if (coasToUpdate.Count > 0)
+            await _chartOfAccountRepository.UpdateRangeAsync(coasToUpdate, doSaveChanges: false);
+
+        if (detailsToUpdate.Count > 0)
+            await _customerDetailRepository.UpdateRangeAsync(detailsToUpdate, doSaveChanges: false);
+
+        await _chartOfAccountRepository.SaveChangesAsync(cancellationToken);
+        await _customerDetailRepository.SaveChangesAsync(cancellationToken);
+
+        return result;
     }
 }
 

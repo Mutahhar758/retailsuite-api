@@ -59,6 +59,15 @@ public class CustomersController : VersionNeutralApiController
         var items = await _customerService.GetSupplyItemsAsync(customerId, itemId, cancellationToken);
         return items.ToInformationResponse();
     }
+
+    [HttpPost("bulk")]
+    [MustHavePermission(new[] { AppAction.Create, AppAction.Update }, AppResource.Customers)]
+    [OpenApiOperation("Bulk create and update customers.", "")]
+    public async Task<HttpResponseDto<BulkOperationResult>> BulkUpsertAsync(CustomerBulkUpsertRequest request, CancellationToken cancellationToken)
+    {
+        var response = await _customerService.BulkUpsertAsync(request, cancellationToken);
+        return response.ToInformationResponse($"Bulk operation completed: {response.CreatedCount} created, {response.UpdatedCount} updated.");
+    }
 }
 
 

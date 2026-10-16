@@ -77,4 +77,13 @@ public class InventoryController : VersionNeutralApiController
         await _inventoryService.DeleteItemAsync(id, cancellationToken);
         return "Inventory item deleted.".ToInformationResponse("Inventory item deleted.");
     }
+
+    [HttpPost("items/bulk")]
+    [MustHavePermission(new[] { AppAction.Create, AppAction.Update }, AppResource.InventoryItems)]
+    [OpenApiOperation("Bulk create and update inventory items.", "")]
+    public async Task<HttpResponseDto<BulkOperationResult>> BulkUpsertAsync(InventoryItemBulkUpsertRequest request, CancellationToken cancellationToken)
+    {
+        var response = await _inventoryService.BulkUpsertAsync(request, cancellationToken);
+        return response.ToInformationResponse($"Bulk operation completed: {response.CreatedCount} created, {response.UpdatedCount} updated.");
+    }
 }

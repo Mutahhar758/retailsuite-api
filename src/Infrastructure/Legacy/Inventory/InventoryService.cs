@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Retailer.Application.Common.Exceptions;
 using Retailer.Application.Common.Persistence;
 using Retailer.Application.Common.Interfaces;
+using Retailer.Application.Common.Models;
 using Retailer.Application.Legacy.Inventory;
 using Retailer.Domain.Common.Enums;
 using Retailer.Domain.Legacy;
@@ -424,5 +425,196 @@ internal class InventoryService : IInventoryService
                 }
             });
         await Task.WhenAll(tasks);
+    }
+
+    public async Task<BulkOperationResult> BulkUpsertAsync(InventoryItemBulkUpsertRequest request, CancellationToken cancellationToken)
+    {
+        var result = new BulkOperationResult();
+        if (request.Items == null || request.Items.Count == 0)
+        {
+            return result;
+        }
+
+        result.TotalProcessed = request.Items.Count;
+
+        var ids = await _itemRepository.GetAll()
+            .IgnoreQueryFilters([GlobalQueryFilterConstants.SoftDelete])
+            .AsNoTracking()
+            .Select(x => x.Id)
+            .ToListAsync(cancellationToken);
+
+        var currentMax = ids
+            .Select(ParseLongOrZero)
+            .DefaultIfEmpty(0)
+            .Max();
+
+        var updateCandidates = request.Items
+            .Select((item, idx) => new { Item = item, RowIndex = idx + 1 })
+            .Where(x => !string.IsNullOrWhiteSpace(x.Item.Id) && x.Item.Id != "0")
+            .ToList();
+
+        var updateIds = updateCandidates.Select(x => x.Item.Id!.Trim()).Distinct().ToList();
+
+        var existingItems = await _itemRepository.GetAll()
+            .Where(x => updateIds.Contains(x.Id))
+            .ToDictionaryAsync(x => x.Id, cancellationToken);
+
+        var newItemsToAdd = new List<ItemDetail>();
+        var itemsToUpdate = new List<ItemDetail>();
+        var openingStocksToCreate = new List<(string ItemId, string Unit, decimal Qty, decimal Rate)>();
+        var openingStocksToUpsert = new List<(string ItemId, string Unit, decimal Qty, decimal Rate)>();
+
+        for (int i = 0; i < request.Items.Count; i++)
+        {
+            var item = request.Items[i];
+            var rowIndex = i + 1;
+
+            if (string.IsNullOrWhiteSpace(item.ItemCategoryCode))
+            {
+                result.FailedCount++;
+                result.Errors.Add(new BulkItemError
+                {
+                    RowIndex = rowIndex,
+                    Identifier = item.Id ?? item.Barcode ?? $"Row #{rowIndex}",
+                    ErrorMessage = "Product category is required."
+                });
+                continue;
+            }
+
+            if (string.IsNullOrWhiteSpace(item.Title))
+            {
+                result.FailedCount++;
+                result.Errors.Add(new BulkItemError
+                {
+                    RowIndex = rowIndex,
+                    Identifier = item.Id ?? item.Barcode ?? $"Row #{rowIndex}",
+                    ErrorMessage = "Product title/name is required."
+                });
+                continue;
+            }
+
+            var isService = item.ItemType == ItemType.Service;
+            if (!isService && string.IsNullOrWhiteSpace(item.PrimaryUnit))
+            {
+                result.FailedCount++;
+                result.Errors.Add(new BulkItemError
+                {
+                    RowIndex = rowIndex,
+                    Identifier = item.Id ?? item.Barcode ?? $"Row #{rowIndex}",
+                    ErrorMessage = "Primary unit is required."
+                });
+                continue;
+            }
+
+            var normalizedId = (item.Id ?? string.Empty).Trim();
+            if (!string.IsNullOrWhiteSpace(normalizedId) && normalizedId != "0" && existingItems.TryGetValue(normalizedId, out var existing))
+            {
+                var isExistingService = existing.ItemType == ItemType.Service;
+                var opnStockChanged = existing.OpnStock != item.OpnStock || existing.OpnRate != item.OpnRate;
+
+                existing.ItemCategoryId = item.ItemCategoryCode;
+                existing.Title = item.Title;
+                existing.ItemKey = item.ItemKey;
+                existing.PriRate = item.PriRate;
+                existing.SecRate = item.SecRate;
+                existing.PrimaryUnitId = isExistingService ? null : item.PrimaryUnit;
+                existing.SecondaryUnitId = isExistingService ? null : (string.IsNullOrWhiteSpace(item.SecondaryUnit) ? item.PrimaryUnit : item.SecondaryUnit);
+                existing.DefaultUnitId = isExistingService ? null : (string.IsNullOrWhiteSpace(item.DefaultUnit)
+                    ? (string.IsNullOrWhiteSpace(item.SecondaryUnit) ? item.PrimaryUnit : item.SecondaryUnit)
+                    : item.DefaultUnit);
+                existing.QtyInPack = isExistingService ? null : item.QtyInPack;
+                existing.Alert = item.Alert;
+                existing.LowStockAlert = isExistingService ? null : item.LowStockAlert;
+                existing.OpnStock = isExistingService ? 0 : item.OpnStock;
+                existing.OpnRate = isExistingService ? 0 : item.OpnRate;
+                existing.QuickQtyPresets = item.QuickQtyPresets;
+                existing.RequireImei = item.RequireImei;
+                existing.BrandId = item.BrandId;
+                existing.ModelName = item.ModelName;
+                existing.Storage = item.Storage;
+                existing.Ram = item.Ram;
+                existing.Color = item.Color;
+
+                if (!string.IsNullOrWhiteSpace(item.Barcode))
+                {
+                    existing.Barcode = item.Barcode;
+                }
+
+                itemsToUpdate.Add(existing);
+
+                if (!isExistingService && opnStockChanged)
+                {
+                    openingStocksToUpsert.Add((existing.Id, existing.PrimaryUnitId ?? item.PrimaryUnit, existing.OpnStock ?? 0, existing.OpnRate ?? 0));
+                }
+
+                result.UpdatedCount++;
+            }
+            else
+            {
+                currentMax++;
+                var newId = currentMax.ToString("D6");
+                var isNewService = item.ItemType == ItemType.Service;
+
+                var newItem = new ItemDetail
+                {
+                    Id = newId,
+                    ItemType = item.ItemType ?? ItemType.Product,
+                    ItemCategoryId = item.ItemCategoryCode,
+                    Barcode = string.IsNullOrWhiteSpace(item.Barcode)
+                        ? BuildDefaultBarcode(item.ItemCategoryCode, newId)
+                        : item.Barcode,
+                    Title = item.Title,
+                    ItemKey = item.ItemKey,
+                    PriRate = item.PriRate,
+                    SecRate = item.SecRate,
+                    PrimaryUnitId = isNewService ? null : item.PrimaryUnit,
+                    SecondaryUnitId = isNewService ? null : (string.IsNullOrWhiteSpace(item.SecondaryUnit) ? item.PrimaryUnit : item.SecondaryUnit),
+                    DefaultUnitId = isNewService ? null : (string.IsNullOrWhiteSpace(item.DefaultUnit)
+                        ? (string.IsNullOrWhiteSpace(item.SecondaryUnit) ? item.PrimaryUnit : item.SecondaryUnit)
+                        : item.DefaultUnit),
+                    QtyInPack = isNewService ? null : item.QtyInPack,
+                    Alert = item.Alert,
+                    LowStockAlert = isNewService ? null : item.LowStockAlert,
+                    OpnStock = isNewService ? 0 : item.OpnStock,
+                    OpnRate = isNewService ? 0 : item.OpnRate,
+                    QuickQtyPresets = item.QuickQtyPresets,
+                    RequireImei = item.RequireImei,
+                    BrandId = item.BrandId,
+                    ModelName = item.ModelName,
+                    Storage = item.Storage,
+                    Ram = item.Ram,
+                    Color = item.Color
+                };
+
+                newItemsToAdd.Add(newItem);
+
+                if (!isNewService && item.OpnStock > 0)
+                {
+                    openingStocksToCreate.Add((newId, item.PrimaryUnit, item.OpnStock.Value, item.OpnRate ?? 0));
+                }
+
+                result.CreatedCount++;
+            }
+        }
+
+        if (newItemsToAdd.Count > 0)
+            await _itemRepository.AddRangeAsync(newItemsToAdd, doSaveChanges: false);
+
+        if (itemsToUpdate.Count > 0)
+            await _itemRepository.UpdateRangeAsync(itemsToUpdate, doSaveChanges: false);
+
+        await _itemRepository.SaveChangesAsync(cancellationToken);
+
+        foreach (var op in openingStocksToCreate)
+        {
+            await CreateOpeningStockTransactionAsync(op.ItemId, op.Unit, op.Qty, op.Rate, cancellationToken);
+        }
+
+        foreach (var op in openingStocksToUpsert)
+        {
+            await UpsertOpeningStockTransactionAsync(op.ItemId, op.Unit, op.Qty, op.Rate, cancellationToken);
+        }
+
+        return result;
     }
 }

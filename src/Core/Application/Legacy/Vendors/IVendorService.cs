@@ -9,4 +9,5 @@ public interface IVendorService : ITransientService
     Task<string> CreateAsync(VendorCreateRequest request, CancellationToken cancellationToken);
     Task UpdateAsync(string account, VendorUpdateRequest request, CancellationToken cancellationToken);
     Task<PresignedUploadUrlResponse?> GetPresignedUploadUrlAsync(string fileName, CancellationToken cancellationToken);
+    Task<BulkOperationResult> BulkUpsertAsync(VendorBulkUpsertRequest request, CancellationToken cancellationToken);
 }
