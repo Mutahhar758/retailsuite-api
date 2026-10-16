@@ -18,11 +18,27 @@ jobs:
     - name: Deploy to IIS
       shell: powershell
       run: |
-        # 1. Stop the App Pool to prevent file locking
-        Stop-WebAppPool -Name "Retailer"
-        # Give IIS time to gracefully shut down and release the file locks
-        Start-Sleep -Seconds 5
-        # 2. Copy files to the IIS directory
-        Copy-Item -Path "./publish/*" -Destination "D:\Websites\Retailer_API" -Recurse -Force
-        # 3. Start the App Pool back up
-        Start-WebAppPool -Name "Retailer"
+        try {
+          # 1. Stop the App Pool to release file locks
+          Stop-WebAppPool -Name "Retailer" -ErrorAction SilentlyContinue
+          $timeout = 15
+          while ((Get-WebAppPoolState -Name "Retailer").Value -ne 'Stopped' -and $timeout -gt 0) {
+            Start-Sleep -Seconds 1
+            $timeout--
+          }
+          # Ensure any lingering w3wp processes for Retailer are stopped
+          Get-CimInstance Win32_Process -Filter "Name = 'w3wp.exe'" -ErrorAction SilentlyContinue |
+            Where-Object { $_.CommandLine -like "*Retailer*" } |
+            ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+          Start-Sleep -Seconds 2
+
+          # 2. Copy published files using robocopy with retries
+          robocopy "./publish" "D:\Websites\Retailer_API" /E /R:5 /W:2 /NP /NFL /NDL
+          if ($LASTEXITCODE -ge 8) {
+            throw "Robocopy failed with exit code $LASTEXITCODE"
+          }
+        }
+        finally {
+          # 3. Always ensure the App Pool is started back up
+          Start-WebAppPool -Name "Retailer" -ErrorAction SilentlyContinue
+        }
