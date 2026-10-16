@@ -12,9 +12,9 @@ public class Sale : AuditableEntity, IAggregateRoot
     public decimal? QtyInPack { get; set; }
     public decimal? Packing { get; set; }
     public decimal Qty { get; set; }
-    public decimal? GrossRate { get; set; }
-    public decimal? Discount { get; set; }
-    public decimal? Carriage { get; set; }
+    public decimal GrossRate { get; set; }
+    public decimal Discount { get; set; }
+    public decimal Carriage { get; set; }
     public string? SecUnitId { get; set; }
     public decimal? SecQty { get; set; }
     public decimal? SecRate { get; set; }
@@ -25,7 +25,7 @@ public class Sale : AuditableEntity, IAggregateRoot
     public int? BatteryHealth { get; set; }
     public int? WarrantyMonths { get; set; }
     public DateOnly? WarrantyExpiryDate { get; set; }
-    public decimal? Amount { get; set; }
+    public decimal Amount { get; set; }
 
     public int? SaleMasterId { get; set; }
     public string? ItemId { get; set; }

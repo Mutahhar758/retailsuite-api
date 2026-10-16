@@ -101,11 +101,11 @@ internal class SaleSupplyService : ISaleSupplyService
                 CustomerTitle = d.CustomerAccount != null ? d.CustomerAccount.Title : d.CustomerAccountId,
                 Unit = d.UnitId,
                 Qty = d.Qty,
-                Rate = d.GrossRate ?? 0,
-                Discount = d.Discount ?? 0,
-                AddLess = d.AddLess ?? 0,
-                Carriage = d.Carriage ?? 0,
-                Amount = d.Amount ?? 0m,
+                Rate = d.GrossRate,
+                Discount = d.Discount,
+                AddLess = d.AddLess,
+                Carriage = d.Carriage,
+                Amount = d.Amount,
                 SecUnit = d.SecUnitId,
                 SecQty = d.SecQty,
                 SecRate = d.SecRate,
@@ -166,8 +166,8 @@ internal class SaleSupplyService : ISaleSupplyService
             var resolvedSecUnitId = !string.IsNullOrWhiteSpace(line.SecUnit) ? line.SecUnit : item?.SecondaryUnitId;
 
             var lineAmount = isWanda
-                ? ((line.Qty * line.Rate) - line.Discount) + line.Carriage + line.AddLess
-                : (((line.Qty * line.Rate) + ((line.SecQty ?? 0) * (line.SecRate ?? 0))) - line.Discount) + line.Carriage + line.AddLess;
+                ? ((line.Qty * line.Rate) - line.Discount) + (line.Carriage ?? 0) + line.AddLess
+                : (((line.Qty * line.Rate) + ((line.SecQty ?? 0) * (line.SecRate ?? 0))) - line.Discount) + (line.Carriage ?? 0) + line.AddLess;
 
             await _saleSupplyDetailRepository.AddAsync(new SaleSupplyDetail
             {
@@ -180,7 +180,7 @@ internal class SaleSupplyService : ISaleSupplyService
                 GrossRate = line.Rate,
                 Discount = line.Discount,
                 AddLess = line.AddLess,
-                Carriage = line.Carriage,
+                Carriage = line.Carriage ?? 0m,
                 Amount = lineAmount,
                 SecUnitId = resolvedSecUnitId,
                 SecQty = line.SecQty,
@@ -242,8 +242,8 @@ internal class SaleSupplyService : ISaleSupplyService
                     cancellationToken);
 
             var lineAmount = isWanda
-                ? ((line.Qty * line.Rate) - line.Discount) + line.Carriage + line.AddLess
-                : (((line.Qty * line.Rate) + ((line.SecQty ?? 0) * (line.SecRate ?? 0))) - line.Discount) + line.Carriage + line.AddLess;
+                ? ((line.Qty * line.Rate) - line.Discount) + (line.Carriage ?? 0) + line.AddLess
+                : (((line.Qty * line.Rate) + ((line.SecQty ?? 0) * (line.SecRate ?? 0))) - line.Discount) + (line.Carriage ?? 0) + line.AddLess;
 
             if (existing is null)
             {
@@ -258,7 +258,7 @@ internal class SaleSupplyService : ISaleSupplyService
                     GrossRate = line.Rate,
                     Discount = line.Discount,
                     AddLess = line.AddLess,
-                    Carriage = line.Carriage,
+                    Carriage = line.Carriage ?? 0m,
                     Amount = lineAmount,
                     SecUnitId = resolvedSecUnitId,
                     SecQty = line.SecQty,
@@ -277,7 +277,7 @@ internal class SaleSupplyService : ISaleSupplyService
                 existing.GrossRate = line.Rate;
                 existing.Discount = line.Discount;
                 existing.AddLess = line.AddLess;
-                existing.Carriage = line.Carriage;
+                existing.Carriage = line.Carriage ?? 0m;
                 existing.Amount = lineAmount;
                 existing.SecUnitId = resolvedSecUnitId;
                 existing.SecQty = line.SecQty;
@@ -339,9 +339,9 @@ internal class SaleSupplyService : ISaleSupplyService
             .GroupBy(x => 1)
             .Select(g => new
             {
-                Amount = g.Sum(x => (decimal?)((x.Qty * (x.GrossRate ?? 0)) + (isWanda ? 0 : ((x.SecQty ?? 0) * (x.SecRate ?? 0))))) ?? 0,
-                Discount = g.Sum(x => (decimal?)(x.Discount ?? 0)) ?? 0,
-                NetAmount = g.Sum(x => (decimal?)(x.Amount ?? 0)) ?? 0
+                Amount = g.Sum(x => (decimal?)((x.Qty * x.GrossRate) + (isWanda ? 0 : ((x.SecQty ?? 0) * (x.SecRate ?? 0))))) ?? 0,
+                Discount = g.Sum(x => (decimal?)x.Discount) ?? 0,
+                NetAmount = g.Sum(x => (decimal?)x.Amount) ?? 0
             })
             .FirstOrDefaultAsync(cancellationToken);
 
@@ -571,13 +571,11 @@ internal class SaleSupplyService : ISaleSupplyService
                 CustomerTitle = x.d.CustomerAccount != null ? x.d.CustomerAccount.Title : x.d.CustomerAccountId,
                 Unit = x.d.UnitId,
                 Qty = x.d.Qty,
-                Rate = x.d.GrossRate ?? 0,
-                Discount = x.d.Discount ?? 0,
-                AddLess = x.d.AddLess ?? 0,
-                Carriage = x.d.Carriage ?? 0,
-                Amount = x.d.Amount ?? (isWanda
-                    ? ((x.d.Qty * (x.d.GrossRate ?? 0)) - (x.d.Discount ?? 0)) + (x.d.Carriage ?? 0) + (x.d.AddLess ?? 0)
-                    : ((x.d.Qty * (x.d.GrossRate ?? 0)) - (x.d.Discount ?? 0)) + (x.d.Carriage ?? 0) + (x.d.AddLess ?? 0) + ((x.d.SecQty ?? 0) * (x.d.SecRate ?? 0))),
+                Rate = x.d.GrossRate,
+                Discount = x.d.Discount,
+                AddLess = x.d.AddLess,
+                Carriage = x.d.Carriage,
+                Amount = x.d.Amount,
                 SecUnit = x.d.SecUnitId,
                 SecQty = x.d.SecQty,
                 SecRate = x.d.SecRate,
@@ -618,7 +616,7 @@ internal class SaleSupplyService : ISaleSupplyService
         line.GrossRate = request.Rate;
         line.Discount = request.Discount;
         line.AddLess = request.AddLess;
-        line.Carriage = request.Carriage;
+        line.Carriage = request.Carriage ?? 0m;
         line.SecUnitId = resolvedSecUnitId;
         line.SecQty = request.SecQty;
         line.SecRate = request.SecRate;
@@ -635,9 +633,9 @@ internal class SaleSupplyService : ISaleSupplyService
             .Where(x => x.VType == VType && x.VNo == voucherNo)
             .ToListAsync(cancellationToken);
 
-        master.Amount = allDetails.Sum(x => (x.Qty * (x.GrossRate ?? 0)) + (isWanda ? 0 : ((x.SecQty ?? 0) * (x.SecRate ?? 0))));
-        master.Discount = allDetails.Sum(x => x.Discount ?? 0);
-        master.NetAmount = allDetails.Sum(x => ((x.Qty * (x.GrossRate ?? 0)) - (x.Discount ?? 0)) + (x.Carriage ?? 0) + (x.AddLess ?? 0) + (isWanda ? 0 : ((x.SecQty ?? 0) * (x.SecRate ?? 0))));
+        master.Amount = allDetails.Sum(x => (x.Qty * x.GrossRate) + (isWanda ? 0 : ((x.SecQty ?? 0) * (x.SecRate ?? 0))));
+        master.Discount = allDetails.Sum(x => x.Discount);
+        master.NetAmount = allDetails.Sum(x => ((x.Qty * x.GrossRate) - x.Discount) + x.Carriage + x.AddLess + (isWanda ? 0 : ((x.SecQty ?? 0) * (x.SecRate ?? 0))));
 
         await _saleSupplyMasterRepository.UpdateAsync(master, false);
 

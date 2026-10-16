@@ -115,10 +115,10 @@ internal class SaleService : ISaleService
                 ItemCategoryCode = i != null ? i.ItemCategoryId! : string.Empty,
                 Unit = d.UnitId,
                 Qty = d.Qty,
-                Rate = d.GrossRate ?? 0,
-                Discount = d.Discount ?? 0,
-                Carriage = d.Carriage ?? 0,
-                Amount = d.Amount ?? 0m,
+                Rate = d.GrossRate,
+                Discount = d.Discount,
+                Carriage = d.Carriage,
+                Amount = d.Amount,
                 SecUnit = d.SecUnitId,
                 SecQty = d.SecQty,
                 SecRate = d.SecRate,
@@ -197,8 +197,8 @@ internal class SaleService : ISaleService
             var resolvedSecUnitId = !string.IsNullOrWhiteSpace(line.SecUnit) ? line.SecUnit : item?.SecondaryUnitId;
 
             var lineAmount = isWanda
-                ? (line.Qty * line.Rate) - line.Discount + line.Carriage
-                : ((line.Qty * line.Rate) + ((line.SecQty ?? 0) * (line.SecRate ?? 0))) - line.Discount + line.Carriage;
+                ? (line.Qty * line.Rate) - line.Discount + (line.Carriage ?? 0)
+                : ((line.Qty * line.Rate) + ((line.SecQty ?? 0) * (line.SecRate ?? 0))) - line.Discount + (line.Carriage ?? 0);
 
             await _saleRepository.AddAsync(new Sale
             {
@@ -210,7 +210,7 @@ internal class SaleService : ISaleService
                 Qty = line.Qty,
                 GrossRate = line.Rate,
                 Discount = line.Discount,
-                Carriage = line.Carriage,
+                Carriage = line.Carriage ?? 0m,
                 Amount = lineAmount,
                 SecUnitId = resolvedSecUnitId,
                 SecQty = line.SecQty,
@@ -308,8 +308,8 @@ internal class SaleService : ISaleService
                     cancellationToken);
 
             var lineAmount = isWanda
-                ? (line.Qty * line.Rate) - line.Discount + line.Carriage
-                : ((line.Qty * line.Rate) + ((line.SecQty ?? 0) * (line.SecRate ?? 0))) - line.Discount + line.Carriage;
+                ? (line.Qty * line.Rate) - line.Discount + (line.Carriage ?? 0)
+                : ((line.Qty * line.Rate) + ((line.SecQty ?? 0) * (line.SecRate ?? 0))) - line.Discount + (line.Carriage ?? 0);
 
             if (existing is null)
             {
@@ -323,7 +323,7 @@ internal class SaleService : ISaleService
                     Qty = line.Qty,
                     GrossRate = line.Rate,
                     Discount = line.Discount,
-                    Carriage = line.Carriage,
+                    Carriage = line.Carriage ?? 0m,
                     Amount = lineAmount,
                     SecUnitId = resolvedSecUnitId,
                     SecQty = line.SecQty,
@@ -348,7 +348,7 @@ internal class SaleService : ISaleService
                 existing.Qty = line.Qty;
                 existing.GrossRate = line.Rate;
                 existing.Discount = line.Discount;
-                existing.Carriage = line.Carriage;
+                existing.Carriage = line.Carriage ?? 0m;
                 existing.Amount = lineAmount;
                 existing.SecUnitId = resolvedSecUnitId;
                 existing.SecQty = line.SecQty;
@@ -437,9 +437,9 @@ internal class SaleService : ISaleService
             .GroupBy(x => 1)
             .Select(g => new
             {
-                Amount = g.Sum(x => (decimal?)(isWanda ? (x.Qty * (x.GrossRate ?? 0)) : ((x.Qty * (x.GrossRate ?? 0)) + ((x.SecQty ?? 0) * (x.SecRate ?? 0))))) ?? 0,
-                Discount = g.Sum(x => (decimal?)(x.Discount ?? 0)) ?? 0,
-                NetAmount = g.Sum(x => (decimal?)(x.Amount ?? 0)) ?? 0
+                Amount = g.Sum(x => (decimal?)(isWanda ? (x.Qty * x.GrossRate) : ((x.Qty * x.GrossRate) + ((x.SecQty ?? 0) * (x.SecRate ?? 0))))) ?? 0,
+                Discount = g.Sum(x => (decimal?)x.Discount) ?? 0,
+                NetAmount = g.Sum(x => (decimal?)x.Amount) ?? 0
             })
             .FirstOrDefaultAsync(cancellationToken);
 

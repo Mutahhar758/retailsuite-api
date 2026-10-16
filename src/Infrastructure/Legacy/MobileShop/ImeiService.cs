@@ -85,7 +85,7 @@ internal class ImeiService : IImeiService
                 s.Imei,
                 SaleVNo = s.VNo,
                 SaleDate = m.VDate,
-                SaleRate = s.GrossRate ?? 0
+                SaleRate = s.GrossRate
             }
         ).ToDictionaryAsync(x => x.Imei!, cancellationToken);
 
@@ -185,7 +185,7 @@ internal class ImeiService : IImeiService
                 Date = m.VDate,
                 AccountId = m.AccountId!,
                 AccountTitle = a != null ? a.Title : m.AccountId,
-                Rate = s.GrossRate ?? 0,
+                Rate = s.GrossRate,
                 PtaStatus = s.PtaStatus,
                 ConditionNote = s.ConditionNote,
                 WarrantyMonths = s.WarrantyMonths,
