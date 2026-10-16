@@ -229,8 +229,11 @@ public class BarcodeDocument : IDocument
                         }
                     });
 
-                col.Item().AlignCenter().Text(barcode)
-                    .FontSize(5f)
+                string displayBarcode = barcode.Replace('-', '\u2011');
+                float barcodeFontSize = barcode.Length > 20 ? 3.5f : (barcode.Length > 14 ? 4.2f : 5f);
+
+                col.Item().AlignCenter().Text(displayBarcode)
+                    .FontSize(barcodeFontSize)
                     .FontColor(Colors.Grey.Darken2);
 
                 if (_request.IncludePrice)

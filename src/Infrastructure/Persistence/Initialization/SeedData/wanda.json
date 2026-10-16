@@ -3,132 +3,68 @@
   "subCategory": null,
   "name": "Wanda (Grain / Feed Merchant & Feed Milling)",
   "brands": [
-    { "id": "001", "title": "Supreme Feeds", "active": true },
-    { "id": "002", "title": "National Feeds", "active": true },
-    { "id": "003", "title": "Punjab Feeds", "active": true },
-    { "id": "004", "title": "Asia Feeds", "active": true },
-    { "id": "005", "title": "Al-Noor Wanda", "active": true },
-    { "id": "006", "title": "General / Local Milling", "active": true }
+    {
+      "id": "001",
+      "title": "Supreme Feeds",
+      "active": true
+    },
+    {
+      "id": "002",
+      "title": "National Feeds",
+      "active": true
+    },
+    {
+      "id": "003",
+      "title": "Punjab Feeds",
+      "active": true
+    },
+    {
+      "id": "004",
+      "title": "Asia Feeds",
+      "active": true
+    },
+    {
+      "id": "005",
+      "title": "Al-Noor Wanda",
+      "active": true
+    },
+    {
+      "id": "006",
+      "title": "General / Local Milling",
+      "active": true
+    }
   ],
   "categories": [
-    { "id": "001", "title": "Dairy Cattle Feed / Wanda", "itemType": "Feed", "active": true },
-    { "id": "002", "title": "Poultry Feed", "itemType": "Feed", "active": true },
-    { "id": "003", "title": "Grains & Oilseeds", "itemType": "Grain", "active": true },
-    { "id": "004", "title": "Oil Cakes (Khal)", "itemType": "Feed", "active": true },
-    { "id": "005", "title": "Supplements & Minerals", "itemType": "Supplement", "active": true }
-  ],
-  "products": [
     {
-      "id": "000001",
-      "title": "Super Milk Booster Wanda (50 Kg)",
-      "barcode": "8962001000015",
-      "categoryId": "001",
-      "brandId": "001",
-      "itemType": "Product",
-      "primaryUnitId": "002",
-      "secondaryUnitId": "007",
-      "defaultUnitId": "007",
-      "qtyInPack": 50,
-      "priRate": 85.00,
-      "secRate": 4250.00
+      "id": "001",
+      "title": "Dairy Cattle Feed / Wanda",
+      "itemType": "Feed",
+      "active": true
     },
     {
-      "id": "000002",
-      "title": "Al-Noor Special Dairy Feed (40 Kg)",
-      "barcode": "8962002000022",
-      "categoryId": "001",
-      "brandId": "005",
-      "itemType": "Product",
-      "primaryUnitId": "002",
-      "secondaryUnitId": "007",
-      "defaultUnitId": "007",
-      "qtyInPack": 40,
-      "priRate": 90.00,
-      "secRate": 3600.00
+      "id": "002",
+      "title": "Poultry Feed",
+      "itemType": "Feed",
+      "active": true
     },
     {
-      "id": "000003",
-      "title": "Khal Binola / Cottonseed Cake (50 Kg)",
-      "barcode": "8962003000039",
-      "categoryId": "004",
-      "brandId": "006",
-      "itemType": "Product",
-      "primaryUnitId": "002",
-      "secondaryUnitId": "007",
-      "defaultUnitId": "007",
-      "qtyInPack": 50,
-      "priRate": 95.00,
-      "secRate": 4750.00
+      "id": "003",
+      "title": "Grains & Oilseeds",
+      "itemType": "Grain",
+      "active": true
     },
     {
-      "id": "000004",
-      "title": "Khal Sarson / Mustard Oil Cake (50 Kg)",
-      "barcode": "8962004000046",
-      "categoryId": "004",
-      "brandId": "006",
-      "itemType": "Product",
-      "primaryUnitId": "002",
-      "secondaryUnitId": "007",
-      "defaultUnitId": "007",
-      "qtyInPack": 50,
-      "priRate": 80.00,
-      "secRate": 4000.00
+      "id": "004",
+      "title": "Oil Cakes (Khal)",
+      "itemType": "Feed",
+      "active": true
     },
     {
-      "id": "000005",
-      "title": "Makai / Crushed Maize (50 Kg)",
-      "barcode": "8962005000053",
-      "categoryId": "003",
-      "brandId": "006",
-      "itemType": "Product",
-      "primaryUnitId": "002",
-      "secondaryUnitId": "007",
-      "defaultUnitId": "007",
-      "qtyInPack": 50,
-      "priRate": 70.00,
-      "secRate": 3500.00
-    },
-    {
-      "id": "000006",
-      "title": "Wheat Straw / Chokar Gandum (35 Kg)",
-      "barcode": "8962006000060",
-      "categoryId": "003",
-      "brandId": "006",
-      "itemType": "Product",
-      "primaryUnitId": "002",
-      "secondaryUnitId": "007",
-      "defaultUnitId": "007",
-      "qtyInPack": 35,
-      "priRate": 65.00,
-      "secRate": 2275.00
-    },
-    {
-      "id": "000007",
-      "title": "Broiler Starter Feed No. 14 (50 Kg)",
-      "barcode": "8962007000077",
-      "categoryId": "002",
-      "brandId": "002",
-      "itemType": "Product",
-      "primaryUnitId": "002",
-      "secondaryUnitId": "007",
-      "defaultUnitId": "007",
-      "qtyInPack": 50,
-      "priRate": 140.00,
-      "secRate": 7000.00
-    },
-    {
-      "id": "000008",
-      "title": "Cal-Plus Mineral Mixture (10 Kg)",
-      "barcode": "8962008000084",
-      "categoryId": "005",
-      "brandId": "004",
-      "itemType": "Product",
-      "primaryUnitId": "002",
-      "secondaryUnitId": "004",
-      "defaultUnitId": "004",
-      "qtyInPack": 10,
-      "priRate": 250.00,
-      "secRate": 2500.00
+      "id": "005",
+      "title": "Supplements & Minerals",
+      "itemType": "Supplement",
+      "active": true
     }
-  ]
+  ],
+  "products": []
 }

@@ -3,24 +3,54 @@
   "subCategory": "milkshop",
   "name": "General Retail: Milk Shop / Dairy",
   "brands": [
-    { "id": "001", "title": "Pure Dairy (Own Farm)", "active": true },
-    { "id": "002", "title": "Nestle", "active": true },
-    { "id": "003", "title": "Olper's", "active": true },
-    { "id": "004", "title": "Nurpur", "active": true },
-    { "id": "005", "title": "Prema", "active": true }
+    {
+      "id": "001",
+      "title": "Dairy",
+      "active": true
+    }
   ],
   "categories": [
-    { "id": "001", "title": "Fresh Milk & Yogurt", "itemType": "Dairy", "active": true },
-    { "id": "002", "title": "Desi Ghee & White Butter", "itemType": "Dairy", "active": true },
-    { "id": "003", "title": "Khoya, Cream & Paneer", "itemType": "Dairy", "active": true },
-    { "id": "004", "title": "Eggs", "itemType": "Poultry", "active": true },
-    { "id": "005", "title": "Bakery Rusk & Breads", "itemType": "Bakery", "active": true },
-    { "id": "006", "title": "Cold Drinks & Juices", "itemType": "Drinks", "active": true }
+    {
+      "id": "001",
+      "title": "Fresh Milk & Yogurt",
+      "itemType": "Dairy",
+      "active": true
+    },
+    {
+      "id": "002",
+      "title": "Desi Ghee & White Butter",
+      "itemType": "Dairy",
+      "active": true
+    },
+    {
+      "id": "003",
+      "title": "Khoya, Cream & Paneer",
+      "itemType": "Dairy",
+      "active": true
+    },
+    {
+      "id": "004",
+      "title": "Eggs",
+      "itemType": "Poultry",
+      "active": true
+    },
+    {
+      "id": "005",
+      "title": "Bakery Rusk & Breads",
+      "itemType": "Bakery",
+      "active": true
+    },
+    {
+      "id": "006",
+      "title": "Cold Drinks & Juices",
+      "itemType": "Drinks",
+      "active": true
+    }
   ],
   "products": [
     {
       "id": "000001",
-      "title": "Fresh Buffalo Milk (Khara Doodh)",
+      "title": "Milk",
       "barcode": "DRY-MLK-001",
       "categoryId": "001",
       "brandId": "001",
@@ -33,7 +63,7 @@
     },
     {
       "id": "000002",
-      "title": "Fresh Cow Milk",
+      "title": "Cow Milk",
       "barcode": "DRY-COW-002",
       "categoryId": "001",
       "brandId": "001",
@@ -46,7 +76,7 @@
     },
     {
       "id": "000003",
-      "title": "Sweet Yogurt / Meetha Dahi (1 Kg)",
+      "title": "Yogurt / Meetha Dahi",
       "barcode": "DRY-YGT-003",
       "categoryId": "001",
       "brandId": "001",
@@ -55,71 +85,6 @@
       "secondaryUnitId": null,
       "defaultUnitId": "002",
       "priRate": 260.00,
-      "secRate": 0
-    },
-    {
-      "id": "000004",
-      "title": "Pure Desi Ghee (1 Kg)",
-      "barcode": "DRY-GHE-004",
-      "categoryId": "002",
-      "brandId": "001",
-      "itemType": "Product",
-      "primaryUnitId": "002",
-      "secondaryUnitId": null,
-      "defaultUnitId": "002",
-      "priRate": 2800.00,
-      "secRate": 0
-    },
-    {
-      "id": "000005",
-      "title": "Fresh White Butter / Makhan (1 Kg)",
-      "barcode": "DRY-BTR-005",
-      "categoryId": "002",
-      "brandId": "001",
-      "itemType": "Product",
-      "primaryUnitId": "002",
-      "secondaryUnitId": null,
-      "defaultUnitId": "002",
-      "priRate": 1800.00,
-      "secRate": 0
-    },
-    {
-      "id": "000006",
-      "title": "Fresh Khoya / Mawa (1 Kg)",
-      "barcode": "DRY-KHY-006",
-      "categoryId": "003",
-      "brandId": "001",
-      "itemType": "Product",
-      "primaryUnitId": "002",
-      "secondaryUnitId": null,
-      "defaultUnitId": "002",
-      "priRate": 1400.00,
-      "secRate": 0
-    },
-    {
-      "id": "000007",
-      "title": "Farm Fresh Eggs (Dozen)",
-      "barcode": "DRY-EGG-007",
-      "categoryId": "004",
-      "brandId": "001",
-      "itemType": "Product",
-      "primaryUnitId": "006",
-      "secondaryUnitId": null,
-      "defaultUnitId": "006",
-      "priRate": 360.00,
-      "secRate": 0
-    },
-    {
-      "id": "000008",
-      "title": "Nestle MilkPak (1 Litre Pouch)",
-      "barcode": "8964000300018",
-      "categoryId": "001",
-      "brandId": "002",
-      "itemType": "Product",
-      "primaryUnitId": "004",
-      "secondaryUnitId": null,
-      "defaultUnitId": "004",
-      "priRate": 290.00,
       "secRate": 0
     }
   ]
