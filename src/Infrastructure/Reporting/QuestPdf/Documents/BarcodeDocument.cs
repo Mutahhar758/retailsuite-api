@@ -229,12 +229,17 @@ public class BarcodeDocument : IDocument
                         }
                     });
 
-                string displayBarcode = barcode.Replace('-', '\u2011');
-                float barcodeFontSize = barcode.Length > 20 ? 3.5f : (barcode.Length > 14 ? 4.2f : 5f);
+                float barcodeFontSize = maxLabelWidthMm <= 32f
+                    ? (barcode.Length > 22 ? 2.8f : (barcode.Length > 18 ? 3.2f : (barcode.Length > 12 ? 3.8f : 4.8f)))
+                    : (barcode.Length > 22 ? 3.5f : (barcode.Length > 18 ? 4.0f : (barcode.Length > 12 ? 4.8f : 5.5f)));
 
-                col.Item().AlignCenter().Text(displayBarcode)
-                    .FontSize(barcodeFontSize)
-                    .FontColor(Colors.Grey.Darken2);
+                col.Item().AlignCenter().Text(text =>
+                {
+                    text.ClampLines(1);
+                    text.Span(barcode)
+                        .FontSize(barcodeFontSize)
+                        .FontColor(Colors.Grey.Darken2);
+                });
 
                 if (_request.IncludePrice)
                 {
