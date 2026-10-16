@@ -19,12 +19,11 @@ jobs:
       shell: powershell
       run: |
         try {
-          # 1. Stop the App Pool to release file locks
-          Stop-WebAppPool -Name "Retailer" -ErrorAction SilentlyContinue
-          $timeout = 15
-          while ((Get-WebAppPoolState -Name "Retailer").Value -ne 'Stopped' -and $timeout -gt 0) {
-            Start-Sleep -Seconds 1
-            $timeout--
+          # 1. Stop the App Pool only if currently started
+          $state = (Get-WebAppPoolState -Name "Retailer" -ErrorAction SilentlyContinue).Value
+          if ($state -eq 'Started') {
+            Stop-WebAppPool -Name "Retailer" -ErrorAction SilentlyContinue
+            Start-Sleep -Seconds 5
           }
           # Ensure any lingering w3wp processes for Retailer are stopped
           Get-CimInstance Win32_Process -Filter "Name = 'w3wp.exe'" -ErrorAction SilentlyContinue |
@@ -40,5 +39,8 @@ jobs:
         }
         finally {
           # 3. Always ensure the App Pool is started back up
-          Start-WebAppPool -Name "Retailer" -ErrorAction SilentlyContinue
+          $finalState = (Get-WebAppPoolState -Name "Retailer" -ErrorAction SilentlyContinue).Value
+          if ($finalState -ne 'Started') {
+            Start-WebAppPool -Name "Retailer" -ErrorAction SilentlyContinue
+          }
         }
