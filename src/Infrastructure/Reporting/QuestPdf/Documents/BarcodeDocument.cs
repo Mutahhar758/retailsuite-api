@@ -74,9 +74,9 @@ public class BarcodeDocument : IDocument
 
             container.Page(page =>
             {
-                page.Size(101.6f, 25.4f, Unit.Millimetre);
-                page.MarginVertical(0.8f, Unit.Millimetre);
-                page.MarginHorizontal(1.5f, Unit.Millimetre);
+                page.Size(100f, 22.86f, Unit.Millimetre);
+                page.MarginVertical(0.4f, Unit.Millimetre);
+                page.MarginHorizontal(1.0f, Unit.Millimetre);
                 page.PageColor(Colors.White);
 
                 page.Content().Row(row =>
