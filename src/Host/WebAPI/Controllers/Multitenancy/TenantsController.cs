@@ -68,4 +68,13 @@ public class TenantsController : BaseApiController
         await _tenantService.DeactivateAsync(id, cancellationToken);
         return Ok(HttpResponseExtension.InformationResponse("Tenant deactivated successfully."));
     }
+
+    [HttpPost("{id}/invite")]
+    [OpenApiOperation("Send onboarding invitation email to tenant admin.", "Requires Admin role.")]
+    [Authorize(Roles = AppRoles.Admin)]
+    public async Task<IActionResult> InviteAsync(string id, InviteTenantRequest request, CancellationToken cancellationToken)
+    {
+        await _tenantService.InviteTenantAsync(id, request, cancellationToken);
+        return Ok(HttpResponseExtension.InformationResponse($"Invitation email sent successfully to {request.RecipientEmail ?? "tenant admin"}."));
+    }
 }
