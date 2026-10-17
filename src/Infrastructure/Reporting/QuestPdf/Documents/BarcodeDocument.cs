@@ -178,7 +178,9 @@ public class BarcodeDocument : IDocument
         float titleFontSize,
         float priceFontSize)
     {
-        string barcode = !string.IsNullOrWhiteSpace(item.Barcode) ? item.Barcode : "000000";
+        string barcode = !string.IsNullOrWhiteSpace(item.Barcode)
+            ? item.Barcode.Replace("\r", string.Empty).Replace("\n", string.Empty).Trim()
+            : "000000";
         var slices = BarcodeGenerator.GenerateSlices(barcode, quietZone: 3);
 
         string company = _companyName;

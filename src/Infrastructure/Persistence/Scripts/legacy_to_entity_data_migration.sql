@@ -208,7 +208,7 @@ BEGIN TRY
     SELECT
         src.ID,
         src.ItemType,
-        src.Barcode,
+        LTRIM(RTRIM(REPLACE(REPLACE(src.Barcode, CHAR(13), ''), CHAR(10), ''))),
         src.Title,
         src.ItemKey,
         src.PriRate,

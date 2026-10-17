@@ -252,8 +252,8 @@ public class IndustryCatalogSeeder : ICustomSeeder
             }
 
             string barcode = !string.IsNullOrWhiteSpace(p.Barcode)
-                ? p.Barcode
-                : (int.TryParse(p.CategoryId, out var catNum) ? catNum.ToString() : (p.CategoryId ?? "001")) + p.Id + "\r\n";
+                ? p.Barcode.Trim()
+                : (int.TryParse(p.CategoryId, out var catNum) ? catNum.ToString() : (p.CategoryId ?? "001")) + p.Id;
 
             return new ItemDetail
             {

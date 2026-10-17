@@ -45,7 +45,7 @@ internal class InventoryService : IInventoryService
             .Select(x => new InventoryItemLookupResponse
             {
                 Id = x.Id,
-                Barcode = x.Barcode,
+                Barcode = x.Barcode != null ? x.Barcode.Trim() : null,
                 ItemCategoryCode = x.ItemCategoryId,
                 Title = x.Title,
                 ItemKey = x.ItemKey,
@@ -142,7 +142,7 @@ internal class InventoryService : IInventoryService
         var response = new InventoryItemResponse
         {
             Id = item.Id,
-            Barcode = item.Barcode,
+            Barcode = item.Barcode != null ? item.Barcode.Trim() : null,
             ItemCategoryCode = item.ItemCategoryId,
             ItemCategoryTitle = item.ItemCategory?.Title,
             Title = item.Title,
@@ -205,7 +205,7 @@ internal class InventoryService : IInventoryService
                 ItemCategoryId = request.ItemCategoryCode,
                 Barcode = string.IsNullOrWhiteSpace(request.Barcode)
                     ? BuildDefaultBarcode(request.ItemCategoryCode, newId)
-                    : request.Barcode,
+                    : request.Barcode.Replace("\r", string.Empty).Replace("\n", string.Empty).Trim(),
                 Title = request.Title,
                 ItemKey = request.ItemKey,
                 PriRate = request.PriRate,
@@ -249,6 +249,10 @@ internal class InventoryService : IInventoryService
         var opnStockChanged = existing.OpnStock != request.OpnStock || existing.OpnRate != request.OpnRate;
 
         existing.ItemCategoryId = request.ItemCategoryCode;
+        if (!string.IsNullOrWhiteSpace(request.Barcode))
+        {
+            existing.Barcode = request.Barcode.Replace("\r", string.Empty).Replace("\n", string.Empty).Trim();
+        }
         existing.Title = request.Title;
         existing.ItemKey = request.ItemKey;
         existing.PriRate = request.PriRate;
@@ -318,8 +322,8 @@ internal class InventoryService : IInventoryService
     private static string BuildDefaultBarcode(string itemCategoryCode, string id)
     {
         return int.TryParse(itemCategoryCode, out var category)
-            ? category + id + "\r\n"
-            : itemCategoryCode + id + "\r\n";
+            ? $"{category}{id}"
+            : $"{itemCategoryCode}{id}";
     }
 
     private async Task CreateOpeningStockTransactionAsync(string itemId, string unit, decimal qty, decimal rate, CancellationToken cancellationToken)
@@ -549,7 +553,7 @@ internal class InventoryService : IInventoryService
 
                 if (!string.IsNullOrWhiteSpace(item.Barcode))
                 {
-                    existing.Barcode = item.Barcode;
+                    existing.Barcode = item.Barcode.Replace("\r", string.Empty).Replace("\n", string.Empty).Trim();
                 }
 
                 itemsToUpdate.Add(existing);
@@ -574,7 +578,7 @@ internal class InventoryService : IInventoryService
                     ItemCategoryId = item.ItemCategoryCode,
                     Barcode = string.IsNullOrWhiteSpace(item.Barcode)
                         ? BuildDefaultBarcode(item.ItemCategoryCode, newId)
-                        : item.Barcode,
+                        : item.Barcode.Replace("\r", string.Empty).Replace("\n", string.Empty).Trim(),
                     Title = item.Title,
                     ItemKey = item.ItemKey,
                     PriRate = item.PriRate,
