@@ -11,4 +11,5 @@ public interface IKotService : ITransientService
     Task UpdateItemStatusAsync(int orderId, int itemId, string status, CancellationToken cancellationToken);
     Task UpdateOrderStatusAsync(int orderId, string status, CancellationToken cancellationToken);
     Task FinalizePaymentAsync(int orderId, string saleVoucherNo, CancellationToken cancellationToken);
+    Task<KotOrderResponse> AppendLinesAsync(int orderId, List<KotOrderItemRequest> newLines, CancellationToken cancellationToken);
 }

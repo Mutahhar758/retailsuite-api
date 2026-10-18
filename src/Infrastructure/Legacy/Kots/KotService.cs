@@ -32,7 +32,8 @@ internal class KotService : IKotService
 
     public async Task<KotOrderResponse> CreateAsync(KotOrderCreateRequest request, CancellationToken cancellationToken)
     {
-        var today = DateOnly.FromDateTime(DateTime.Today);
+        var nowPkt = DateTime.UtcNow.AddHours(5);
+        var today = DateOnly.FromDateTime(nowPkt);
         
         // 1. Generate sequential token number for today
         var maxTokenNo = await _kotOrderRepository.GetAll()
@@ -49,7 +50,7 @@ internal class KotService : IKotService
         {
             TokenNo = tokenNo,
             OrderDate = today,
-            OrderTime = TimeOnly.FromDateTime(DateTime.Now),
+            OrderTime = TimeOnly.FromDateTime(nowPkt),
             OrderType = request.OrderType,
             TableId = request.TableId,
             CustomerId = request.CustomerId,
@@ -339,6 +340,39 @@ internal class KotService : IKotService
         }
 
         await _kotOrderRepository.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<KotOrderResponse> AppendLinesAsync(int orderId, List<KotOrderItemRequest> newLines, CancellationToken cancellationToken)
+    {
+        var order = await _kotOrderRepository.GetByIdAsync(orderId, cancellationToken);
+        if (order == null)
+            throw new NotFoundException($"KOT Order with ID '{orderId}' not found.");
+
+        foreach (var line in newLines)
+        {
+            await _kotOrderItemRepository.AddAsync(new KotOrderItem
+            {
+                KotOrderId = orderId,
+                ItemId = line.ItemId,
+                Qty = line.Qty,
+                Rate = line.Rate,
+                Notes = line.Notes,
+                Status = "Pending"
+            }, false);
+
+            order.TotalAmount += (line.Qty * line.Rate);
+        }
+
+        // If order was already Ready or Served, bring it back to Preparing because new items need cooking
+        if (order.Status == "Ready" || order.Status == "Served")
+        {
+            order.Status = "Preparing";
+        }
+
+        await _kotOrderRepository.UpdateAsync(order, false);
+        await _kotOrderRepository.SaveChangesAsync(cancellationToken);
+
+        return (await GetResponseByIdAsync(orderId, cancellationToken))!;
     }
 
     private async Task<KotOrderResponse> GetResponseByIdAsync(int id, CancellationToken cancellationToken)

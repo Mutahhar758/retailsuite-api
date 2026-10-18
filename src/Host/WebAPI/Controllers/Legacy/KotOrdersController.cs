@@ -68,4 +68,13 @@ public class KotOrdersController : VersionNeutralApiController
         await _kotService.FinalizePaymentAsync(id, saleVoucherNo, cancellationToken);
         return "Order finalized and paid.".ToInformationResponse("Order finalized and paid.");
     }
+
+    [HttpPost("{id}/items")]
+    [MustHavePermission(AppAction.Update, AppResource.KotOrders)]
+    [OpenApiOperation("Append additional items to an active KOT order.", "")]
+    public async Task<HttpResponseDto<KotOrderResponse>> AppendLinesAsync(int id, [FromBody] List<KotOrderItemRequest> newLines, CancellationToken cancellationToken)
+    {
+        var result = await _kotService.AppendLinesAsync(id, newLines, cancellationToken);
+        return result.ToInformationResponse("Additional items added to KOT order.");
+    }
 }
