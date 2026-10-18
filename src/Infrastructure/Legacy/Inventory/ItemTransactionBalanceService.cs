@@ -89,11 +89,12 @@ public class ItemTransactionBalanceService : IItemTransactionBalanceService
             if (hasSubsequent || voucherDate < DateOnly.FromDateTime(DateTime.Today))
             {
                 _logger.LogInformation(
-                    "Backdated transaction detected for Item {ItemId} at {VoucherDate}. Enqueuing FIFO and running balance rebuild.",
+                    "Backdated transaction detected for Item {ItemId} at {VoucherDate}. Scheduling FIFO and running balance rebuild.",
                     itemId, voucherDate);
 
-                BackgroundJob.Enqueue<IFifoCostingService>(x =>
-                    x.RebuildItemFifoAsync(tenantId, itemId, voucherDate, CancellationToken.None));
+                BackgroundJob.Schedule<IFifoCostingService>(x =>
+                    x.RebuildItemFifoAsync(tenantId, itemId, voucherDate, CancellationToken.None),
+                    TimeSpan.FromSeconds(5));
             }
         }
     }

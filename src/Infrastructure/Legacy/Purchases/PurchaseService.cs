@@ -225,8 +225,9 @@ internal class PurchaseService : IPurchaseService
 
         foreach (var line in request.Lines.Where(l => !string.IsNullOrWhiteSpace(l.ItemId)).DistinctBy(l => l.ItemId))
         {
-            BackgroundJob.Enqueue<IFifoCostingService>(x =>
-                x.RebuildItemFifoAsync(_currentTenant.Id, line.ItemId, request.Date, CancellationToken.None));
+            BackgroundJob.Schedule<IFifoCostingService>(x =>
+                x.RebuildItemFifoAsync(_currentTenant.Id, line.ItemId, request.Date, CancellationToken.None),
+                TimeSpan.FromSeconds(5));
         }
 
         return voucherNo;
@@ -353,8 +354,9 @@ internal class PurchaseService : IPurchaseService
 
         foreach (var affectedItemId in affectedItemIds)
         {
-            BackgroundJob.Enqueue<IFifoCostingService>(x =>
-                x.RebuildItemFifoAsync(_currentTenant.Id, affectedItemId!, earliestDate, CancellationToken.None));
+            BackgroundJob.Schedule<IFifoCostingService>(x =>
+                x.RebuildItemFifoAsync(_currentTenant.Id, affectedItemId!, earliestDate, CancellationToken.None),
+                TimeSpan.FromSeconds(5));
         }
     }
 
@@ -388,8 +390,9 @@ internal class PurchaseService : IPurchaseService
 
         foreach (var affectedItemId in affectedItemIds)
         {
-            BackgroundJob.Enqueue<IFifoCostingService>(x =>
-                x.RebuildItemFifoAsync(_currentTenant.Id, affectedItemId!, oldDate, CancellationToken.None));
+            BackgroundJob.Schedule<IFifoCostingService>(x =>
+                x.RebuildItemFifoAsync(_currentTenant.Id, affectedItemId!, oldDate, CancellationToken.None),
+                TimeSpan.FromSeconds(5));
         }
     }
 
@@ -439,8 +442,9 @@ internal class PurchaseService : IPurchaseService
 
         if (!string.IsNullOrEmpty(affectedItemId))
         {
-            BackgroundJob.Enqueue<IFifoCostingService>(x =>
-                x.RebuildItemFifoAsync(_currentTenant.Id, affectedItemId, affectedDate, CancellationToken.None));
+            BackgroundJob.Schedule<IFifoCostingService>(x =>
+                x.RebuildItemFifoAsync(_currentTenant.Id, affectedItemId, affectedDate, CancellationToken.None),
+                TimeSpan.FromSeconds(5));
         }
     }
 

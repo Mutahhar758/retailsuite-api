@@ -377,8 +377,9 @@ internal class SaleService : ISaleService
 
         foreach (var affectedItemId in affectedItemIds)
         {
-            BackgroundJob.Enqueue<IFifoCostingService>(x =>
-                x.RebuildItemFifoAsync(_currentTenant.Id, affectedItemId!, earliestDate, CancellationToken.None));
+            BackgroundJob.Schedule<IFifoCostingService>(x =>
+                x.RebuildItemFifoAsync(_currentTenant.Id, affectedItemId!, earliestDate, CancellationToken.None),
+                TimeSpan.FromSeconds(5));
         }
     }
 
@@ -412,8 +413,9 @@ internal class SaleService : ISaleService
 
         foreach (var affectedItemId in affectedItemIds)
         {
-            BackgroundJob.Enqueue<IFifoCostingService>(x =>
-                x.RebuildItemFifoAsync(_currentTenant.Id, affectedItemId!, oldDate, CancellationToken.None));
+            BackgroundJob.Schedule<IFifoCostingService>(x =>
+                x.RebuildItemFifoAsync(_currentTenant.Id, affectedItemId!, oldDate, CancellationToken.None),
+                TimeSpan.FromSeconds(5));
         }
     }
 
@@ -477,8 +479,9 @@ internal class SaleService : ISaleService
 
         if (!string.IsNullOrEmpty(affectedItemId))
         {
-            BackgroundJob.Enqueue<IFifoCostingService>(x =>
-                x.RebuildItemFifoAsync(_currentTenant.Id, affectedItemId, affectedDate, CancellationToken.None));
+            BackgroundJob.Schedule<IFifoCostingService>(x =>
+                x.RebuildItemFifoAsync(_currentTenant.Id, affectedItemId, affectedDate, CancellationToken.None),
+                TimeSpan.FromSeconds(5));
         }
     }
 

@@ -230,16 +230,16 @@ internal class SaleSupplyService : ISaleSupplyService
             ? await _itemRepository.GetAll().AsNoTracking().FirstOrDefaultAsync(x => x.Id == request.ItemId, cancellationToken)
             : null;
 
+        var existingDetailMap = await _saleSupplyDetailRepository.GetAll()
+            .Where(x => x.VType == VType && x.VNo == voucherNo)
+            .ToDictionaryAsync(x => x.Seq, cancellationToken);
+
         foreach (var line in request.Lines)
         {
             var resolvedUnitId = item?.DefaultUnitId ?? item?.PrimaryUnitId;
             var resolvedSecUnitId = !string.IsNullOrWhiteSpace(line.SecUnit) ? line.SecUnit : item?.SecondaryUnitId;
 
-            var existing = await _saleSupplyDetailRepository.GetAll()
-                .IgnoreQueryFilters([GlobalQueryFilterConstants.SoftDelete])
-                .FirstOrDefaultAsync(
-                    x => x.VType == VType && x.VNo == voucherNo && x.Seq == line.Seq,
-                    cancellationToken);
+            existingDetailMap.TryGetValue(line.Seq, out var existing);
 
             var lineAmount = isWanda
                 ? ((line.Qty * line.Rate) - line.Discount) + (line.Carriage ?? 0) + line.AddLess
@@ -269,8 +269,6 @@ internal class SaleSupplyService : ISaleSupplyService
             }
             else
             {
-                existing.DeletedOn = null;
-                existing.DeletedBy = null;
                 existing.CustomerAccountId = line.CustomerId;
                 existing.UnitId = resolvedUnitId;
                 existing.Qty = line.Qty;
@@ -290,9 +288,7 @@ internal class SaleSupplyService : ISaleSupplyService
         }
 
         var lineSeqSet = request.Lines.Select(x => x.Seq).ToHashSet();
-        var staleDetails = await _saleSupplyDetailRepository.GetAll()
-            .Where(x => x.VType == VType && x.VNo == voucherNo && !lineSeqSet.Contains(x.Seq))
-            .ToListAsync(cancellationToken);
+        var staleDetails = existingDetailMap.Values.Where(x => !lineSeqSet.Contains(x.Seq)).ToList();
 
         if (staleDetails.Count > 0)
             await _saleSupplyDetailRepository.DeleteRangeAsync(staleDetails, false);
@@ -391,14 +387,14 @@ internal class SaleSupplyService : ISaleSupplyService
             throw new NotFoundException("Default sale supply account is not configured.");
 
         var isWanda = _currentTenant.HasVariablePackFeature;
+        var existingGlMap = await _glRepository.GetAll()
+            .Where(x => x.VType == VType && x.VoucherNo == voucherNo)
+            .ToDictionaryAsync(x => x.VSeq, cancellationToken);
+
         foreach (var line in lines)
         {
             var amount = ((line.Qty * line.Rate) - line.Discount) + (line.Carriage ?? 0) + line.AddLess + (isWanda ? 0 : ((line.SecQty ?? 0) * (line.SecRate ?? 0)));
-            var gl = await _glRepository.GetAll()
-                .IgnoreQueryFilters([GlobalQueryFilterConstants.SoftDelete])
-                .FirstOrDefaultAsync(
-                    x => x.VType == VType && x.VoucherNo == voucherNo && x.VSeq == line.Seq,
-                    cancellationToken);
+            existingGlMap.TryGetValue(line.Seq, out var gl);
 
             if (amount <= 0)
             {
@@ -427,8 +423,6 @@ internal class SaleSupplyService : ISaleSupplyService
             }
             else
             {
-                gl.DeletedOn = null;
-                gl.DeletedBy = null;
                 gl.VDate = date;
                 gl.VTime = TimeOnly.FromDateTime(DateTime.Now);
                 gl.DrAccountId = line.CustomerId;
@@ -442,9 +436,7 @@ internal class SaleSupplyService : ISaleSupplyService
         }
 
         var lineSeqSet = lines.Select(x => x.Seq).ToHashSet();
-        var staleEntries = await _glRepository.GetAll()
-            .Where(x => x.VType == VType && x.VoucherNo == voucherNo && !lineSeqSet.Contains(x.VSeq))
-            .ToListAsync(cancellationToken);
+        var staleEntries = existingGlMap.Values.Where(x => !lineSeqSet.Contains(x.VSeq)).ToList();
 
         if (staleEntries.Count > 0)
             await _glRepository.DeleteRangeAsync(staleEntries, false);
@@ -463,6 +455,10 @@ internal class SaleSupplyService : ISaleSupplyService
         var resolvedDefaultSecUnitId = item?.SecondaryUnitId;
 
         var isWanda = _currentTenant.HasVariablePackFeature;
+        var existingTxMap = await _itemTransactionRepository.GetAll()
+            .Where(x => x.VType == VType && x.VNo == voucherNo)
+            .ToDictionaryAsync(x => x.Seq, cancellationToken);
+
         var txsToProcess = new List<ItemTransaction>();
         foreach (var line in lines)
         {
@@ -470,9 +466,7 @@ internal class SaleSupplyService : ISaleSupplyService
             var resolvedSecUnitId = !string.IsNullOrWhiteSpace(line.SecUnit) ? line.SecUnit : resolvedDefaultSecUnitId;
 
             var amount = ((line.Qty * line.Rate) - line.Discount) + line.AddLess + (isWanda ? 0 : ((line.SecQty ?? 0) * (line.SecRate ?? 0)));
-            var tx = await _itemTransactionRepository.GetAll()
-                .IgnoreQueryFilters([GlobalQueryFilterConstants.SoftDelete])
-                .FirstOrDefaultAsync(x => x.VType == VType && x.VNo == voucherNo && x.Seq == line.Seq, cancellationToken);
+            existingTxMap.TryGetValue(line.Seq, out var tx);
 
             if (tx is null)
             {
@@ -501,8 +495,6 @@ internal class SaleSupplyService : ISaleSupplyService
             }
             else
             {
-                tx.DeletedOn = null;
-                tx.DeletedBy = null;
                 tx.VDate = date;
                 tx.VTime = TimeOnly.FromDateTime(DateTime.Now);
                 tx.TranType = "out";
@@ -526,9 +518,7 @@ internal class SaleSupplyService : ISaleSupplyService
         }
 
         var lineSeqSet = lines.Select(x => x.Seq).ToHashSet();
-        var staleEntries = await _itemTransactionRepository.GetAll()
-            .Where(x => x.VType == VType && x.VNo == voucherNo && !lineSeqSet.Contains(x.Seq))
-            .ToListAsync(cancellationToken);
+        var staleEntries = existingTxMap.Values.Where(x => !lineSeqSet.Contains(x.Seq)).ToList();
 
         if (staleEntries.Count > 0)
             await _itemTransactionRepository.DeleteRangeAsync(staleEntries, false);
