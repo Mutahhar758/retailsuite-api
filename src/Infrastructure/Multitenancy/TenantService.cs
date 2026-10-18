@@ -220,17 +220,17 @@ internal class TenantService : ITenantService
     {
         var tenant = await _tenantDbContext.TenantInfo
             .FirstOrDefaultAsync(t => t.LicenseKey == licenseKey, cancellationToken);
- 
+
         if (tenant == null)
         {
             throw new NotFoundException("Invalid license key.");
         }
- 
+
         if (!tenant.IsActive)
         {
             throw new ConflictException("Tenant is inactive.");
         }
- 
+
         return tenant.Adapt<TenantDto>();
     }
 
@@ -258,7 +258,7 @@ internal class TenantService : ITenantService
 
         string webUrl = !string.IsNullOrWhiteSpace(request.WebAppUrl)
             ? request.WebAppUrl.Trim()
-            : "https://retail.bizgripsolutions.com/";
+            : "https://retailsuite.bizgripsolutions.com/";
 
         string licenseKey = tenant.LicenseKey ?? "N/A";
         string defaultPassword = ApplicationDbSeeder.InitialDataSeedConstants.DefaultPassword;
