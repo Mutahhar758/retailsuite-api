@@ -102,17 +102,17 @@ internal class KotService : IKotService
 
         foreach (var order in orders)
         {
-            // Join items with their category to filter by PrepStation
             var itemsQuery = from d in _kotOrderItemRepository.GetAll().AsNoTracking()
-                             join i in _itemRepository.GetAll().AsNoTracking() on d.ItemId equals i.Id
+                             join i in _itemRepository.GetAll().Include(x => x.ItemCategory).AsNoTracking() on d.ItemId equals i.Id into itemJoin
+                             from i in itemJoin.DefaultIfEmpty()
                              where d.KotOrderId == order.Id
                              select new
                              {
                                  Detail = d,
-                                 ItemTitle = i.Title,
-                                 CategoryId = i.ItemCategoryId,
-                                 CategoryTitle = i.ItemCategory != null ? i.ItemCategory.Title : string.Empty,
-                                 PrepStationId = i.ItemCategory != null ? i.ItemCategory.PrepStationId : null
+                                 ItemTitle = i != null ? i.Title : d.ItemId,
+                                 CategoryId = i != null ? i.ItemCategoryId : null,
+                                 CategoryTitle = i != null && i.ItemCategory != null ? i.ItemCategory.Title : string.Empty,
+                                 PrepStationId = i != null && i.ItemCategory != null ? i.ItemCategory.PrepStationId : null
                              };
 
             var items = await itemsQuery.ToListAsync(cancellationToken);
@@ -336,14 +336,15 @@ internal class KotService : IKotService
             throw new NotFoundException($"KOT Order '{id}' not found.");
 
         var itemsQuery = from d in _kotOrderItemRepository.GetAll().AsNoTracking()
-                         join i in _itemRepository.GetAll().AsNoTracking() on d.ItemId equals i.Id
+                         join i in _itemRepository.GetAll().Include(x => x.ItemCategory).AsNoTracking() on d.ItemId equals i.Id into itemJoin
+                         from i in itemJoin.DefaultIfEmpty()
                          where d.KotOrderId == order.Id
                          select new
                          {
                              Detail = d,
-                             ItemTitle = i.Title,
-                             CategoryId = i.ItemCategoryId,
-                             PrepStationId = i.ItemCategory != null ? i.ItemCategory.PrepStationId : null
+                             ItemTitle = i != null ? i.Title : d.ItemId,
+                             CategoryId = i != null ? i.ItemCategoryId : null,
+                             PrepStationId = i != null && i.ItemCategory != null ? i.ItemCategory.PrepStationId : null
                          };
 
         var items = await itemsQuery.ToListAsync(cancellationToken);
