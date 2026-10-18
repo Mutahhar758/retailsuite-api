@@ -54,6 +54,7 @@ internal class KotService : IKotService
             TableId = request.TableId,
             CustomerId = request.CustomerId,
             Remarks = request.Remarks,
+            SaleVoucherNo = request.SaleVoucherNo,
             TotalAmount = totalAmount,
             Status = "Pending"
         };
@@ -91,15 +92,21 @@ internal class KotService : IKotService
 
     public async Task<List<KotOrderResponse>> GetActiveListAsync(string? prepStationId, CancellationToken cancellationToken)
     {
-        // For POS recall or all stations: include Pending, Preparing, Ready, Served (unpaid orders)
-        // If filtering by a specific prep station (KDS screen), only include orders needing prep (Pending, Preparing, Ready)
-        var activeStatuses = string.IsNullOrWhiteSpace(prepStationId) || prepStationId.ToUpper() == "ALL"
-            ? new[] { "Pending", "Preparing", "Ready", "Served" }
-            : new[] { "Pending", "Preparing", "Ready" };
+        // Active orders for kitchen and POS:
+        // 1. Orders actively being prepared / ready (Pending, Preparing, Ready) - whether prepaid or post-paid.
+        // 2. Orders that are Served but still unpaid (string.IsNullOrEmpty(SaleVoucherNo)) - waiting for POS payment.
+        // Once an order is Served AND paid (SaleVoucherNo is assigned), it is completely fulfilled and leaves the screen.
+        var activeStatuses = new[] { "Pending", "Preparing", "Ready", "Served" };
 
         var query = _kotOrderRepository.GetAll()
             .Include(o => o.Table)
-            .Where(o => activeStatuses.Contains(o.Status));
+            .Where(o => activeStatuses.Contains(o.Status) && (o.Status != "Served" || string.IsNullOrEmpty(o.SaleVoucherNo)));
+
+        if (!string.IsNullOrWhiteSpace(prepStationId) && prepStationId.ToUpper() != "ALL")
+        {
+            // If filtering by prep station on KDS, exclude Served orders (kitchen only prepares Pending, Preparing, Ready)
+            query = query.Where(o => o.Status != "Served");
+        }
 
         var orders = await query.ToListAsync(cancellationToken);
         var responses = new List<KotOrderResponse>();
@@ -299,8 +306,12 @@ internal class KotService : IKotService
         if (order == null)
             throw new NotFoundException($"KOT Order with ID '{orderId}' not found.");
 
-        order.Status = "Paid";
         order.SaleVoucherNo = saleVoucherNo;
+        // If the order was already served from the kitchen counter, or if DineIn customer is paying upon leaving, mark as Paid
+        if (order.Status == "Served" || order.OrderType == "DineIn")
+        {
+            order.Status = "Paid";
+        }
         await _kotOrderRepository.UpdateAsync(order, false);
 
         // Mark all items as Served/Ready if they aren't
