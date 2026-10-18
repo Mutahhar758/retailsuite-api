@@ -85,12 +85,52 @@ public class HrInfoConfig : IEntityTypeConfiguration<HrInfo>
     }
 }
 
+public class CustomerCategoryConfig : IEntityTypeConfiguration<CustomerCategory>
+{
+    public void Configure(EntityTypeBuilder<CustomerCategory> builder)
+    {
+        builder.IsMultiTenant();
+        builder.Property(x => x.Id).ValueGeneratedNever();
+        builder.Property(x => x.Title).HasMaxLength(100);
+        builder.Property(x => x.Description).HasMaxLength(250);
+    }
+}
+
 public class CustomerDetailConfig : IEntityTypeConfiguration<CustomerDetail>
 {
     public void Configure(EntityTypeBuilder<CustomerDetail> builder)
     {
         builder.IsMultiTenant();
         builder.Property(x => x.Id).ValueGeneratedNever();
+
+        builder.HasOne(x => x.CustomerCategory)
+            .WithMany()
+            .HasForeignKey(x => x.CustomerCategoryId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+public class ItemCustomerCategoryPriceConfig : IEntityTypeConfiguration<ItemCustomerCategoryPrice>
+{
+    public void Configure(EntityTypeBuilder<ItemCustomerCategoryPrice> builder)
+    {
+        var mtBuilder = builder.IsMultiTenant();
+        builder.Property(x => x.Id).ValueGeneratedOnAdd();
+        builder.HasIndex(x => new { x.ItemId, x.CustomerCategoryId }).IsUnique().HasSoftDeleteFilter();
+        mtBuilder.AdjustUniqueIndexes();
+
+        builder.Property(x => x.PriRate).HasPrecision(18, 4);
+        builder.Property(x => x.SecRate).HasPrecision(18, 4);
+
+        builder.HasOne(x => x.Item)
+            .WithMany()
+            .HasForeignKey(x => x.ItemId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne(x => x.CustomerCategory)
+            .WithMany()
+            .HasForeignKey(x => x.CustomerCategoryId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }
 

@@ -71,6 +71,8 @@ internal class CustomerService : ICustomerService
                 x.EmailAlert,
                 x.Active,
                 x.MediaId,
+                x.CustomerCategoryId,
+                CustomerCategoryTitle = x.CustomerCategory != null ? x.CustomerCategory.Title : null,
                 x.CreatedBy,
                 x.CreatedOn,
                 x.LastModifiedBy,
@@ -135,6 +137,8 @@ internal class CustomerService : ICustomerService
                 EmailAlert = detail?.EmailAlert ?? false,
                 Active = detail?.Active ?? true,
                 MediaId = detail?.MediaId,
+                CustomerCategoryId = detail?.CustomerCategoryId,
+                CustomerCategoryTitle = detail?.CustomerCategoryTitle,
                 CreatedBy = detail?.CreatedBy,
                 CreatedOn = detail?.CreatedOn,
                 LastModifiedBy = detail?.LastModifiedBy,
@@ -205,7 +209,8 @@ internal class CustomerService : ICustomerService
             SmsAlert = request.SmsAlert,
             EmailAlert = request.EmailAlert,
             Active = request.Active,
-            MediaId = request.MediaId
+            MediaId = request.MediaId,
+            CustomerCategoryId = request.CustomerCategoryId
         };
         await _customerDetailRepository.AddAsync(customerDetail);
 
@@ -442,6 +447,7 @@ internal class CustomerService : ICustomerService
         customerDetail.SmsAlert = request.SmsAlert;
         customerDetail.EmailAlert = request.EmailAlert;
         customerDetail.Active = request.Active;
+        customerDetail.CustomerCategoryId = request.CustomerCategoryId;
     }
 
     public async Task<BulkOperationResult> BulkUpsertAsync(CustomerBulkUpsertRequest request, CancellationToken cancellationToken)
@@ -535,6 +541,8 @@ internal class CustomerService : ICustomerService
                     detail.SmsAlert = item.SmsAlert;
                     detail.EmailAlert = item.EmailAlert;
                     detail.Active = item.Active;
+                    if (item.CustomerCategoryId != null)
+                        detail.CustomerCategoryId = item.CustomerCategoryId;
                     detailsToUpdate.Add(detail);
                 }
                 else
@@ -553,7 +561,8 @@ internal class CustomerService : ICustomerService
                         Iban = item.Iban,
                         SmsAlert = item.SmsAlert,
                         EmailAlert = item.EmailAlert,
-                        Active = item.Active
+                        Active = item.Active,
+                        CustomerCategoryId = item.CustomerCategoryId
                     };
                     newDetailsToAdd.Add(newDetail);
                 }
@@ -589,7 +598,8 @@ internal class CustomerService : ICustomerService
                     Iban = item.Iban,
                     SmsAlert = item.SmsAlert,
                     EmailAlert = item.EmailAlert,
-                    Active = item.Active
+                    Active = item.Active,
+                    CustomerCategoryId = item.CustomerCategoryId
                 };
                 newDetailsToAdd.Add(newDetail);
 

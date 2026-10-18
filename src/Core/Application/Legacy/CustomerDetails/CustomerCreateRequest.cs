@@ -16,6 +16,7 @@ public class CustomerCreateRequest
     public bool EmailAlert { get; set; }
     public bool Active { get; set; } = true;
     public string? MediaId { get; set; }
+    public string? CustomerCategoryId { get; set; }
     public List<CustomerSupplyItemDto> SupplyItems { get; set; } = new();
 }
 

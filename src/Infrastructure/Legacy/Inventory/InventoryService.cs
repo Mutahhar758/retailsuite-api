@@ -14,6 +14,7 @@ internal class InventoryService : IInventoryService
 {
     private readonly IRepository<ItemDetail> _itemRepository;
     private readonly IRepository<ItemTransaction> _itemTransactionRepository;
+    private readonly IRepository<ItemCustomerCategoryPrice> _categoryPriceRepository;
     private readonly IMediaServiceClient _mediaServiceClient;
     private readonly IItemTransactionBalanceService _balanceService;
     private readonly ICurrentTenant _currentTenant;
@@ -21,12 +22,14 @@ internal class InventoryService : IInventoryService
     public InventoryService(
         IRepository<ItemDetail> itemRepository,
         IRepository<ItemTransaction> itemTransactionRepository,
+        IRepository<ItemCustomerCategoryPrice> categoryPriceRepository,
         IMediaServiceClient mediaServiceClient,
         IItemTransactionBalanceService balanceService,
         ICurrentTenant currentTenant)
     {
         _itemRepository = itemRepository;
         _itemTransactionRepository = itemTransactionRepository;
+        _categoryPriceRepository = categoryPriceRepository;
         _mediaServiceClient = mediaServiceClient;
         _balanceService = balanceService;
         _currentTenant = currentTenant;
@@ -632,5 +635,110 @@ internal class InventoryService : IInventoryService
         }
 
         return result;
+    }
+
+    public async Task<List<ItemCustomerCategoryPriceDto>> GetCustomerCategoryPricesAsync(string? customerCategoryId, CancellationToken cancellationToken)
+    {
+        var query = _categoryPriceRepository.GetAll()
+            .AsNoTracking()
+            .Include(x => x.CustomerCategory)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(customerCategoryId))
+            query = query.Where(x => x.CustomerCategoryId == customerCategoryId);
+
+        return await query
+            .OrderBy(x => x.ItemId)
+            .ThenBy(x => x.CustomerCategoryId)
+            .Select(x => new ItemCustomerCategoryPriceDto
+            {
+                Id = x.Id,
+                ItemId = x.ItemId,
+                CustomerCategoryId = x.CustomerCategoryId,
+                CustomerCategoryTitle = x.CustomerCategory != null ? x.CustomerCategory.Title : string.Empty,
+                PriRate = x.PriRate,
+                SecRate = x.SecRate
+            })
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<List<ItemCustomerCategoryPriceDto>> GetItemCategoryPricesAsync(string itemId, CancellationToken cancellationToken)
+    {
+        return await _categoryPriceRepository.GetAll()
+            .AsNoTracking()
+            .Include(x => x.CustomerCategory)
+            .Where(x => x.ItemId == itemId)
+            .OrderBy(x => x.CustomerCategory != null ? x.CustomerCategory.Title : x.CustomerCategoryId)
+            .Select(x => new ItemCustomerCategoryPriceDto
+            {
+                Id = x.Id,
+                ItemId = x.ItemId,
+                CustomerCategoryId = x.CustomerCategoryId,
+                CustomerCategoryTitle = x.CustomerCategory != null ? x.CustomerCategory.Title : string.Empty,
+                PriRate = x.PriRate,
+                SecRate = x.SecRate
+            })
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task SaveItemCategoryPricesAsync(string itemId, List<ItemCustomerCategoryPriceUpsertRequest> prices, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(itemId))
+            throw new BadRequestException("Item ID is required.");
+
+        var existing = await _categoryPriceRepository.GetAll()
+            .Where(x => x.ItemId == itemId)
+            .ToListAsync(cancellationToken);
+
+        var incomingList = prices ?? new List<ItemCustomerCategoryPriceUpsertRequest>();
+        var incomingCatIds = incomingList
+            .Where(p => !string.IsNullOrWhiteSpace(p.CustomerCategoryId))
+            .Select(p => p.CustomerCategoryId.Trim())
+            .ToHashSet();
+
+        var toDelete = existing
+            .Where(e => !incomingCatIds.Contains(e.CustomerCategoryId) ||
+                        incomingList.Any(p => p.CustomerCategoryId.Trim() == e.CustomerCategoryId && p.PriRate <= 0))
+            .ToList();
+
+        if (toDelete.Count > 0)
+            await _categoryPriceRepository.DeleteRangeAsync(toDelete, false);
+
+        var existingMap = existing.ToDictionary(x => x.CustomerCategoryId);
+
+        var toAdd = new List<ItemCustomerCategoryPrice>();
+        var toUpdate = new List<ItemCustomerCategoryPrice>();
+
+        foreach (var p in incomingList.Where(p => !string.IsNullOrWhiteSpace(p.CustomerCategoryId) && p.PriRate > 0))
+        {
+            var catId = p.CustomerCategoryId.Trim();
+            if (existingMap.TryGetValue(catId, out var existingPrice))
+            {
+                if (existingPrice.PriRate != p.PriRate || existingPrice.SecRate != p.SecRate)
+                {
+                    existingPrice.PriRate = p.PriRate;
+                    existingPrice.SecRate = p.SecRate;
+                    toUpdate.Add(existingPrice);
+                }
+            }
+            else
+            {
+                toAdd.Add(new ItemCustomerCategoryPrice
+                {
+                    ItemId = itemId,
+                    CustomerCategoryId = catId,
+                    PriRate = p.PriRate,
+                    SecRate = p.SecRate
+                });
+            }
+        }
+
+        if (toAdd.Count > 0)
+            await _categoryPriceRepository.AddRangeAsync(toAdd, false);
+
+        if (toUpdate.Count > 0)
+            await _categoryPriceRepository.UpdateRangeAsync(toUpdate, false);
+
+        await _categoryPriceRepository.SaveChangesAsync(cancellationToken);
     }
 }

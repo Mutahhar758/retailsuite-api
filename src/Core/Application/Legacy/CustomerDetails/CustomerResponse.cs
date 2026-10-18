@@ -18,6 +18,8 @@ public class CustomerResponse
     public bool Active { get; set; }
     public string? MediaId { get; set; }
     public string? MediaUrl { get; set; }
+    public string? CustomerCategoryId { get; set; }
+    public string? CustomerCategoryTitle { get; set; }
     public string? CreatedBy { get; set; }
     public DateTime? CreatedOn { get; set; }
     public string? LastModifiedBy { get; set; }

@@ -19,5 +19,8 @@ public class CustomerDetail : AuditableEntity<string>, IAggregateRoot
     public byte[]? Image { get; set; }
     public bool? Active { get; set; }
     public string? MediaId { get; set; }
+
+    public string? CustomerCategoryId { get; set; }
+    public CustomerCategory? CustomerCategory { get; set; }
 }
 

@@ -91,6 +91,7 @@ public abstract class BaseDbContext : IdentityDbContext<ApplicationUser, Applica
         ConfigureNullableBoolAsNumericFlag(modelBuilder.Entity<SupplierDetail>().Property(x => x.ShowInSales));
 
         ConfigureBoolAsNumericFlag(modelBuilder.Entity<ItemCategory>().Property(x => x.Active));
+        ConfigureBoolAsNumericFlag(modelBuilder.Entity<CustomerCategory>().Property(x => x.Active));
         ConfigureNullableBoolAsNumericFlag(modelBuilder.Entity<ItemDetail>().Property(x => x.Alert));
     }
 

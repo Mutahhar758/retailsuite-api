@@ -21,4 +21,5 @@ public class CustomerBulkItemDto
     public bool SmsAlert { get; set; }
     public bool EmailAlert { get; set; }
     public bool Active { get; set; } = true;
+    public string? CustomerCategoryId { get; set; }
 }

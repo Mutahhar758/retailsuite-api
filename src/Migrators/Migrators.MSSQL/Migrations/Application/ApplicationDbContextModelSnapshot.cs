@@ -839,6 +839,65 @@ namespace Migrators.MSSQL.Migrations.Application
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
 
+            modelBuilder.Entity("Retailer.Domain.Legacy.CustomerCategory", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("id");
+
+                    b.Property<string>("TenantId")
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<decimal>("Active")
+                        .HasColumnType("numeric(1,0)")
+                        .HasColumnName("active");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_on");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("deleted_on");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("LastModifiedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("last_modified_by");
+
+                    b.Property<DateTime?>("LastModifiedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("last_modified_on");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("title");
+
+                    b.HasKey("Id", "TenantId")
+                        .HasName("ak_customer_category_id_tenant_id");
+
+                    b.ToTable("CustomerCategory");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
             modelBuilder.Entity("Retailer.Domain.Legacy.CustomerDetail", b =>
                 {
                     b.Property<string>("Id")
@@ -869,6 +928,10 @@ namespace Migrators.MSSQL.Migrations.Application
                     b.Property<DateTime>("CreatedOn")
                         .HasColumnType("datetime2")
                         .HasColumnName("created_on");
+
+                    b.Property<string>("CustomerCategoryId")
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("customer_category_id");
 
                     b.Property<string>("DeletedBy")
                         .HasColumnType("nvarchar(max)")
@@ -933,6 +996,9 @@ namespace Migrators.MSSQL.Migrations.Application
 
                     b.HasKey("Id", "TenantId")
                         .HasName("ak_customer_detail_id_tenant_id");
+
+                    b.HasIndex("CustomerCategoryId", "TenantId")
+                        .HasDatabaseName("ix_customer_detail_customer_category_id_tenant_id");
 
                     b.ToTable("CustomerDetail");
 
@@ -1563,6 +1629,84 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasDatabaseName("ix_item_catagory_prep_station_id_tenant_id");
 
                     b.ToTable("ItemCatagory");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Legacy.ItemCustomerCategoryPrice", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("TenantId")
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_on");
+
+                    b.Property<string>("CustomerCategoryId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("customer_category_id");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("deleted_on");
+
+                    b.Property<string>("ItemId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("item_id");
+
+                    b.Property<string>("LastModifiedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("last_modified_by");
+
+                    b.Property<DateTime?>("LastModifiedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("last_modified_on");
+
+                    b.Property<decimal>("PriRate")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
+                        .HasColumnName("pri_rate");
+
+                    b.Property<decimal?>("SecRate")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
+                        .HasColumnName("sec_rate");
+
+                    b.HasKey("Id", "TenantId")
+                        .HasName("ak_item_customer_category_price_id_tenant_id");
+
+                    b.HasIndex("CustomerCategoryId", "TenantId")
+                        .HasDatabaseName("ix_item_customer_category_price_customer_category_id_tenant_id");
+
+                    b.HasIndex("ItemId", "TenantId")
+                        .HasDatabaseName("ix_item_customer_category_price_item_id_tenant_id");
+
+                    b.HasIndex("ItemId", "CustomerCategoryId", "TenantId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_item_customer_category_price_item_id_customer_category_id")
+                        .HasFilter("deleted_on IS NULL");
+
+                    b.ToTable("ItemCustomerCategoryPrice");
 
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
@@ -5067,6 +5211,17 @@ namespace Migrators.MSSQL.Migrations.Application
                     b.Navigation("ParentAccount");
                 });
 
+            modelBuilder.Entity("Retailer.Domain.Legacy.CustomerDetail", b =>
+                {
+                    b.HasOne("Retailer.Domain.Legacy.CustomerCategory", "CustomerCategory")
+                        .WithMany()
+                        .HasForeignKey("CustomerCategoryId", "TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_customer_detail_customer_category_customer_category_id_tenant_id");
+
+                    b.Navigation("CustomerCategory");
+                });
+
             modelBuilder.Entity("Retailer.Domain.Legacy.CustomerSupplyItem", b =>
                 {
                     b.HasOne("Retailer.Domain.Legacy.ChartOfAccount", "CustomerAccount")
@@ -5181,6 +5336,27 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasConstraintName("fk_item_catagory_prep_stations_prep_station_id_tenant_id");
 
                     b.Navigation("PrepStation");
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Legacy.ItemCustomerCategoryPrice", b =>
+                {
+                    b.HasOne("Retailer.Domain.Legacy.CustomerCategory", "CustomerCategory")
+                        .WithMany()
+                        .HasForeignKey("CustomerCategoryId", "TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_item_customer_category_price_customer_category_customer_category_id_tenant_id");
+
+                    b.HasOne("Retailer.Domain.Legacy.ItemDetail", "Item")
+                        .WithMany()
+                        .HasForeignKey("ItemId", "TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_item_customer_category_price_item_detail_item_id_tenant_id");
+
+                    b.Navigation("CustomerCategory");
+
+                    b.Navigation("Item");
                 });
 
             modelBuilder.Entity("Retailer.Domain.Legacy.ItemDetail", b =>

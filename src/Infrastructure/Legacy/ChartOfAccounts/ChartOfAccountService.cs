@@ -15,13 +15,16 @@ internal class ChartOfAccountService : IChartOfAccountService
 
     private readonly IRepository<ChartOfAccount> _repository;
     private readonly IRepository<DefaultAccount> _defaultAccountRepository;
+    private readonly IRepository<CustomerDetail> _customerDetailRepository;
 
     public ChartOfAccountService(
         IRepository<ChartOfAccount> repository,
-        IRepository<DefaultAccount> defaultAccountRepository)
+        IRepository<DefaultAccount> defaultAccountRepository,
+        IRepository<CustomerDetail> customerDetailRepository)
     {
         _repository = repository;
         _defaultAccountRepository = defaultAccountRepository;
+        _customerDetailRepository = customerDetailRepository;
     }
 
     public async Task<List<ChartOfAccountResponse>> GetActiveAsync(CancellationToken cancellationToken)
@@ -245,7 +248,7 @@ internal class ChartOfAccountService : IChartOfAccountService
             .Distinct()
             .ToList();
 
-        return (await _repository.GetAll()
+        var accounts = (await _repository.GetAll()
             .AsNoTracking()
             .Where(x => x.AccLevel == 5)
             .OrderBy(x => x.Id)
@@ -253,5 +256,23 @@ internal class ChartOfAccountService : IChartOfAccountService
             .ToListAsync(cancellationToken))
             .Where(x => distinctPrefixes.Any(p => x.Account.StartsWith(p, StringComparison.Ordinal)))
             .ToList();
+
+        if (accounts.Count > 0)
+        {
+            var accountIds = accounts.Select(a => a.Account).ToList();
+            var categoryMap = await _customerDetailRepository.GetAll()
+                .AsNoTracking()
+                .Where(x => accountIds.Contains(x.Id) && x.CustomerCategoryId != null)
+                .Select(x => new { x.Id, x.CustomerCategoryId })
+                .ToDictionaryAsync(x => x.Id, x => x.CustomerCategoryId, cancellationToken);
+
+            foreach (var acc in accounts)
+            {
+                if (categoryMap.TryGetValue(acc.Account, out var catId))
+                    acc.CustomerCategoryId = catId;
+            }
+        }
+
+        return accounts;
     }
 }

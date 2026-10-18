@@ -11,4 +11,7 @@ public interface IInventoryService : ITransientService
     Task DeleteItemAsync(string id, CancellationToken cancellationToken);
     Task<PresignedUploadUrlResponse?> GetPresignedUploadUrlAsync(string fileName, CancellationToken cancellationToken);
     Task<BulkOperationResult> BulkUpsertAsync(InventoryItemBulkUpsertRequest request, CancellationToken cancellationToken);
+    Task<List<ItemCustomerCategoryPriceDto>> GetCustomerCategoryPricesAsync(string? customerCategoryId, CancellationToken cancellationToken);
+    Task<List<ItemCustomerCategoryPriceDto>> GetItemCategoryPricesAsync(string itemId, CancellationToken cancellationToken);
+    Task SaveItemCategoryPricesAsync(string itemId, List<ItemCustomerCategoryPriceUpsertRequest> prices, CancellationToken cancellationToken);
 }

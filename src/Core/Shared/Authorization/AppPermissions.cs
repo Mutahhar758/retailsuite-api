@@ -23,6 +23,7 @@ public static class AppResource
     public const string ChartOfAccounts = nameof(ChartOfAccounts);
     public const string DetailAccounts = nameof(DetailAccounts);
     public const string Customers = nameof(Customers);
+    public const string CustomerCategories = nameof(CustomerCategories);
     public const string Vendors = nameof(Vendors);
     public const string InventoryItems = nameof(InventoryItems);
     public const string ItemCategories = nameof(ItemCategories);
@@ -206,6 +207,13 @@ public static class AppPermissions
         new("Update InventoryItems", AppAction.Update, AppResource.InventoryItems),
         new("Delete InventoryItems", AppAction.Delete, AppResource.InventoryItems),
         new("Export InventoryItems", AppAction.Export, AppResource.InventoryItems),
+
+        // CustomerCategories
+        new("View CustomerCategories", AppAction.View, AppResource.CustomerCategories),
+        new("Search CustomerCategories", AppAction.Search, AppResource.CustomerCategories),
+        new("Create CustomerCategories", AppAction.Create, AppResource.CustomerCategories),
+        new("Update CustomerCategories", AppAction.Update, AppResource.CustomerCategories),
+        new("Delete CustomerCategories", AppAction.Delete, AppResource.CustomerCategories),
 
         // ItemCategories
         new("View ItemCategories", AppAction.View, AppResource.ItemCategories),
@@ -442,6 +450,7 @@ public static class AppPermissions
         p.Resource == AppResource.ChartOfAccounts ||
         p.Resource == AppResource.DetailAccounts ||
         p.Resource == AppResource.Customers ||
+        p.Resource == AppResource.CustomerCategories ||
         p.Resource == AppResource.Vendors ||
         p.Resource == AppResource.PaymentVouchers ||
         p.Resource == AppResource.ReceiptVouchers ||

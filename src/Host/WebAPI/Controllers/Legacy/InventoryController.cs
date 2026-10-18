@@ -86,4 +86,30 @@ public class InventoryController : VersionNeutralApiController
         var response = await _inventoryService.BulkUpsertAsync(request, cancellationToken);
         return response.ToInformationResponse($"Bulk operation completed: {response.CreatedCount} created, {response.UpdatedCount} updated.");
     }
+
+    [HttpGet("customer-category-prices")]
+    [OpenApiOperation("Get customer category prices lookup.", "")]
+    public async Task<HttpResponseDto<List<ItemCustomerCategoryPriceDto>>> GetCustomerCategoryPricesAsync([FromQuery] string? customerCategoryId, CancellationToken cancellationToken)
+    {
+        var prices = await _inventoryService.GetCustomerCategoryPricesAsync(customerCategoryId, cancellationToken);
+        return prices.ToInformationResponse();
+    }
+
+    [HttpGet("items/{id}/customer-category-prices")]
+    [MustHavePermission(AppAction.View, AppResource.InventoryItems)]
+    [OpenApiOperation("Get category prices for a specific inventory item.", "")]
+    public async Task<HttpResponseDto<List<ItemCustomerCategoryPriceDto>>> GetItemCategoryPricesAsync(string id, CancellationToken cancellationToken)
+    {
+        var prices = await _inventoryService.GetItemCategoryPricesAsync(id, cancellationToken);
+        return prices.ToInformationResponse();
+    }
+
+    [HttpPut("items/{id}/customer-category-prices")]
+    [MustHavePermission(AppAction.Update, AppResource.InventoryItems)]
+    [OpenApiOperation("Save category prices for a specific inventory item.", "")]
+    public async Task<HttpResponseDto<string>> SaveItemCategoryPricesAsync(string id, [FromBody] List<ItemCustomerCategoryPriceUpsertRequest> request, CancellationToken cancellationToken)
+    {
+        await _inventoryService.SaveItemCategoryPricesAsync(id, request, cancellationToken);
+        return "Item category prices saved.".ToInformationResponse("Item category prices saved.");
+    }
 }
