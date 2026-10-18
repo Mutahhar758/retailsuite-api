@@ -289,6 +289,14 @@ internal class SaleSupplyService : ISaleSupplyService
             }
         }
 
+        var lineSeqSet = request.Lines.Select(x => x.Seq).ToHashSet();
+        var staleDetails = await _saleSupplyDetailRepository.GetAll()
+            .Where(x => x.VType == VType && x.VNo == voucherNo && !lineSeqSet.Contains(x.Seq))
+            .ToListAsync(cancellationToken);
+
+        if (staleDetails.Count > 0)
+            await _saleSupplyDetailRepository.DeleteRangeAsync(staleDetails, false);
+
         await UpsertItemTransactionsAsync(voucherNo, request.Date, request.ItemId, request.Lines, master.Counter, item, cancellationToken);
         await UpsertGlEntriesAsync(voucherNo, request.Date, request.Narration, request.Description, request.Lines, cancellationToken);
 
