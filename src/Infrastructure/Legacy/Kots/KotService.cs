@@ -91,7 +91,11 @@ internal class KotService : IKotService
 
     public async Task<List<KotOrderResponse>> GetActiveListAsync(string? prepStationId, CancellationToken cancellationToken)
     {
-        var activeStatuses = new[] { "Pending", "Preparing", "Ready" };
+        // For POS recall or all stations: include Pending, Preparing, Ready, Served (unpaid orders)
+        // If filtering by a specific prep station (KDS screen), only include orders needing prep (Pending, Preparing, Ready)
+        var activeStatuses = string.IsNullOrWhiteSpace(prepStationId) || prepStationId.ToUpper() == "ALL"
+            ? new[] { "Pending", "Preparing", "Ready", "Served" }
+            : new[] { "Pending", "Preparing", "Ready" };
 
         var query = _kotOrderRepository.GetAll()
             .Include(o => o.Table)
