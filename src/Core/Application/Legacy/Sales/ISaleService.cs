@@ -8,4 +8,5 @@ public interface ISaleService : ITransientService
     Task UpdateAsync(string voucherNo, SaleUpdateRequest request, CancellationToken cancellationToken);
     Task DeleteAsync(string voucherNo, CancellationToken cancellationToken);
     Task DeleteLineAsync(string voucherNo, int seq, CancellationToken cancellationToken);
+    Task<CustomerItemPriceHistoryResponse> GetCustomerItemHistoryAsync(string accountId, string itemId, CancellationToken cancellationToken);
 }

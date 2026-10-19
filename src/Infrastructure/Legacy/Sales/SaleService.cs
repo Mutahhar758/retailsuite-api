@@ -663,4 +663,53 @@ internal class SaleService : ISaleService
 
         await _balanceService.ProcessVoucherRunningBalancesAsync(_currentTenant.Id, VType, voucherNo, date, txsToProcess, cancellationToken);
     }
+
+    public async Task<CustomerItemPriceHistoryResponse> GetCustomerItemHistoryAsync(string accountId, string itemId, CancellationToken cancellationToken)
+    {
+        var recentTransactions = await _itemTransactionRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => x.TranType == "out"
+                        && x.AccountId == accountId
+                        && x.ItemId == itemId
+                        && x.QtyOut > 0)
+            .OrderByDescending(x => x.VDate)
+            .ThenByDescending(x => x.CreatedOn)
+            .ThenByDescending(x => x.Id)
+            .Select(x => new CustomerItemSaleRecord
+            {
+                VoucherNo = x.VNo,
+                VType = x.VType,
+                Date = x.VDate,
+                Qty = x.QtyOut,
+                Rate = x.Rate,
+                SecQty = x.SecQtyOut,
+                SecRate = x.SecRate,
+                Amount = x.Amount
+            })
+            .Take(5)
+            .ToListAsync(cancellationToken);
+
+        if (recentTransactions.Count == 0)
+        {
+            return new CustomerItemPriceHistoryResponse
+            {
+                HasHistory = false,
+                RecentSales = recentTransactions
+            };
+        }
+
+        var last = recentTransactions[0];
+        return new CustomerItemPriceHistoryResponse
+        {
+            HasHistory = true,
+            LastSaleDate = last.Date,
+            LastRate = last.Rate,
+            LastQty = last.Qty,
+            LastSecRate = last.SecRate,
+            LastVoucherNo = last.VoucherNo,
+            LastVType = last.VType,
+            RecentSales = recentTransactions
+        };
+    }
 }
+

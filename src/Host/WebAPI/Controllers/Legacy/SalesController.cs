@@ -25,6 +25,18 @@ public class SalesController : VersionNeutralApiController
         return result.ToInformationResponse();
     }
 
+    [HttpGet("customer-history")]
+    [MustHavePermission(AppAction.View, AppResource.Sales)]
+    [OpenApiOperation("Get last sale price and recent sales for customer and item.", "")]
+    public async Task<HttpResponseDto<CustomerItemPriceHistoryResponse>> GetCustomerHistoryAsync(
+        [FromQuery] string accountId,
+        [FromQuery] string itemId,
+        CancellationToken cancellationToken)
+    {
+        var result = await _saleService.GetCustomerItemHistoryAsync(accountId, itemId, cancellationToken);
+        return result.ToInformationResponse();
+    }
+
     [HttpGet("{voucherNo}")]
     [MustHavePermission(AppAction.View, AppResource.Sales)]
     [OpenApiOperation("Get sale voucher detail.", "")]
