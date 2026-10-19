@@ -19,22 +19,24 @@ public class UnitSeeder : ICustomSeeder
 
     public async Task InitializeAsync(CancellationToken cancellationToken)
     {
-        if (!await _repository.GetAll().IgnoreQueryFilters([GlobalQueryFilterConstants.SoftDelete]).AnyAsync(cancellationToken))
+        if (await _repository.GetAll().IgnoreQueryFilters([GlobalQueryFilterConstants.SoftDelete]).AnyAsync(cancellationToken))
         {
-            _logger.LogInformation("Seeding standard Units.");
-            var units = new List<Unit>
-            {
-                new() { Id = "001", Title = "Litre" },
-                new() { Id = "002", Title = "Kilogram" },
-                new() { Id = "003", Title = "Gram" },
-                new() { Id = "004", Title = "Pack" },
-                new() { Id = "005", Title = "Piece" },
-                new() { Id = "006", Title = "Dozen" },
-                new() { Id = "007", Title = "Bag" }
-            };
-
-            await _repository.AddRangeAsync(units);
-            await _repository.SaveChangesAsync(cancellationToken);
+            return;
         }
+
+        _logger.LogInformation("Seeding standard Units.");
+        var units = new List<Unit>
+        {
+            new() { Id = "001", Title = "Litre", ShortTitle = "Ltr" },
+            new() { Id = "002", Title = "Kilogram", ShortTitle = "kg" },
+            new() { Id = "003", Title = "Gram", ShortTitle = "g", ParentUnitId = "002", ConversionRatio = 1000m },
+            new() { Id = "004", Title = "Pack", ShortTitle = "Pkt" },
+            new() { Id = "005", Title = "Piece", ShortTitle = "Pcs" },
+            new() { Id = "006", Title = "Dozen", ShortTitle = "Dzn" },
+            new() { Id = "007", Title = "Bag", ShortTitle = "Bag" }
+        };
+
+        await _repository.AddRangeAsync(units);
+        await _repository.SaveChangesAsync(cancellationToken);
     }
 }

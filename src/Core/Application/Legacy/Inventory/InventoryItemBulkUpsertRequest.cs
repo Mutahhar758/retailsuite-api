@@ -26,6 +26,7 @@ public class InventoryItemBulkItemDto
     public decimal? OpnRate { get; set; }
     public ItemType? ItemType { get; set; }
     public string? QuickQtyPresets { get; set; }
+    public string? AdditionalUnits { get; set; }
     public bool? RequireImei { get; set; }
     public string? BrandId { get; set; }
     public string? ModelName { get; set; }

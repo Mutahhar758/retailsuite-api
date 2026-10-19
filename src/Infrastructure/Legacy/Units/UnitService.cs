@@ -23,7 +23,11 @@ internal class UnitService : IUnitService
             .Select(x => new UnitLookupResponse
             {
                 Code = x.Id,
-                Title = x.Title
+                Title = x.Title,
+                ShortTitle = x.ShortTitle,
+                ParentUnitId = x.ParentUnitId,
+                ParentUnitTitle = x.ParentUnit != null ? x.ParentUnit.Title : null,
+                ConversionRatio = x.ConversionRatio
             })
             .ToListAsync(cancellationToken);
     }
@@ -32,6 +36,10 @@ internal class UnitService : IUnitService
     {
         if (string.IsNullOrWhiteSpace(request.Title))
             throw new Application.Common.Exceptions.BadRequestException("Title is required.");
+
+        var parentUnitId = string.IsNullOrWhiteSpace(request.ParentUnitId) ? null : request.ParentUnitId.Trim();
+        if (parentUnitId != null && (!request.ConversionRatio.HasValue || request.ConversionRatio.Value <= 1))
+            throw new Application.Common.Exceptions.BadRequestException("Conversion ratio must be greater than 1 when a parent unit is selected.");
 
         var maxCode = await _unitRepository.GetAll()
             .IgnoreQueryFilters([GlobalQueryFilterConstants.SoftDelete])
@@ -43,7 +51,10 @@ internal class UnitService : IUnitService
         var unit = new Unit
         {
             Id = nextCode,
-            Title = request.Title
+            Title = request.Title.Trim(),
+            ShortTitle = string.IsNullOrWhiteSpace(request.ShortTitle) ? null : request.ShortTitle.Trim(),
+            ParentUnitId = parentUnitId,
+            ConversionRatio = parentUnitId != null ? request.ConversionRatio : null
         };
 
         if (!request.Active)
@@ -63,6 +74,13 @@ internal class UnitService : IUnitService
         if (string.IsNullOrWhiteSpace(request.Title))
             throw new Application.Common.Exceptions.BadRequestException("Title is required.");
 
+        var parentUnitId = string.IsNullOrWhiteSpace(request.ParentUnitId) ? null : request.ParentUnitId.Trim();
+        if (parentUnitId == code.Trim())
+            throw new Application.Common.Exceptions.BadRequestException("A unit cannot be its own parent unit.");
+
+        if (parentUnitId != null && (!request.ConversionRatio.HasValue || request.ConversionRatio.Value <= 1))
+            throw new Application.Common.Exceptions.BadRequestException("Conversion ratio must be greater than 1 when a parent unit is selected.");
+
         var existing = await _unitRepository.GetAll()
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(x => x.Id == code, cancellationToken);
@@ -70,7 +88,10 @@ internal class UnitService : IUnitService
         if (existing == null)
             throw new Application.Common.Exceptions.NotFoundException($"Unit with code '{code}' not found.");
 
-        existing.Title = request.Title;
+        existing.Title = request.Title.Trim();
+        existing.ShortTitle = string.IsNullOrWhiteSpace(request.ShortTitle) ? null : request.ShortTitle.Trim();
+        existing.ParentUnitId = parentUnitId;
+        existing.ConversionRatio = parentUnitId != null ? request.ConversionRatio : null;
 
         if (request.Active)
         {

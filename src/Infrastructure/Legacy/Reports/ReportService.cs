@@ -6,6 +6,7 @@ using Retailer.Application.Common.Persistence;
 using Retailer.Application.Legacy.Reports;
 using Retailer.Domain.Legacy;
 using Retailer.Domain.Common.Enums;
+using Retailer.Infrastructure.Legacy.Inventory;
 using Retailer.Infrastructure.Reporting.QuestPdf.Documents;
 using Retailer.Infrastructure.Reporting.QuestPdf.Models;
 
@@ -16,6 +17,8 @@ internal class ReportService : IReportService
     private readonly IRepository<GlEntry> _glRepository;
     private readonly IRepository<ChartOfAccount> _chartOfAccountRepository;
     private readonly IRepository<ItemTransaction> _itemTransactionRepository;
+    private readonly IRepository<ItemDetail> _itemDetailRepository;
+    private readonly IRepository<Unit> _unitRepository;
     private readonly IRepository<Sale> _saleRepository;
     private readonly IRepository<SaleMaster> _saleMasterRepository;
     private readonly IRepository<SaleSupplyDetail> _saleSupplyDetailRepository;
@@ -38,6 +41,8 @@ internal class ReportService : IReportService
         IRepository<GlEntry> glRepository,
         IRepository<ChartOfAccount> chartOfAccountRepository,
         IRepository<ItemTransaction> itemTransactionRepository,
+        IRepository<ItemDetail> itemDetailRepository,
+        IRepository<Unit> unitRepository,
         IRepository<Sale> saleRepository,
         IRepository<SaleMaster> saleMasterRepository,
         IRepository<SaleSupplyDetail> saleSupplyDetailRepository,
@@ -59,6 +64,8 @@ internal class ReportService : IReportService
         _glRepository = glRepository;
         _chartOfAccountRepository = chartOfAccountRepository;
         _itemTransactionRepository = itemTransactionRepository;
+        _itemDetailRepository = itemDetailRepository;
+        _unitRepository = unitRepository;
         _saleRepository = saleRepository;
         _saleMasterRepository = saleMasterRepository;
         _saleSupplyDetailRepository = saleSupplyDetailRepository;
@@ -687,6 +694,23 @@ internal class ReportService : IReportService
         if (filter.ToDate < filter.FromDate)
             throw new BadRequestException("To date must be greater than or equal to from date.");
 
+        var itemInfo = await _itemDetailRepository.GetAll()
+            .AsNoTracking()
+            .Include(x => x.PrimaryUnit)
+            .Include(x => x.DefaultUnit)
+            .FirstOrDefaultAsync(x => x.Id == filter.FkItem, cancellationToken);
+
+        var primaryUnitId = itemInfo?.PrimaryUnitId ?? itemInfo?.DefaultUnitId;
+        var fallbackUnitTitle = itemInfo?.PrimaryUnit?.ShortTitle ?? itemInfo?.PrimaryUnit?.Title ?? itemInfo?.DefaultUnit?.ShortTitle ?? itemInfo?.DefaultUnit?.Title;
+        var itemAdditionalUnits = itemInfo?.AdditionalUnits;
+
+        var subUnits = (string.IsNullOrWhiteSpace(itemAdditionalUnits) && !string.IsNullOrWhiteSpace(primaryUnitId))
+            ? await _unitRepository.GetAll()
+                .AsNoTracking()
+                .Where(u => u.ParentUnitId == primaryUnitId && u.ConversionRatio > 1m)
+                .ToListAsync(cancellationToken)
+            : new List<Unit>();
+
         var openingStock = await _itemTransactionRepository.GetAll()
             .AsNoTracking()
             .Where(x => x.ItemId == filter.FkItem && x.VDate < filter.FromDate)
@@ -760,7 +784,8 @@ internal class ReportService : IReportService
                 CostAmount = costAmount,
                 SecUnit = x.SecUnit,
                 SecQtyIn = x.SecQtyIn,
-                SecQtyOut = x.SecQtyOut
+                SecQtyOut = x.SecQtyOut,
+                PrimaryUnit = fallbackUnitTitle
             };
         }).ToList();
 
@@ -777,11 +802,26 @@ internal class ReportService : IReportService
                 CostPrice = null,
                 CostAmount = null,
                 SecQtyIn = openingSecStock >= 0 ? openingSecStock : 0m,
-                SecQtyOut = openingSecStock < 0 ? -openingSecStock : 0m
+                SecQtyOut = openingSecStock < 0 ? -openingSecStock : 0m,
+                PrimaryUnit = fallbackUnitTitle
             }
         };
 
         result.AddRange(movement);
+
+        decimal runningBal = 0m;
+        foreach (var line in result)
+        {
+            runningBal += (line.QtyIn - line.QtyOut);
+            line.QtyInDisplay = line.QtyIn > 0
+                ? ItemUnitDisplayHelper.FormatQtyWithUnitText(line.QtyIn, primaryUnitId, fallbackUnitTitle, itemAdditionalUnits, subUnits)
+                : null;
+            line.QtyOutDisplay = line.QtyOut > 0
+                ? ItemUnitDisplayHelper.FormatQtyWithUnitText(line.QtyOut, primaryUnitId, fallbackUnitTitle, itemAdditionalUnits, subUnits)
+                : null;
+            line.BalanceDisplay = ItemUnitDisplayHelper.FormatQtyWithUnitText(runningBal, primaryUnitId, fallbackUnitTitle, itemAdditionalUnits, subUnits);
+        }
+
         return result;
     }
 
@@ -789,12 +829,28 @@ internal class ReportService : IReportService
     {
         var rawLines = await GetStockLedgerAsync(filter, cancellationToken);
 
+        var itemEntity = await _itemDetailRepository.GetAll()
+            .AsNoTracking()
+            .Include(x => x.PrimaryUnit)
+            .Include(x => x.DefaultUnit)
+            .FirstOrDefaultAsync(x => x.Id == filter.FkItem, cancellationToken);
+        var primaryUnitId = itemEntity?.PrimaryUnitId ?? itemEntity?.DefaultUnitId;
+        var fallbackUnitTitle = itemEntity?.PrimaryUnit?.ShortTitle ?? itemEntity?.PrimaryUnit?.Title ?? itemEntity?.DefaultUnit?.ShortTitle ?? itemEntity?.DefaultUnit?.Title;
+        var itemAdditionalUnits = itemEntity?.AdditionalUnits;
+
+        var subUnits = (string.IsNullOrWhiteSpace(itemAdditionalUnits) && !string.IsNullOrWhiteSpace(primaryUnitId))
+            ? await _unitRepository.GetAll()
+                .AsNoTracking()
+                .Where(u => u.ParentUnitId == primaryUnitId && u.ConversionRatio > 1m)
+                .ToListAsync(cancellationToken)
+            : new List<Unit>();
+
         var companyName = await _companyDetailRepository.GetAll()
             .AsNoTracking()
             .Select(x => x.CompanyName)
             .FirstOrDefaultAsync(cancellationToken) ?? "Retail Suite Enterprise";
 
-        var item = await _itemTransactionRepository.GetAll()
+        var item = itemEntity?.Title ?? await _itemTransactionRepository.GetAll()
             .AsNoTracking()
             .Where(x => x.ItemId == filter.FkItem && x.Item != null)
             .Select(x => x.Item!.Title)
@@ -817,7 +873,10 @@ internal class ReportService : IReportService
                 CostAmount = line.CostAmount,
                 QtyIn = line.QtyIn,
                 QtyOut = line.QtyOut,
-                Balance = runningBalance
+                Balance = runningBalance,
+                QtyInDisplay = line.QtyInDisplay,
+                QtyOutDisplay = line.QtyOutDisplay,
+                BalanceDisplay = line.BalanceDisplay
             });
         }
 
@@ -836,6 +895,10 @@ internal class ReportService : IReportService
             TotalIn = totalIn,
             TotalOut = totalOut,
             ClosingBalance = runningBalance,
+            OpeningBalanceDisplay = ItemUnitDisplayHelper.FormatQtyWithUnitText(openingBal, primaryUnitId, fallbackUnitTitle, itemAdditionalUnits, subUnits),
+            TotalInDisplay = ItemUnitDisplayHelper.FormatQtyWithUnitText(totalIn, primaryUnitId, fallbackUnitTitle, itemAdditionalUnits, subUnits),
+            TotalOutDisplay = ItemUnitDisplayHelper.FormatQtyWithUnitText(totalOut, primaryUnitId, fallbackUnitTitle, itemAdditionalUnits, subUnits),
+            ClosingBalanceDisplay = ItemUnitDisplayHelper.FormatQtyWithUnitText(runningBalance, primaryUnitId, fallbackUnitTitle, itemAdditionalUnits, subUnits),
             ShowCostPrice = filter.ShowCostPrice,
             GeneratedAt = DateTime.Now
         };
@@ -858,7 +921,9 @@ internal class ReportService : IReportService
             {
                 x.ItemId,
                 Item = x.Item != null ? x.Item.Title : string.Empty,
-                Unit = x.Item != null ? (x.Item.DefaultUnit != null ? x.Item.DefaultUnit.Title : x.Item.DefaultUnitId) : string.Empty,
+                PrimaryUnitId = x.Item != null ? (x.Item.PrimaryUnitId ?? x.Item.DefaultUnitId) : null,
+                AdditionalUnits = x.Item != null ? x.Item.AdditionalUnits : null,
+                Unit = x.Item != null ? (x.Item.PrimaryUnit != null ? (x.Item.PrimaryUnit.ShortTitle ?? x.Item.PrimaryUnit.Title) : (x.Item.DefaultUnit != null ? (x.Item.DefaultUnit.ShortTitle ?? x.Item.DefaultUnit.Title) : x.Item.DefaultUnitId)) : string.Empty,
                 SecUnit = x.Item != null ? (x.Item.SecondaryUnit != null ? x.Item.SecondaryUnit.Title : x.Item.SecondaryUnitId) : string.Empty,
                 x.VDate,
                 x.VTime,
@@ -875,8 +940,21 @@ internal class ReportService : IReportService
             })
             .ToListAsync(cancellationToken);
 
+        var primaryUnitIds = rows
+            .Where(x => string.IsNullOrWhiteSpace(x.AdditionalUnits) && !string.IsNullOrWhiteSpace(x.PrimaryUnitId))
+            .Select(x => x.PrimaryUnitId!)
+            .Distinct()
+            .ToList();
+
+        var subUnits = primaryUnitIds.Count == 0
+            ? new List<Unit>()
+            : await _unitRepository.GetAll()
+                .AsNoTracking()
+                .Where(u => u.ParentUnitId != null && u.ConversionRatio > 1m && primaryUnitIds.Contains(u.ParentUnitId))
+                .ToListAsync(cancellationToken);
+
         var data = rows
-            .GroupBy(x => new { x.ItemId, x.Item, x.Unit, x.SecUnit })
+            .GroupBy(x => new { x.ItemId, x.Item, x.PrimaryUnitId, x.AdditionalUnits, x.Unit, x.SecUnit })
             .Select(g =>
             {
                 var latestTx = g.OrderByDescending(x => x.VDate).ThenByDescending(x => x.VTime).ThenByDescending(x => x.TranType == "in" ? 0 : 1).ThenByDescending(x => x.Id).FirstOrDefault();
@@ -916,7 +994,11 @@ internal class ReportService : IReportService
                     SecPriQty = secPriQty,
                     SecQtyIn = secQtyIn,
                     SecQtyOut = secQtyOut,
-                    SecQtyBal = secQtyBal
+                    SecQtyBal = secQtyBal,
+                    PriQtyDisplay = ItemUnitDisplayHelper.FormatQtyWithUnitText(priQty, g.Key.PrimaryUnitId, g.Key.Unit, g.Key.AdditionalUnits, subUnits),
+                    QtyInDisplay = qtyIn > 0 ? ItemUnitDisplayHelper.FormatQtyWithUnitText(qtyIn, g.Key.PrimaryUnitId, g.Key.Unit, g.Key.AdditionalUnits, subUnits) : null,
+                    QtyOutDisplay = qtyOut > 0 ? ItemUnitDisplayHelper.FormatQtyWithUnitText(qtyOut, g.Key.PrimaryUnitId, g.Key.Unit, g.Key.AdditionalUnits, subUnits) : null,
+                    QtyBalDisplay = ItemUnitDisplayHelper.FormatQtyWithUnitText(qtyBal, g.Key.PrimaryUnitId, g.Key.Unit, g.Key.AdditionalUnits, subUnits)
                 };
             })
             .Where(x => x.QtyBal != 0 || x.SecQtyBal != 0)
@@ -963,6 +1045,10 @@ internal class ReportService : IReportService
                 QtyIn = line.QtyIn,
                 QtyOut = line.QtyOut,
                 ClosingQty = line.QtyBal,
+                OpeningQtyDisplay = line.PriQtyDisplay,
+                QtyInDisplay = line.QtyInDisplay,
+                QtyOutDisplay = line.QtyOutDisplay,
+                ClosingQtyDisplay = line.QtyBalDisplay,
                 Rate = line.Rate
             });
         }
@@ -1298,24 +1384,26 @@ internal class ReportService : IReportService
         var unitMap = await _itemTransactionRepository.GetAll()
             .AsNoTracking()
             .Where(x => !string.IsNullOrWhiteSpace(x.UnitId))
-            .Select(x => new { Code = x.UnitId!, Title = x.Unit != null ? x.Unit.Title : x.UnitId! })
+            .Select(x => new { Code = x.UnitId!, Title = x.Unit != null ? (x.Unit.ShortTitle ?? x.Unit.Title) : x.UnitId! })
             .Distinct()
             .ToDictionaryAsync(x => x.Code, x => x.Title, cancellationToken);
 
-        var saleLines = await (
+        var rawSaleLines = await (
             from sd in _saleRepository.GetAll().AsNoTracking()
             join sm in _saleMasterRepository.GetAll().AsNoTracking()
                 on new { sd.VType, sd.VNo } equals new { sm.VType, VNo = sm.VNo }
             where sm.AccountId == filter.Account
                   && sm.VDate >= filter.FromDate && sm.VDate <= filter.ToDate
             orderby sm.VDate, sd.VType, sd.VNo, sd.Seq
-            select new CustomerBillLineResponse
+            select new
             {
                 Date = sm.VDate,
                 VNo = sd.VType + "-" + sd.VNo,
                 Item = sd.Item != null ? sd.Item.Title : (sd.ItemId ?? string.Empty),
                 UnitId = sd.UnitId ?? string.Empty,
-                UnitTitle = sd.Unit != null ? sd.Unit.Title : (!string.IsNullOrWhiteSpace(sd.UnitId) && unitMap.ContainsKey(sd.UnitId) ? unitMap[sd.UnitId] : (sd.Item != null && sd.Item.DefaultUnit != null ? sd.Item.DefaultUnit.Title : (sd.Item != null && sd.Item.PrimaryUnit != null ? sd.Item.PrimaryUnit.Title : (sd.UnitId ?? string.Empty)))),
+                PrimaryUnitId = sd.Item != null ? (sd.Item.PrimaryUnitId ?? sd.UnitId) : sd.UnitId,
+                AdditionalUnits = sd.Item != null ? sd.Item.AdditionalUnits : null,
+                UnitTitle = sd.Unit != null ? (sd.Unit.ShortTitle ?? sd.Unit.Title) : (!string.IsNullOrWhiteSpace(sd.UnitId) && unitMap.ContainsKey(sd.UnitId) ? unitMap[sd.UnitId] : (sd.Item != null && sd.Item.DefaultUnit != null ? (sd.Item.DefaultUnit.ShortTitle ?? sd.Item.DefaultUnit.Title) : (sd.Item != null && sd.Item.PrimaryUnit != null ? (sd.Item.PrimaryUnit.ShortTitle ?? sd.Item.PrimaryUnit.Title) : (sd.UnitId ?? string.Empty)))),
                 Qty = sd.Qty,
                 Rate = sd.GrossRate,
                 AddLess = 0m,
@@ -1328,25 +1416,86 @@ internal class ReportService : IReportService
                 ConditionNote = sd.ConditionNote
             }).ToListAsync(cancellationToken);
 
-        var supplyLines = await (
+        var rawSupplyLines = await (
             from ssd in _saleSupplyDetailRepository.GetAll().AsNoTracking()
             join ssm in _saleSupplyMasterRepository.GetAll().AsNoTracking()
                 on new { ssd.VType, ssd.VNo } equals new { ssm.VType, VNo = ssm.VNo }
             where ssd.CustomerAccountId == filter.Account
                   && ssm.VDate >= filter.FromDate && ssm.VDate <= filter.ToDate
-            select new CustomerBillLineResponse
+            select new
             {
                 Date = ssm.VDate,
                 VNo = ssd.VType + "-" + ssd.VNo,
                 Item = ssm.Item != null ? ssm.Item.Title : (ssm.ItemId ?? string.Empty),
                 UnitId = ssd.UnitId ?? string.Empty,
-                UnitTitle = ssd.Unit != null ? ssd.Unit.Title : (!string.IsNullOrWhiteSpace(ssd.UnitId) && unitMap.ContainsKey(ssd.UnitId) ? unitMap[ssd.UnitId] : (ssm.Item != null && ssm.Item.DefaultUnit != null ? ssm.Item.DefaultUnit.Title : (ssm.Item != null && ssm.Item.PrimaryUnit != null ? ssm.Item.PrimaryUnit.Title : (ssd.UnitId ?? string.Empty)))),
+                PrimaryUnitId = ssm.Item != null ? (ssm.Item.PrimaryUnitId ?? ssd.UnitId) : ssd.UnitId,
+                AdditionalUnits = ssm.Item != null ? ssm.Item.AdditionalUnits : null,
+                UnitTitle = ssd.Unit != null ? (ssd.Unit.ShortTitle ?? ssd.Unit.Title) : (!string.IsNullOrWhiteSpace(ssd.UnitId) && unitMap.ContainsKey(ssd.UnitId) ? unitMap[ssd.UnitId] : (ssm.Item != null && ssm.Item.DefaultUnit != null ? (ssm.Item.DefaultUnit.ShortTitle ?? ssm.Item.DefaultUnit.Title) : (ssm.Item != null && ssm.Item.PrimaryUnit != null ? (ssm.Item.PrimaryUnit.ShortTitle ?? ssm.Item.PrimaryUnit.Title) : (ssd.UnitId ?? string.Empty)))),
                 Qty = ssd.Qty,
                 Rate = ssd.GrossRate,
                 AddLess = ssd.AddLess,
                 Carriage = ssd.Carriage,
                 Amount = ssd.Amount
             }).ToListAsync(cancellationToken);
+
+        var primaryUnitIds = rawSaleLines
+            .Where(x => string.IsNullOrWhiteSpace(x.AdditionalUnits) && !string.IsNullOrWhiteSpace(x.PrimaryUnitId))
+            .Select(x => x.PrimaryUnitId!)
+            .Concat(rawSupplyLines
+                .Where(x => string.IsNullOrWhiteSpace(x.AdditionalUnits) && !string.IsNullOrWhiteSpace(x.PrimaryUnitId))
+                .Select(x => x.PrimaryUnitId!))
+            .Distinct()
+            .ToList();
+
+        var subUnits = primaryUnitIds.Count == 0
+            ? new List<Unit>()
+            : await _unitRepository.GetAll()
+                .AsNoTracking()
+                .Where(u => u.ParentUnitId != null && u.ConversionRatio > 1m && primaryUnitIds.Contains(u.ParentUnitId))
+                .ToListAsync(cancellationToken);
+
+        var saleLines = rawSaleLines.Select(x =>
+        {
+            var (displayQty, displayUnit, _) = ItemUnitDisplayHelper.FormatQty(
+                x.Qty, x.PrimaryUnitId, x.UnitTitle, x.AdditionalUnits, subUnits);
+            return new CustomerBillLineResponse
+            {
+                Date = x.Date,
+                VNo = x.VNo,
+                Item = x.Item,
+                UnitId = x.UnitId,
+                UnitTitle = displayUnit,
+                Qty = displayQty,
+                Rate = x.Rate,
+                AddLess = x.AddLess,
+                Carriage = x.Carriage,
+                Amount = x.Amount,
+                Imei = x.Imei,
+                Imei2 = x.Imei2,
+                PtaStatus = x.PtaStatus,
+                WarrantyMonths = x.WarrantyMonths,
+                ConditionNote = x.ConditionNote
+            };
+        }).ToList();
+
+        var supplyLines = rawSupplyLines.Select(x =>
+        {
+            var (displayQty, displayUnit, _) = ItemUnitDisplayHelper.FormatQty(
+                x.Qty, x.PrimaryUnitId, x.UnitTitle, x.AdditionalUnits, subUnits);
+            return new CustomerBillLineResponse
+            {
+                Date = x.Date,
+                VNo = x.VNo,
+                Item = x.Item,
+                UnitId = x.UnitId,
+                UnitTitle = displayUnit,
+                Qty = displayQty,
+                Rate = x.Rate,
+                AddLess = x.AddLess,
+                Carriage = x.Carriage,
+                Amount = x.Amount
+            };
+        }).ToList();
 
         bool useClearingDate = string.Equals(filter.DateBasis, "ClearingDate", StringComparison.OrdinalIgnoreCase);
 
@@ -2136,21 +2285,54 @@ internal class ReportService : IReportService
         if (string.IsNullOrWhiteSpace(filter.VoucherNo))
             throw new BadRequestException("VoucherNo is required.");
 
-        var lines = await (
+        var rawLines = await (
             from sd in _saleRepository.GetAll().AsNoTracking()
             where sd.VType == "SL" && sd.VNo == filter.VoucherNo
-            select new SaleBillLineResponse
+            select new
             {
                 ItemName = sd.Item != null ? sd.Item.Title : string.Empty,
                 Qty = sd.Qty,
                 UnitId = sd.UnitId ?? string.Empty,
-                UnitTitle = sd.Unit != null ? sd.Unit.Title : (sd.Item != null && sd.Item.DefaultUnit != null ? sd.Item.DefaultUnit.Title : (sd.Item != null && sd.Item.PrimaryUnit != null ? sd.Item.PrimaryUnit.Title : (sd.UnitId ?? string.Empty))),
+                PrimaryUnitId = sd.Item != null ? (sd.Item.PrimaryUnitId ?? sd.UnitId) : sd.UnitId,
+                AdditionalUnits = sd.Item != null ? sd.Item.AdditionalUnits : null,
+                UnitTitle = sd.Unit != null ? (sd.Unit.ShortTitle ?? sd.Unit.Title) : (sd.Item != null && sd.Item.DefaultUnit != null ? (sd.Item.DefaultUnit.ShortTitle ?? sd.Item.DefaultUnit.Title) : (sd.Item != null && sd.Item.PrimaryUnit != null ? (sd.Item.PrimaryUnit.ShortTitle ?? sd.Item.PrimaryUnit.Title) : (sd.UnitId ?? string.Empty))),
                 Rate = sd.GrossRate,
                 GrossRate = sd.GrossRate,
                 Disc = sd.Discount,
                 Carriage = sd.Carriage,
                 TAmount = (sd.Qty * sd.GrossRate) - sd.Discount
             }).ToListAsync(cancellationToken);
+
+        var primaryUnitIds = rawLines
+            .Where(x => string.IsNullOrWhiteSpace(x.AdditionalUnits) && !string.IsNullOrWhiteSpace(x.PrimaryUnitId))
+            .Select(x => x.PrimaryUnitId!)
+            .Distinct()
+            .ToList();
+
+        var subUnits = primaryUnitIds.Count == 0
+            ? new List<Unit>()
+            : await _unitRepository.GetAll()
+                .AsNoTracking()
+                .Where(u => u.ParentUnitId != null && u.ConversionRatio > 1m && primaryUnitIds.Contains(u.ParentUnitId))
+                .ToListAsync(cancellationToken);
+
+        var lines = rawLines.Select(x =>
+        {
+            var (displayQty, displayUnit, _) = ItemUnitDisplayHelper.FormatQty(
+                x.Qty, x.PrimaryUnitId, x.UnitTitle, x.AdditionalUnits, subUnits);
+            return new SaleBillLineResponse
+            {
+                ItemName = x.ItemName,
+                Qty = displayQty,
+                UnitId = x.UnitId,
+                UnitTitle = displayUnit,
+                Rate = x.Rate,
+                GrossRate = x.GrossRate,
+                Disc = x.Disc,
+                Carriage = x.Carriage,
+                TAmount = x.TAmount
+            };
+        }).ToList();
 
         var master = await _saleMasterRepository.GetAll()
         .AsNoTracking()
@@ -2209,19 +2391,50 @@ internal class ReportService : IReportService
         if (string.IsNullOrWhiteSpace(filter.VoucherNo))
             throw new BadRequestException("VoucherNo is required.");
 
-        var lines = await (
+        var rawLines = await (
             from pd in _purchaseDetailRepository.GetAll().AsNoTracking()
             where pd.VType == "PU" && pd.VNo == filter.VoucherNo
-            select new PurchaseBillLineResponse
+            select new
             {
                 ItemName = pd.Item != null ? pd.Item.Title : string.Empty,
                 Qty = pd.Qty,
                 QtyInPack = pd.QtyInPack ?? 0m,
                 UnitId = pd.UnitId ?? string.Empty,
-                UnitTitle = pd.Unit != null ? pd.Unit.Title : (pd.Item != null && pd.Item.DefaultUnit != null ? pd.Item.DefaultUnit.Title : (pd.Item != null && pd.Item.PrimaryUnit != null ? pd.Item.PrimaryUnit.Title : (pd.UnitId ?? string.Empty))),
+                PrimaryUnitId = pd.Item != null ? (pd.Item.PrimaryUnitId ?? pd.UnitId) : pd.UnitId,
+                AdditionalUnits = pd.Item != null ? pd.Item.AdditionalUnits : null,
+                UnitTitle = pd.Unit != null ? (pd.Unit.ShortTitle ?? pd.Unit.Title) : (pd.Item != null && pd.Item.DefaultUnit != null ? (pd.Item.DefaultUnit.ShortTitle ?? pd.Item.DefaultUnit.Title) : (pd.Item != null && pd.Item.PrimaryUnit != null ? (pd.Item.PrimaryUnit.ShortTitle ?? pd.Item.PrimaryUnit.Title) : (pd.UnitId ?? string.Empty))),
                 Rate = pd.Rate,
                 TAmount = pd.Qty * pd.Rate
             }).ToListAsync(cancellationToken);
+
+        var primaryUnitIds = rawLines
+            .Where(x => string.IsNullOrWhiteSpace(x.AdditionalUnits) && !string.IsNullOrWhiteSpace(x.PrimaryUnitId))
+            .Select(x => x.PrimaryUnitId!)
+            .Distinct()
+            .ToList();
+
+        var subUnits = primaryUnitIds.Count == 0
+            ? new List<Unit>()
+            : await _unitRepository.GetAll()
+                .AsNoTracking()
+                .Where(u => u.ParentUnitId != null && u.ConversionRatio > 1m && primaryUnitIds.Contains(u.ParentUnitId))
+                .ToListAsync(cancellationToken);
+
+        var lines = rawLines.Select(x =>
+        {
+            var (displayQty, displayUnit, _) = ItemUnitDisplayHelper.FormatQty(
+                x.Qty, x.PrimaryUnitId, x.UnitTitle, x.AdditionalUnits, subUnits);
+            return new PurchaseBillLineResponse
+            {
+                ItemName = x.ItemName,
+                Qty = displayQty,
+                QtyInPack = x.QtyInPack,
+                UnitId = x.UnitId,
+                UnitTitle = displayUnit,
+                Rate = x.Rate,
+                TAmount = x.TAmount
+            };
+        }).ToList();
 
         var master = await _purchaseMasterRepository.GetAll()
             .AsNoTracking()
@@ -2264,19 +2477,50 @@ internal class ReportService : IReportService
         if (string.IsNullOrWhiteSpace(filter.VoucherNo))
             throw new BadRequestException("VoucherNo is required.");
 
-        var lines = await (
+        var rawLines = await (
             from pd in _purchaseRetDetailRepository.GetAll().AsNoTracking()
             where pd.VType == "PR" && pd.VNo == filter.VoucherNo
-            select new PurchaseBillLineResponse
+            select new
             {
                 ItemName = pd.Item != null ? pd.Item.Title : string.Empty,
                 Qty = pd.Qty,
                 QtyInPack = pd.QtyInPack ?? 0m,
                 UnitId = pd.UnitId ?? string.Empty,
-                UnitTitle = pd.Unit != null ? pd.Unit.Title : (pd.Item != null && pd.Item.DefaultUnit != null ? pd.Item.DefaultUnit.Title : (pd.Item != null && pd.Item.PrimaryUnit != null ? pd.Item.PrimaryUnit.Title : (pd.UnitId ?? string.Empty))),
+                PrimaryUnitId = pd.Item != null ? (pd.Item.PrimaryUnitId ?? pd.UnitId) : pd.UnitId,
+                AdditionalUnits = pd.Item != null ? pd.Item.AdditionalUnits : null,
+                UnitTitle = pd.Unit != null ? (pd.Unit.ShortTitle ?? pd.Unit.Title) : (pd.Item != null && pd.Item.DefaultUnit != null ? (pd.Item.DefaultUnit.ShortTitle ?? pd.Item.DefaultUnit.Title) : (pd.Item != null && pd.Item.PrimaryUnit != null ? (pd.Item.PrimaryUnit.ShortTitle ?? pd.Item.PrimaryUnit.Title) : (pd.UnitId ?? string.Empty))),
                 Rate = pd.Rate,
                 TAmount = pd.Qty * pd.Rate
             }).ToListAsync(cancellationToken);
+
+        var primaryUnitIds = rawLines
+            .Where(x => string.IsNullOrWhiteSpace(x.AdditionalUnits) && !string.IsNullOrWhiteSpace(x.PrimaryUnitId))
+            .Select(x => x.PrimaryUnitId!)
+            .Distinct()
+            .ToList();
+
+        var subUnits = primaryUnitIds.Count == 0
+            ? new List<Unit>()
+            : await _unitRepository.GetAll()
+                .AsNoTracking()
+                .Where(u => u.ParentUnitId != null && u.ConversionRatio > 1m && primaryUnitIds.Contains(u.ParentUnitId))
+                .ToListAsync(cancellationToken);
+
+        var lines = rawLines.Select(x =>
+        {
+            var (displayQty, displayUnit, _) = ItemUnitDisplayHelper.FormatQty(
+                x.Qty, x.PrimaryUnitId, x.UnitTitle, x.AdditionalUnits, subUnits);
+            return new PurchaseBillLineResponse
+            {
+                ItemName = x.ItemName,
+                Qty = displayQty,
+                QtyInPack = x.QtyInPack,
+                UnitId = x.UnitId,
+                UnitTitle = displayUnit,
+                Rate = x.Rate,
+                TAmount = x.TAmount
+            };
+        }).ToList();
 
         var master = await _purchaseRetMasterRepository.GetAll()
             .AsNoTracking()
@@ -2319,20 +2563,52 @@ internal class ReportService : IReportService
         if (string.IsNullOrWhiteSpace(filter.VoucherNo))
             throw new BadRequestException("VoucherNo is required.");
 
-        var lines = await (
+        var rawLines = await (
             from sd in _saleRetDetailRepository.GetAll().AsNoTracking()
             where sd.VType == "SR" && sd.VNo == filter.VoucherNo
-            select new SaleRetBillLineResponse
+            select new
             {
                 ItemName = sd.Item != null ? sd.Item.Title : string.Empty,
                 Qty = sd.Qty,
                 QtyInPack = sd.QtyInPack ?? 0m,
                 UnitId = sd.UnitId ?? string.Empty,
-                UnitTitle = sd.Unit != null ? sd.Unit.Title : (sd.Item != null && sd.Item.DefaultUnit != null ? sd.Item.DefaultUnit.Title : (sd.Item != null && sd.Item.PrimaryUnit != null ? sd.Item.PrimaryUnit.Title : (sd.UnitId ?? string.Empty))),
+                PrimaryUnitId = sd.Item != null ? (sd.Item.PrimaryUnitId ?? sd.UnitId) : sd.UnitId,
+                AdditionalUnits = sd.Item != null ? sd.Item.AdditionalUnits : null,
+                UnitTitle = sd.Unit != null ? (sd.Unit.ShortTitle ?? sd.Unit.Title) : (sd.Item != null && sd.Item.DefaultUnit != null ? (sd.Item.DefaultUnit.ShortTitle ?? sd.Item.DefaultUnit.Title) : (sd.Item != null && sd.Item.PrimaryUnit != null ? (sd.Item.PrimaryUnit.ShortTitle ?? sd.Item.PrimaryUnit.Title) : (sd.UnitId ?? string.Empty))),
                 Rate = sd.GrossRate ?? 0m,
                 GrossRate = sd.GrossRate ?? 0m,
                 TAmount = (sd.Qty * (sd.GrossRate ?? 0m)) - (sd.Discount ?? 0m)
             }).ToListAsync(cancellationToken);
+
+        var primaryUnitIds = rawLines
+            .Where(x => string.IsNullOrWhiteSpace(x.AdditionalUnits) && !string.IsNullOrWhiteSpace(x.PrimaryUnitId))
+            .Select(x => x.PrimaryUnitId!)
+            .Distinct()
+            .ToList();
+
+        var subUnits = primaryUnitIds.Count == 0
+            ? new List<Unit>()
+            : await _unitRepository.GetAll()
+                .AsNoTracking()
+                .Where(u => u.ParentUnitId != null && u.ConversionRatio > 1m && primaryUnitIds.Contains(u.ParentUnitId))
+                .ToListAsync(cancellationToken);
+
+        var lines = rawLines.Select(x =>
+        {
+            var (displayQty, displayUnit, _) = ItemUnitDisplayHelper.FormatQty(
+                x.Qty, x.PrimaryUnitId, x.UnitTitle, x.AdditionalUnits, subUnits);
+            return new SaleRetBillLineResponse
+            {
+                ItemName = x.ItemName,
+                Qty = displayQty,
+                QtyInPack = x.QtyInPack,
+                UnitId = x.UnitId,
+                UnitTitle = displayUnit,
+                Rate = x.Rate,
+                GrossRate = x.GrossRate,
+                TAmount = x.TAmount
+            };
+        }).ToList();
 
         var master = await _saleRetMasterRepository.GetAll()
             .AsNoTracking()

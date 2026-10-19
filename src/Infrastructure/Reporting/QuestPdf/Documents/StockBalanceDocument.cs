@@ -173,22 +173,30 @@ public class StockBalanceDocument : IDocument
                 table.Cell().Element(c => BodyCell(c, bg)).AlignCenter().Text(item.Unit ?? "Pcs");
 
                 // Opening
-                table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text(item.OpeningQty.ToString("#,##0.##"));
+                var openText = !string.IsNullOrWhiteSpace(item.OpeningQtyDisplay) ? item.OpeningQtyDisplay : item.OpeningQty.ToString("#,##0.##");
+                table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text(openText);
 
                 // Inward
                 if (item.QtyIn > 0)
-                    table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text(item.QtyIn.ToString("#,##0.##")).FontColor(Colors.Blue.Darken2);
+                {
+                    var inText = !string.IsNullOrWhiteSpace(item.QtyInDisplay) ? item.QtyInDisplay : item.QtyIn.ToString("#,##0.##");
+                    table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text(inText).FontColor(Colors.Blue.Darken2);
+                }
                 else
                     table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text("-").FontColor(Colors.Grey.Lighten1);
 
                 // Outward
                 if (item.QtyOut > 0)
-                    table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text(item.QtyOut.ToString("#,##0.##")).FontColor(Colors.Orange.Darken3);
+                {
+                    var outText = !string.IsNullOrWhiteSpace(item.QtyOutDisplay) ? item.QtyOutDisplay : item.QtyOut.ToString("#,##0.##");
+                    table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text(outText).FontColor(Colors.Orange.Darken3);
+                }
                 else
                     table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text("-").FontColor(Colors.Grey.Lighten1);
 
                 // Closing Qty
-                table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text(item.ClosingQty.ToString("#,##0.##")).SemiBold();
+                var closeText = !string.IsNullOrWhiteSpace(item.ClosingQtyDisplay) ? item.ClosingQtyDisplay : item.ClosingQty.ToString("#,##0.##");
+                table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text(closeText).SemiBold();
 
                 if (_showStockValue)
                 {

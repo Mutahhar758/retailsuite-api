@@ -27,6 +27,7 @@ public class InventoryItemResponse
     public string? MediaId { get; set; }
     public string? MediaUrl { get; set; }
     public string? QuickQtyPresets { get; set; }
+    public string? AdditionalUnits { get; set; }
     public bool? RequireImei { get; set; }
     public string? BrandId { get; set; }
     public string? BrandTitle { get; set; }

@@ -15,4 +15,9 @@ public class StockLedgerLineResponse
     public decimal SecQtyIn { get; set; }
     public decimal SecQtyOut { get; set; }
     public decimal SecQtyBal { get; set; }
+
+    public string? PrimaryUnit { get; set; }
+    public string? QtyInDisplay { get; set; }
+    public string? QtyOutDisplay { get; set; }
+    public string? BalanceDisplay { get; set; }
 }

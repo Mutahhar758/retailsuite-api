@@ -93,25 +93,25 @@ public class StockLedgerDocument : IDocument
                 kpiRow.RelativeItem().Text(x =>
                 {
                     x.Span("Opening Stock: ").FontSize(8.5f).SemiBold().FontColor(Colors.Grey.Darken2);
-                    x.Span(_header.OpeningBalance.ToString("#,##0.00")).FontSize(9f).Bold().FontColor(Colors.Grey.Darken4);
+                    x.Span(!string.IsNullOrWhiteSpace(_header.OpeningBalanceDisplay) ? _header.OpeningBalanceDisplay : _header.OpeningBalance.ToString("#,##0.00")).FontSize(9f).Bold().FontColor(Colors.Grey.Darken4);
                 });
 
                 kpiRow.RelativeItem().Text(x =>
                 {
                     x.Span("Total Inward (+): ").FontSize(8.5f).SemiBold().FontColor(Colors.Grey.Darken2);
-                    x.Span(_header.TotalIn.ToString("#,##0.00")).FontSize(9f).Bold().FontColor(Colors.Green.Darken3);
+                    x.Span(!string.IsNullOrWhiteSpace(_header.TotalInDisplay) ? _header.TotalInDisplay : _header.TotalIn.ToString("#,##0.00")).FontSize(9f).Bold().FontColor(Colors.Green.Darken3);
                 });
 
                 kpiRow.RelativeItem().Text(x =>
                 {
                     x.Span("Total Outward (-): ").FontSize(8.5f).SemiBold().FontColor(Colors.Grey.Darken2);
-                    x.Span(_header.TotalOut.ToString("#,##0.00")).FontSize(9f).Bold().FontColor(Colors.Red.Darken2);
+                    x.Span(!string.IsNullOrWhiteSpace(_header.TotalOutDisplay) ? _header.TotalOutDisplay : _header.TotalOut.ToString("#,##0.00")).FontSize(9f).Bold().FontColor(Colors.Red.Darken2);
                 });
 
                 kpiRow.RelativeItem().AlignRight().Text(x =>
                 {
                     x.Span("Closing Balance: ").FontSize(8.5f).SemiBold().FontColor(Colors.Grey.Darken2);
-                    x.Span(_header.ClosingBalance.ToString("#,##0.00")).FontSize(9f).Bold().FontColor(Colors.Blue.Darken3);
+                    x.Span(!string.IsNullOrWhiteSpace(_header.ClosingBalanceDisplay) ? _header.ClosingBalanceDisplay : _header.ClosingBalance.ToString("#,##0.00")).FontSize(9f).Bold().FontColor(Colors.Blue.Darken3);
                 });
             });
         });
@@ -130,9 +130,9 @@ public class StockLedgerDocument : IDocument
                     columns.RelativeColumn(3.5f); // Particular
                     columns.ConstantColumn(52);   // Rate
                     columns.ConstantColumn(55);   // Cost Price
-                    columns.ConstantColumn(60);   // Qty In
-                    columns.ConstantColumn(60);   // Qty Out
-                    columns.ConstantColumn(68);   // Balance Qty
+                    columns.ConstantColumn(64);   // Qty In
+                    columns.ConstantColumn(64);   // Qty Out
+                    columns.ConstantColumn(72);   // Balance Qty
                 });
 
                 table.Header(header =>
@@ -168,13 +168,14 @@ public class StockLedgerDocument : IDocument
                     table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text(costStr).FontColor(Colors.Indigo.Darken2);
 
                     // Qty In
+                    var qtyInText = !string.IsNullOrWhiteSpace(item.QtyInDisplay) ? item.QtyInDisplay : item.QtyIn.ToString("#,##0.00");
                     if (item.QtyIn > 0 && !isOpeningRow)
                     {
-                        table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text(item.QtyIn.ToString("#,##0.00")).FontColor(Colors.Green.Darken3);
+                        table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text(qtyInText).FontColor(Colors.Green.Darken3);
                     }
                     else if (item.QtyIn > 0 && isOpeningRow)
                     {
-                        table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text(item.QtyIn.ToString("#,##0.00")).FontColor(Colors.Grey.Darken4);
+                        table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text(qtyInText).FontColor(Colors.Grey.Darken4);
                     }
                     else
                     {
@@ -182,9 +183,10 @@ public class StockLedgerDocument : IDocument
                     }
 
                     // Qty Out
+                    var qtyOutText = !string.IsNullOrWhiteSpace(item.QtyOutDisplay) ? item.QtyOutDisplay : item.QtyOut.ToString("#,##0.00");
                     if (item.QtyOut > 0)
                     {
-                        table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text(item.QtyOut.ToString("#,##0.00")).FontColor(Colors.Red.Darken2);
+                        table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text(qtyOutText).FontColor(Colors.Red.Darken2);
                     }
                     else
                     {
@@ -192,14 +194,15 @@ public class StockLedgerDocument : IDocument
                     }
 
                     // Running Balance
-                    table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text(item.Balance.ToString("#,##0.00")).Bold().FontColor(Colors.Grey.Darken4);
+                    var balText = !string.IsNullOrWhiteSpace(item.BalanceDisplay) ? item.BalanceDisplay : item.Balance.ToString("#,##0.00");
+                    table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text(balText).Bold().FontColor(Colors.Grey.Darken4);
                 }
 
                 // Summary Totals Row (Span 5: Date, Voucher#, Particular, Rate, Cost Price)
                 table.Cell().ColumnSpan(5).Element(FooterTotalCell).Text("PERIOD MOVEMENT TOTALS").Bold().FontColor(Colors.Grey.Darken4);
-                table.Cell().Element(FooterTotalCell).AlignRight().Text(_header.TotalIn.ToString("#,##0.00")).Bold().FontColor(Colors.Green.Darken3);
-                table.Cell().Element(FooterTotalCell).AlignRight().Text(_header.TotalOut.ToString("#,##0.00")).Bold().FontColor(Colors.Red.Darken2);
-                table.Cell().Element(FooterTotalCell).AlignRight().Text(_header.ClosingBalance.ToString("#,##0.00")).Bold().FontColor(Colors.Blue.Darken3);
+                table.Cell().Element(FooterTotalCell).AlignRight().Text(!string.IsNullOrWhiteSpace(_header.TotalInDisplay) ? _header.TotalInDisplay : _header.TotalIn.ToString("#,##0.00")).Bold().FontColor(Colors.Green.Darken3);
+                table.Cell().Element(FooterTotalCell).AlignRight().Text(!string.IsNullOrWhiteSpace(_header.TotalOutDisplay) ? _header.TotalOutDisplay : _header.TotalOut.ToString("#,##0.00")).Bold().FontColor(Colors.Red.Darken2);
+                table.Cell().Element(FooterTotalCell).AlignRight().Text(!string.IsNullOrWhiteSpace(_header.ClosingBalanceDisplay) ? _header.ClosingBalanceDisplay : _header.ClosingBalance.ToString("#,##0.00")).Bold().FontColor(Colors.Blue.Darken3);
             }
             else
             {
@@ -209,9 +212,9 @@ public class StockLedgerDocument : IDocument
                     columns.ConstantColumn(75);   // Voucher #
                     columns.RelativeColumn(3.5f); // Particular
                     columns.ConstantColumn(60);   // Rate
-                    columns.ConstantColumn(65);   // Qty In
-                    columns.ConstantColumn(65);   // Qty Out
-                    columns.ConstantColumn(75);   // Balance Qty
+                    columns.ConstantColumn(68);   // Qty In
+                    columns.ConstantColumn(68);   // Qty Out
+                    columns.ConstantColumn(78);   // Balance Qty
                 });
 
                 table.Header(header =>
@@ -242,13 +245,14 @@ public class StockLedgerDocument : IDocument
                     table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text(rateStr).FontColor(Colors.Grey.Darken3);
 
                     // Qty In
+                    var qtyInText = !string.IsNullOrWhiteSpace(item.QtyInDisplay) ? item.QtyInDisplay : item.QtyIn.ToString("#,##0.00");
                     if (item.QtyIn > 0 && !isOpeningRow)
                     {
-                        table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text(item.QtyIn.ToString("#,##0.00")).FontColor(Colors.Green.Darken3);
+                        table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text(qtyInText).FontColor(Colors.Green.Darken3);
                     }
                     else if (item.QtyIn > 0 && isOpeningRow)
                     {
-                        table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text(item.QtyIn.ToString("#,##0.00")).FontColor(Colors.Grey.Darken4);
+                        table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text(qtyInText).FontColor(Colors.Grey.Darken4);
                     }
                     else
                     {
@@ -256,9 +260,10 @@ public class StockLedgerDocument : IDocument
                     }
 
                     // Qty Out
+                    var qtyOutText = !string.IsNullOrWhiteSpace(item.QtyOutDisplay) ? item.QtyOutDisplay : item.QtyOut.ToString("#,##0.00");
                     if (item.QtyOut > 0)
                     {
-                        table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text(item.QtyOut.ToString("#,##0.00")).FontColor(Colors.Red.Darken2);
+                        table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text(qtyOutText).FontColor(Colors.Red.Darken2);
                     }
                     else
                     {
@@ -266,14 +271,15 @@ public class StockLedgerDocument : IDocument
                     }
 
                     // Running Balance
-                    table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text(item.Balance.ToString("#,##0.00")).Bold().FontColor(Colors.Grey.Darken4);
+                    var balText = !string.IsNullOrWhiteSpace(item.BalanceDisplay) ? item.BalanceDisplay : item.Balance.ToString("#,##0.00");
+                    table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text(balText).Bold().FontColor(Colors.Grey.Darken4);
                 }
 
                 // Summary Totals Row
                 table.Cell().ColumnSpan(4).Element(FooterTotalCell).Text("PERIOD MOVEMENT TOTALS").Bold().FontColor(Colors.Grey.Darken4);
-                table.Cell().Element(FooterTotalCell).AlignRight().Text(_header.TotalIn.ToString("#,##0.00")).Bold().FontColor(Colors.Green.Darken3);
-                table.Cell().Element(FooterTotalCell).AlignRight().Text(_header.TotalOut.ToString("#,##0.00")).Bold().FontColor(Colors.Red.Darken2);
-                table.Cell().Element(FooterTotalCell).AlignRight().Text(_header.ClosingBalance.ToString("#,##0.00")).Bold().FontColor(Colors.Blue.Darken3);
+                table.Cell().Element(FooterTotalCell).AlignRight().Text(!string.IsNullOrWhiteSpace(_header.TotalInDisplay) ? _header.TotalInDisplay : _header.TotalIn.ToString("#,##0.00")).Bold().FontColor(Colors.Green.Darken3);
+                table.Cell().Element(FooterTotalCell).AlignRight().Text(!string.IsNullOrWhiteSpace(_header.TotalOutDisplay) ? _header.TotalOutDisplay : _header.TotalOut.ToString("#,##0.00")).Bold().FontColor(Colors.Red.Darken2);
+                table.Cell().Element(FooterTotalCell).AlignRight().Text(!string.IsNullOrWhiteSpace(_header.ClosingBalanceDisplay) ? _header.ClosingBalanceDisplay : _header.ClosingBalance.ToString("#,##0.00")).Bold().FontColor(Colors.Blue.Darken3);
             }
         });
     }

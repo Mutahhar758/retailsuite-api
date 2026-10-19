@@ -22,6 +22,7 @@ public class ItemDetail : AuditableEntity<string>, IAggregateRoot
     public decimal? OpnRate { get; set; }
     public string? MediaId { get; set; }
     public string? QuickQtyPresets { get; set; }
+    public string? AdditionalUnits { get; set; }
     public bool? RequireImei { get; set; }
     public string? BrandId { get; set; }
     public Brand? Brand { get; set; }

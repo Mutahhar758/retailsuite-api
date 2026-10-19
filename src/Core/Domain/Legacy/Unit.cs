@@ -6,6 +6,11 @@ namespace Retailer.Domain.Legacy;
 public class Unit : AuditableEntity<string>, IAggregateRoot
 {
     public string Title { get; set; } = default!;
+    public string? ShortTitle { get; set; }
+    public string? ParentUnitId { get; set; }
+    public decimal? ConversionRatio { get; set; }
+    public Unit? ParentUnit { get; set; }
+    public ICollection<Unit> ChildUnits { get; set; } = new List<Unit>();
 
     public ICollection<ItemDetail> PrimaryUnitItems { get; set; } = new List<ItemDetail>();
     public ICollection<ItemDetail> SecondaryUnitItems { get; set; } = new List<ItemDetail>();

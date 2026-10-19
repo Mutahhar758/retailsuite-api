@@ -9,6 +9,10 @@ public class StockBalanceReportItem
     public decimal QtyIn { get; set; }
     public decimal QtyOut { get; set; }
     public decimal ClosingQty { get; set; }
+    public string? OpeningQtyDisplay { get; set; }
+    public string? QtyInDisplay { get; set; }
+    public string? QtyOutDisplay { get; set; }
+    public string? ClosingQtyDisplay { get; set; }
     public decimal Rate { get; set; }
     public decimal TotalValue => ClosingQty * Rate;
 }

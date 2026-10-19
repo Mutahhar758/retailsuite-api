@@ -16,4 +16,9 @@ public class StockBalanceLineResponse
     public decimal SecQtyIn { get; set; }
     public decimal SecQtyOut { get; set; }
     public decimal SecQtyBal { get; set; }
+
+    public string? PriQtyDisplay { get; set; }
+    public string? QtyInDisplay { get; set; }
+    public string? QtyOutDisplay { get; set; }
+    public string? QtyBalDisplay { get; set; }
 }

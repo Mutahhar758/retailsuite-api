@@ -13,6 +13,7 @@ namespace Retailer.Infrastructure.Legacy.Inventory;
 internal class InventoryService : IInventoryService
 {
     private readonly IRepository<ItemDetail> _itemRepository;
+    private readonly IRepository<Unit> _unitRepository;
     private readonly IRepository<ItemTransaction> _itemTransactionRepository;
     private readonly IRepository<ItemCustomerCategoryPrice> _categoryPriceRepository;
     private readonly IMediaServiceClient _mediaServiceClient;
@@ -21,6 +22,7 @@ internal class InventoryService : IInventoryService
 
     public InventoryService(
         IRepository<ItemDetail> itemRepository,
+        IRepository<Unit> unitRepository,
         IRepository<ItemTransaction> itemTransactionRepository,
         IRepository<ItemCustomerCategoryPrice> categoryPriceRepository,
         IMediaServiceClient mediaServiceClient,
@@ -28,6 +30,7 @@ internal class InventoryService : IInventoryService
         ICurrentTenant currentTenant)
     {
         _itemRepository = itemRepository;
+        _unitRepository = unitRepository;
         _itemTransactionRepository = itemTransactionRepository;
         _categoryPriceRepository = categoryPriceRepository;
         _mediaServiceClient = mediaServiceClient;
@@ -42,33 +45,72 @@ internal class InventoryService : IInventoryService
         if (!string.IsNullOrWhiteSpace(itemCategoryCode))
             query = query.Where(x => x.ItemCategoryId == itemCategoryCode);
 
-        var items = await query
+        var rawItems = await query
             .OrderBy(x => x.ItemCategoryId)
             .ThenBy(x => x.Title)
-            .Select(x => new InventoryItemLookupResponse
+            .Select(x => new
             {
-                Id = x.Id,
+                x.Id,
                 Barcode = x.Barcode != null ? x.Barcode.Trim() : null,
                 ItemCategoryCode = x.ItemCategoryId,
-                Title = x.Title,
-                ItemKey = x.ItemKey,
-                PriRate = x.PriRate,
-                SecRate = x.SecRate,
+                x.Title,
+                x.ItemKey,
+                x.PriRate,
+                x.SecRate,
                 PrimaryUnit = x.PrimaryUnitId,
                 SecondaryUnit = x.SecondaryUnitId,
                 DefaultUnit = x.DefaultUnitId,
-                QtyInPack = x.QtyInPack,
-                MediaId = x.MediaId,
-                QuickQtyPresets = x.QuickQtyPresets,
-                RequireImei = x.RequireImei,
-                BrandId = x.BrandId,
+                x.QtyInPack,
+                x.MediaId,
+                x.QuickQtyPresets,
+                x.AdditionalUnits,
+                x.RequireImei,
+                x.BrandId,
                 BrandTitle = x.Brand != null ? x.Brand.Title : null,
-                ModelName = x.ModelName,
-                Storage = x.Storage,
-                Ram = x.Ram,
-                Color = x.Color
+                x.ModelName,
+                x.Storage,
+                x.Ram,
+                x.Color
             })
             .ToListAsync(cancellationToken);
+
+        var primaryUnitIds = rawItems
+            .Where(x => string.IsNullOrWhiteSpace(x.AdditionalUnits) && !string.IsNullOrWhiteSpace(x.PrimaryUnit))
+            .Select(x => x.PrimaryUnit!)
+            .Distinct()
+            .ToList();
+
+        var subUnits = primaryUnitIds.Count == 0
+            ? new List<Unit>()
+            : await _unitRepository.GetAll()
+                .AsNoTracking()
+                .Where(u => u.ParentUnitId != null && u.ConversionRatio > 1m && primaryUnitIds.Contains(u.ParentUnitId))
+                .ToListAsync(cancellationToken);
+
+        var items = rawItems.Select(x => new InventoryItemLookupResponse
+        {
+            Id = x.Id,
+            Barcode = x.Barcode,
+            ItemCategoryCode = x.ItemCategoryCode ?? string.Empty,
+            Title = x.Title,
+            ItemKey = x.ItemKey,
+            PriRate = x.PriRate,
+            SecRate = x.SecRate,
+            PrimaryUnit = x.PrimaryUnit,
+            SecondaryUnit = x.SecondaryUnit,
+            DefaultUnit = x.DefaultUnit,
+            QtyInPack = x.QtyInPack,
+            MediaId = x.MediaId,
+            QuickQtyPresets = x.QuickQtyPresets,
+            AdditionalUnits = ItemUnitDisplayHelper.ResolveEffectiveAdditionalUnitsJson(x.PrimaryUnit, x.AdditionalUnits, subUnits),
+            RequireImei = x.RequireImei,
+            BrandId = x.BrandId,
+            BrandTitle = x.BrandTitle,
+            ModelName = x.ModelName,
+            Storage = x.Storage,
+            Ram = x.Ram,
+            Color = x.Color
+        }).ToList();
 
         await PopulateMediaUrlsAsync(items, cancellationToken);
 
@@ -116,6 +158,7 @@ internal class InventoryService : IInventoryService
             ItemType = x.ItemType,
             MediaId = x.MediaId,
             QuickQtyPresets = x.QuickQtyPresets,
+            AdditionalUnits = x.AdditionalUnits,
             RequireImei = x.RequireImei,
             BrandId = x.BrandId,
             BrandTitle = x.Brand?.Title,
@@ -166,6 +209,7 @@ internal class InventoryService : IInventoryService
             ItemType = item.ItemType,
             MediaId = item.MediaId,
             QuickQtyPresets = item.QuickQtyPresets,
+            AdditionalUnits = item.AdditionalUnits,
             RequireImei = item.RequireImei,
             BrandId = item.BrandId,
             BrandTitle = item.Brand?.Title,
@@ -225,6 +269,7 @@ internal class InventoryService : IInventoryService
                 OpnRate = isNewService ? 0 : request.OpnRate,
                 MediaId = request.MediaId,
                 QuickQtyPresets = request.QuickQtyPresets,
+                AdditionalUnits = isNewService ? null : (string.IsNullOrWhiteSpace(request.AdditionalUnits) ? null : request.AdditionalUnits),
                 RequireImei = request.RequireImei,
                 BrandId = request.BrandId,
                 ModelName = request.ModelName,
@@ -272,6 +317,7 @@ internal class InventoryService : IInventoryService
         existing.OpnRate = isExistingService ? 0 : request.OpnRate;
         existing.MediaId = request.MediaId;
         existing.QuickQtyPresets = request.QuickQtyPresets;
+        existing.AdditionalUnits = isExistingService ? null : (string.IsNullOrWhiteSpace(request.AdditionalUnits) ? null : request.AdditionalUnits);
         existing.RequireImei = request.RequireImei;
         existing.BrandId = request.BrandId;
         existing.ModelName = request.ModelName;
@@ -547,6 +593,10 @@ internal class InventoryService : IInventoryService
                 existing.OpnStock = isExistingService ? 0 : item.OpnStock;
                 existing.OpnRate = isExistingService ? 0 : item.OpnRate;
                 existing.QuickQtyPresets = item.QuickQtyPresets;
+                if (item.AdditionalUnits != null)
+                {
+                    existing.AdditionalUnits = isExistingService ? null : (string.IsNullOrWhiteSpace(item.AdditionalUnits) ? null : item.AdditionalUnits);
+                }
                 existing.RequireImei = item.RequireImei;
                 existing.BrandId = item.BrandId;
                 existing.ModelName = item.ModelName;
@@ -597,6 +647,7 @@ internal class InventoryService : IInventoryService
                     OpnStock = isNewService ? 0 : item.OpnStock,
                     OpnRate = isNewService ? 0 : item.OpnRate,
                     QuickQtyPresets = item.QuickQtyPresets,
+                    AdditionalUnits = isNewService ? null : (string.IsNullOrWhiteSpace(item.AdditionalUnits) ? null : item.AdditionalUnits),
                     RequireImei = item.RequireImei,
                     BrandId = item.BrandId,
                     ModelName = item.ModelName,

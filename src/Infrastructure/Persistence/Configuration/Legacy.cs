@@ -162,6 +162,9 @@ public class ItemDetailConfig : IEntityTypeConfiguration<ItemDetail>
         builder.Property(x => x.QuickQtyPresets)
             .HasMaxLength(1000);
 
+        builder.Property(x => x.AdditionalUnits)
+            .HasMaxLength(2000);
+
         builder.HasOne(x => x.ItemCategory)
             .WithMany()
             .HasForeignKey(x => x.ItemCategoryId)
@@ -662,6 +665,13 @@ public class UnitConfig : IEntityTypeConfiguration<Unit>
     {
         builder.IsMultiTenant();
         builder.Property(x => x.Id).ValueGeneratedNever();
+        builder.Property(x => x.ShortTitle).HasMaxLength(20);
+        builder.Property(x => x.ConversionRatio).HasPrecision(18, 4);
+
+        builder.HasOne(x => x.ParentUnit)
+            .WithMany(x => x.ChildUnits)
+            .HasForeignKey(x => x.ParentUnitId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }
 

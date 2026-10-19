@@ -11,6 +11,9 @@ public class StockLedgerReportItem
     public decimal QtyIn { get; set; }
     public decimal QtyOut { get; set; }
     public decimal Balance { get; set; }
+    public string? QtyInDisplay { get; set; }
+    public string? QtyOutDisplay { get; set; }
+    public string? BalanceDisplay { get; set; }
 }
 
 public class StockLedgerHeader
@@ -24,6 +27,10 @@ public class StockLedgerHeader
     public decimal TotalIn { get; set; }
     public decimal TotalOut { get; set; }
     public decimal ClosingBalance { get; set; }
+    public string? OpeningBalanceDisplay { get; set; }
+    public string? TotalInDisplay { get; set; }
+    public string? TotalOutDisplay { get; set; }
+    public string? ClosingBalanceDisplay { get; set; }
     public bool ShowCostPrice { get; set; } = false;
     public DateTime GeneratedAt { get; set; } = DateTime.Now;
 }

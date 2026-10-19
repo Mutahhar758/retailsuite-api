@@ -96,8 +96,8 @@ public class CustomerBillDocument : IDocument
                 {
                     table.ColumnsDefinition(columns =>
                     {
-                        columns.RelativeColumn(2.5f); // Item & Date
-                        columns.RelativeColumn(0.9f); // Qty
+                        columns.RelativeColumn(2.4f); // Item & Date
+                        columns.RelativeColumn(1.1f); // Qty & Unit
                         columns.RelativeColumn(1.0f); // Rate
                         if (_header.EnableCarriage)
                             columns.RelativeColumn(1.0f); // Carriage
@@ -136,7 +136,10 @@ public class CustomerBillDocument : IDocument
                                         t.Span($" (Warr: {line.WarrantyMonths}m)").FontSize(7f).FontColor(Colors.Grey.Darken2);
                                 }
                             });
-                            table.Cell().AlignRight().PaddingVertical(1.2f).Text(line.Qty.ToString("#,##0.##")).FontSize(9f).SemiBold();
+                            var qtyText = string.IsNullOrWhiteSpace(line.UnitTitle)
+                                ? line.Qty.ToString("#,##0.##")
+                                : $"{line.Qty:#,##0.##} {line.UnitTitle}";
+                            table.Cell().AlignRight().PaddingVertical(1.2f).Text(qtyText).FontSize(8.5f).SemiBold();
                             table.Cell().AlignRight().PaddingVertical(1.2f).Text($"{line.Rate:N0}").FontSize(9f).SemiBold();
                             if (_header.EnableCarriage)
                                 table.Cell().AlignRight().PaddingVertical(1.2f).Text(line.Carriage != 0 ? $"{line.Carriage:N0}" : "-").FontSize(9f).SemiBold();
