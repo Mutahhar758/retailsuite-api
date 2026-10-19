@@ -121,30 +121,54 @@ public static class BarcodeGenerator
 
     public readonly record struct BarcodeSlice(int Width, bool IsBlack);
 
-    /// <summary>
-    /// Generates the sequence of alternating black bars and white spaces for Code 128 (Subset B).
-    /// Used for direct vector PDF rendering without relying on SVG aspect-ratio scaling.
-    /// </summary>
-    public static List<BarcodeSlice> GenerateSlices(string text, int quietZone = 4)
+    private static List<int> GetEncodedValues(string text)
     {
         if (string.IsNullOrWhiteSpace(text)) text = "1000001";
 
-        var encodedValues = new List<int>
-        {
-            104 // Start B
-        };
+        bool isNumericEven = text.Length % 2 == 0 && text.All(char.IsDigit);
+        var encodedValues = new List<int>();
+        int checkSum;
 
-        int checkSum = 104;
-        for (int i = 0; i < text.Length; i++)
+        if (isNumericEven)
         {
-            int code = text[i] - 32;
-            if (code < 0 || code > 95) code = 0; // Default to space if unencodable in Subset B
-            encodedValues.Add(code);
-            checkSum += code * (i + 1);
+            // Code 128 Subset C: Encodes pairs of digits (00-99) for maximum compactness on narrow labels
+            encodedValues.Add(105); // Start C
+            checkSum = 105;
+            int pairCount = text.Length / 2;
+            for (int i = 0; i < pairCount; i++)
+            {
+                int val = (text[i * 2] - '0') * 10 + (text[i * 2 + 1] - '0');
+                encodedValues.Add(val);
+                checkSum += val * (i + 1);
+            }
+        }
+        else
+        {
+            // Code 128 Subset B: Standard alphanumeric ASCII 32 to 127
+            encodedValues.Add(104); // Start B
+            checkSum = 104;
+            for (int i = 0; i < text.Length; i++)
+            {
+                int code = text[i] - 32;
+                if (code < 0 || code > 95) code = 0; // Default to space if unencodable in Subset B
+                encodedValues.Add(code);
+                checkSum += code * (i + 1);
+            }
         }
 
         encodedValues.Add(checkSum % 103);
         encodedValues.Add(106); // Stop
+
+        return encodedValues;
+    }
+
+    /// <summary>
+    /// Generates the sequence of alternating black bars and white spaces for Code 128 (Subset B or Subset C for numeric).
+    /// Used for direct vector PDF rendering without relying on SVG aspect-ratio scaling.
+    /// </summary>
+    public static List<BarcodeSlice> GenerateSlices(string text, int quietZone = 4)
+    {
+        var encodedValues = GetEncodedValues(text);
 
         var slices = new List<BarcodeSlice>();
         if (quietZone > 0)
@@ -177,24 +201,7 @@ public static class BarcodeGenerator
     /// </summary>
     public static string GenerateSvg(string text, int barHeight = 46, int unitWidth = 2, int quietZone = 10)
     {
-        if (string.IsNullOrWhiteSpace(text)) text = "1000001";
-
-        var encodedValues = new List<int>
-        {
-            104 // Start B
-        };
-
-        int checkSum = 104;
-        for (int i = 0; i < text.Length; i++)
-        {
-            int code = text[i] - 32;
-            if (code < 0 || code > 95) code = 0; // Default to space if unencodable in Subset B
-            encodedValues.Add(code);
-            checkSum += code * (i + 1);
-        }
-
-        encodedValues.Add(checkSum % 103);
-        encodedValues.Add(106); // Stop
+        var encodedValues = GetEncodedValues(text);
 
         var svg = new StringBuilder();
         int currentX = quietZone;
