@@ -1,7 +1,7 @@
 {
   "GeminiSettings": {
     "ApiKey": "",
-    "Model": "gemini-1.5-flash",
+    "Model": "gemini-3.8-flash",
     "Endpoint": "https://generativelanguage.googleapis.com/v1beta/models",
     "DefaultMonthlyScanLimit": 50
   }

@@ -92,7 +92,7 @@ public class GeminiVisionService : IAiScanService
                 statusCode: System.Net.HttpStatusCode.BadRequest);
         }
 
-        var model = geminiSection["Model"] ?? "gemini-1.5-flash";
+        var model = geminiSection["Model"] ?? "gemini-3.8-flash";
         var baseEndpoint = (geminiSection["Endpoint"] ?? "https://generativelanguage.googleapis.com/v1beta/models").TrimEnd('/');
         var endpoint = $"{baseEndpoint}/{model}:generateContent?key={apiKey}";
 
@@ -163,7 +163,23 @@ Return strictly valid JSON with this schema:
         {
             var err = await response.Content.ReadAsStringAsync(cancellationToken);
             _logger.LogError("Gemini Flash Vision error: {StatusCode} - {Error}", response.StatusCode, err);
-            throw new CustomException($"Failed to analyze paper sheet via Gemini AI: {response.ReasonPhrase}", statusCode: response.StatusCode);
+
+            string errorDetail = response.ReasonPhrase ?? "Unknown Error";
+            try
+            {
+                using var doc = JsonDocument.Parse(err);
+                if (doc.RootElement.TryGetProperty("error", out var errorEl) &&
+                    errorEl.TryGetProperty("message", out var msgEl))
+                {
+                    errorDetail = msgEl.GetString() ?? errorDetail;
+                }
+            }
+            catch
+            {
+                // Fallback to reason phrase if error body is not valid JSON
+            }
+
+            throw new CustomException($"Failed to analyze paper sheet via Gemini AI: {errorDetail}", statusCode: response.StatusCode);
         }
 
         var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
