@@ -9,7 +9,6 @@ using Retailer.Application.Common.Exceptions;
 using Retailer.Application.Common.Interfaces;
 using Retailer.Application.Legacy.ChartOfAccounts;
 using Retailer.Application.Legacy.SaleSupplies;
-using Retailer.Application.Public.Document;
 using Retailer.Infrastructure.Multitenancy;
 
 namespace Retailer.Infrastructure.Services;
@@ -19,7 +18,6 @@ public class GeminiVisionService : IAiScanService
     private readonly IConfiguration _config;
     private readonly ICurrentTenant _currentTenant;
     private readonly TenantDbContext _tenantDbContext;
-    private readonly IDocumentService _documentService;
     private readonly IChartOfAccountService _chartOfAccountService;
     private static readonly HttpClient _httpClient = new();
     private readonly ILogger<GeminiVisionService> _logger;
@@ -28,14 +26,12 @@ public class GeminiVisionService : IAiScanService
         IConfiguration config,
         ICurrentTenant currentTenant,
         TenantDbContext tenantDbContext,
-        IDocumentService documentService,
         IChartOfAccountService chartOfAccountService,
         ILogger<GeminiVisionService> logger)
     {
         _config = config;
         _currentTenant = currentTenant;
         _tenantDbContext = tenantDbContext;
-        _documentService = documentService;
         _chartOfAccountService = chartOfAccountService;
         _logger = logger;
     }
@@ -73,24 +69,10 @@ public class GeminiVisionService : IAiScanService
                 statusCode: System.Net.HttpStatusCode.TooManyRequests);
         }
 
-        // 2. Read Image Bytes & Save as Document Attachment
+        // 2. Read Image Bytes for Gemini Analysis
         using var memoryStream = new MemoryStream();
         await imageStream.CopyToAsync(memoryStream, cancellationToken);
         var imageBytes = memoryStream.ToArray();
-
-        var extension = Path.GetExtension(fileName);
-        if (string.IsNullOrWhiteSpace(extension))
-        {
-            extension = contentType.Contains("png", StringComparison.OrdinalIgnoreCase) ? ".png" : ".jpg";
-        }
-
-        var docResponse = await _documentService.AddDocumentAsync(new DocumentFromStreamRequest
-        {
-            Document = imageBytes,
-            DocumentName = string.IsNullOrWhiteSpace(fileName) ? $"slip_scan_{DateTime.UtcNow:yyyyMMdd_HHmmss}{extension}" : fileName,
-            Extension = extension,
-            Path = $"tenants/{tenantId}/sale-supplies"
-        });
 
         // 3. Call Gemini Vision API using Configuration / gemini.json
         var geminiSection = _config.GetSection("GeminiSettings");
@@ -246,8 +228,6 @@ Return strictly valid JSON with this schema:
             Lines = resultLines,
             RemainingScansThisMonth = Math.Max(0, tenant.AiScanMonthlyLimit - tenant.AiScanUsedThisMonth),
             MonthlyLimit = tenant.AiScanMonthlyLimit,
-            DocumentId = docResponse.Id,
-            AccessUrl = docResponse.AccessURL,
             RawDetectedText = parsedText
         };
     }

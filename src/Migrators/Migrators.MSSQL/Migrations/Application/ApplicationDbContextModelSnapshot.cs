@@ -4185,12 +4185,14 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
                         .HasColumnName("description");
 
-                    b.Property<int>("DocumentId")
-                        .HasColumnType("int")
-                        .HasColumnName("document_id");
+                    b.Property<string>("FileName")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("file_name");
 
                     b.Property<string>("LastModifiedBy")
                         .IsRequired()
@@ -4200,6 +4202,12 @@ namespace Migrators.MSSQL.Migrations.Application
                     b.Property<DateTime?>("LastModifiedOn")
                         .HasColumnType("datetime2")
                         .HasColumnName("last_modified_on");
+
+                    b.Property<string>("MediaId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("media_id");
 
                     b.Property<string>("VNo")
                         .IsRequired()
@@ -4213,9 +4221,6 @@ namespace Migrators.MSSQL.Migrations.Application
 
                     b.HasKey("Id", "TenantId")
                         .HasName("ak_sale_supply_attachments_id_tenant_id");
-
-                    b.HasIndex("DocumentId", "TenantId")
-                        .HasDatabaseName("ix_sale_supply_attachments_document_id_tenant_id");
 
                     b.HasIndex("VType", "VNo")
                         .HasDatabaseName("ix_sale_supply_attachments_v_type_v_no");
@@ -6029,18 +6034,6 @@ namespace Migrators.MSSQL.Migrations.Application
                     b.Navigation("Account");
 
                     b.Navigation("Narration");
-                });
-
-            modelBuilder.Entity("Retailer.Domain.Legacy.SaleSupplyAttachment", b =>
-                {
-                    b.HasOne("Retailer.Domain.Public.Document", "Document")
-                        .WithMany()
-                        .HasForeignKey("DocumentId", "TenantId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_sale_supply_attachments_documents_document_id_tenant_id");
-
-                    b.Navigation("Document");
                 });
 
             modelBuilder.Entity("Retailer.Domain.Legacy.SaleSupplyDetail", b =>

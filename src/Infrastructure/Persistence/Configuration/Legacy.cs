@@ -581,13 +581,11 @@ public class SaleSupplyAttachmentConfig : IEntityTypeConfiguration<SaleSupplyAtt
     {
         var mtBuilder = builder.IsMultiTenant();
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
+        builder.Property(x => x.MediaId).HasMaxLength(100).IsRequired();
+        builder.Property(x => x.FileName).HasMaxLength(255);
+        builder.Property(x => x.Description).HasMaxLength(500);
         builder.HasIndex(x => new { x.VType, x.VNo });
         mtBuilder.AdjustUniqueIndexes();
-
-        builder.HasOne(x => x.Document)
-            .WithMany()
-            .HasForeignKey(x => x.DocumentId)
-            .OnDelete(DeleteBehavior.Cascade);
     }
 }
 

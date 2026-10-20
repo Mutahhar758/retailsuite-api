@@ -22,7 +22,7 @@ internal class SaleSupplyService : ISaleSupplyService
     private readonly IItemTransactionBalanceService _balanceService;
     private readonly ICurrentTenant _currentTenant;
     private readonly IRepository<SaleSupplyAttachment> _saleSupplyAttachmentRepository;
-    private readonly IRepository<Retailer.Domain.Public.Document> _documentRepository;
+    private readonly IMediaServiceClient _mediaServiceClient;
 
     public SaleSupplyService(
         IRepository<SaleSupplyMaster> saleSupplyMasterRepository,
@@ -34,7 +34,7 @@ internal class SaleSupplyService : ISaleSupplyService
         IItemTransactionBalanceService balanceService,
         ICurrentTenant currentTenant,
         IRepository<SaleSupplyAttachment> saleSupplyAttachmentRepository,
-        IRepository<Retailer.Domain.Public.Document> documentRepository)
+        IMediaServiceClient mediaServiceClient)
     {
         _saleSupplyMasterRepository = saleSupplyMasterRepository;
         _saleSupplyDetailRepository = saleSupplyDetailRepository;
@@ -45,7 +45,7 @@ internal class SaleSupplyService : ISaleSupplyService
         _balanceService = balanceService;
         _currentTenant = currentTenant;
         _saleSupplyAttachmentRepository = saleSupplyAttachmentRepository;
-        _documentRepository = documentRepository;
+        _mediaServiceClient = mediaServiceClient;
     }
 
     public async Task<List<SaleSupplyResponse>> GetListAsync(SaleSupplyListFilter filter, CancellationToken cancellationToken)
@@ -199,20 +199,20 @@ internal class SaleSupplyService : ISaleSupplyService
         await UpsertItemTransactionsAsync(voucherNo, request.Date, request.ItemId, request.Lines, "001", item, cancellationToken);
         await UpsertGlEntriesAsync(voucherNo, request.Date, request.Narration, request.Description, request.Lines, cancellationToken);
 
-        if (request.AttachmentDocumentIds?.Count > 0)
+        if (request.AttachmentMediaIds?.Count > 0)
         {
-            var existingDocIds = await _saleSupplyAttachmentRepository.GetAll()
+            var existingMediaIds = await _saleSupplyAttachmentRepository.GetAll()
                 .Where(x => x.VType == VType && x.VNo == voucherNo)
-                .Select(x => x.DocumentId)
+                .Select(x => x.MediaId)
                 .ToListAsync(cancellationToken);
 
-            foreach (var docId in request.AttachmentDocumentIds.Distinct().Except(existingDocIds))
+            foreach (var mediaId in request.AttachmentMediaIds.Where(m => !string.IsNullOrWhiteSpace(m)).Distinct().Except(existingMediaIds))
             {
                 await _saleSupplyAttachmentRepository.AddAsync(new SaleSupplyAttachment
                 {
                     VType = VType,
                     VNo = voucherNo,
-                    DocumentId = docId
+                    MediaId = mediaId
                 }, false);
             }
         }
@@ -320,20 +320,20 @@ internal class SaleSupplyService : ISaleSupplyService
         await UpsertItemTransactionsAsync(voucherNo, request.Date, request.ItemId, request.Lines, master.Counter, item, cancellationToken);
         await UpsertGlEntriesAsync(voucherNo, request.Date, request.Narration, request.Description, request.Lines, cancellationToken);
 
-        if (request.AttachmentDocumentIds?.Count > 0)
+        if (request.AttachmentMediaIds?.Count > 0)
         {
-            var existingDocIds = await _saleSupplyAttachmentRepository.GetAll()
+            var existingMediaIds = await _saleSupplyAttachmentRepository.GetAll()
                 .Where(x => x.VType == VType && x.VNo == voucherNo)
-                .Select(x => x.DocumentId)
+                .Select(x => x.MediaId)
                 .ToListAsync(cancellationToken);
 
-            foreach (var docId in request.AttachmentDocumentIds.Distinct().Except(existingDocIds))
+            foreach (var mediaId in request.AttachmentMediaIds.Where(m => !string.IsNullOrWhiteSpace(m)).Distinct().Except(existingMediaIds))
             {
                 await _saleSupplyAttachmentRepository.AddAsync(new SaleSupplyAttachment
                 {
                     VType = VType,
                     VNo = voucherNo,
-                    DocumentId = docId
+                    MediaId = mediaId
                 }, false);
             }
         }
@@ -761,54 +761,105 @@ internal class SaleSupplyService : ISaleSupplyService
         }
     }
 
-    public async Task<List<SaleSupplyAttachmentDto>> GetAttachmentsAsync(string voucherNo, CancellationToken cancellationToken)
+    public async Task<PresignedUploadUrlResponse?> GetAttachmentUploadUrlAsync(string fileName, CancellationToken cancellationToken)
     {
-        return await (
-            from a in _saleSupplyAttachmentRepository.GetAll().AsNoTracking()
-            join d in _documentRepository.GetAll().AsNoTracking() on a.DocumentId equals d.Id
-            where a.VType == VType && a.VNo == voucherNo
-            orderby a.CreatedOn descending
-            select new SaleSupplyAttachmentDto
-            {
-                Id = a.Id,
-                DocumentId = a.DocumentId,
-                FileName = d.OriginalFileName,
-                FileUrl = d.AccessURL,
-                FileType = d.FileType,
-                Description = a.Description,
-                CreatedOn = a.CreatedOn,
-                CreatedBy = a.CreatedBy
-            })
-            .ToListAsync(cancellationToken);
+        if (string.IsNullOrWhiteSpace(fileName))
+            throw new BadRequestException("File name is required.");
+
+        var cleanFileName = Path.GetFileName(fileName);
+        if (string.IsNullOrWhiteSpace(cleanFileName) || cleanFileName != fileName || fileName.Contains("..") || fileName.Contains('/') || fileName.Contains('\\'))
+        {
+            throw new BadRequestException("Invalid file name. Only plain file names without paths are allowed.");
+        }
+
+        var response = await _mediaServiceClient.GetUploadUrlAsync(cleanFileName, "sale-supplies", cancellationToken);
+        return response ?? throw new InternalServerException("Failed to generate upload URL for sale supply attachment.");
     }
 
-    public async Task<SaleSupplyAttachmentDto> AddAttachmentAsync(string voucherNo, int documentId, string? description, CancellationToken cancellationToken)
+    public async Task<List<SaleSupplyAttachmentDto>> GetAttachmentsAsync(string voucherNo, CancellationToken cancellationToken)
     {
-        var doc = await _documentRepository.GetByIdAsync(documentId, cancellationToken);
-        if (doc == null)
-            throw new NotFoundException("Document not found.");
+        var attachments = await _saleSupplyAttachmentRepository.GetAll().AsNoTracking()
+            .Where(a => a.VType == VType && a.VNo == voucherNo)
+            .OrderByDescending(a => a.CreatedOn)
+            .ToListAsync(cancellationToken);
+
+        var dtos = attachments.Select(a => new SaleSupplyAttachmentDto
+        {
+            Id = a.Id,
+            VType = a.VType,
+            VNo = a.VNo,
+            MediaId = a.MediaId,
+            FileName = a.FileName ?? "Attachment",
+            Description = a.Description,
+            CreatedOn = a.CreatedOn,
+            CreatedBy = a.CreatedBy
+        }).ToList();
+
+        var tasks = dtos
+            .Where(x => !string.IsNullOrEmpty(x.MediaId))
+            .Select(async item =>
+            {
+                try
+                {
+                    var sasResponse = await _mediaServiceClient.GetViewTokenAsync(item.MediaId!, 24, cancellationToken);
+                    if (sasResponse != null)
+                    {
+                        item.FileUrl = sasResponse.ViewUrl;
+                        item.DownloadUrl = sasResponse.DownloadUrl ?? sasResponse.ViewUrl;
+                    }
+                }
+                catch
+                {
+                    // Fail-safe: continue without presigned URLs if storage service is unavailable
+                }
+            });
+
+        await Task.WhenAll(tasks);
+        return dtos;
+    }
+
+    public async Task<SaleSupplyAttachmentDto> AddAttachmentAsync(string voucherNo, string mediaId, string? fileName, string? description, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(mediaId))
+            throw new BadRequestException("Media ID is required.");
 
         var attachment = new SaleSupplyAttachment
         {
             VType = VType,
             VNo = voucherNo,
-            DocumentId = documentId,
+            MediaId = mediaId,
+            FileName = string.IsNullOrWhiteSpace(fileName) ? "Attachment" : Path.GetFileName(fileName),
             Description = description
         };
 
         await _saleSupplyAttachmentRepository.AddAsync(attachment, true);
 
-        return new SaleSupplyAttachmentDto
+        var dto = new SaleSupplyAttachmentDto
         {
             Id = attachment.Id,
-            DocumentId = attachment.DocumentId,
-            FileName = doc.OriginalFileName,
-            FileUrl = doc.AccessURL,
-            FileType = doc.FileType,
+            VType = attachment.VType,
+            VNo = attachment.VNo,
+            MediaId = attachment.MediaId,
+            FileName = attachment.FileName,
             Description = attachment.Description,
             CreatedOn = attachment.CreatedOn,
             CreatedBy = attachment.CreatedBy
         };
+
+        try
+        {
+            var sasResponse = await _mediaServiceClient.GetViewTokenAsync(attachment.MediaId, 24, cancellationToken);
+            if (sasResponse != null)
+            {
+                dto.FileUrl = sasResponse.ViewUrl;
+                dto.DownloadUrl = sasResponse.DownloadUrl ?? sasResponse.ViewUrl;
+            }
+        }
+        catch
+        {
+        }
+
+        return dto;
     }
 
     public async Task DeleteAttachmentAsync(string voucherNo, int attachmentId, CancellationToken cancellationToken)

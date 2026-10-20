@@ -139,6 +139,17 @@ public class SaleSuppliesController : VersionNeutralApiController
         return response.ToInformationResponse("Sheet scanned successfully.");
     }
 
+    [HttpPost("attachments/presigned-upload-url")]
+    [MustHavePermission(new[] { AppAction.Create, AppAction.Update }, AppResource.SaleSupplies)]
+    [OpenApiOperation("Generate pre-signed upload URL for sale supply attachment.", "")]
+    public async Task<HttpResponseDto<PresignedUploadUrlResponse?>> GetAttachmentUploadUrlAsync(
+        [FromQuery] string fileName,
+        CancellationToken cancellationToken)
+    {
+        var response = await _saleSupplyService.GetAttachmentUploadUrlAsync(fileName, cancellationToken);
+        return response.ToInformationResponse();
+    }
+
     [HttpGet("{voucherNo}/attachments")]
     [MustHavePermission(AppAction.View, AppResource.SaleSupplies)]
     [OpenApiOperation("Get attachments for a sale supply voucher.", "")]
@@ -152,14 +163,13 @@ public class SaleSuppliesController : VersionNeutralApiController
 
     [HttpPost("{voucherNo}/attachments")]
     [MustHavePermission(AppAction.Create, AppResource.SaleSupplies)]
-    [OpenApiOperation("Attach a document to a sale supply voucher.", "")]
+    [OpenApiOperation("Attach a file to a sale supply voucher.", "")]
     public async Task<HttpResponseDto<SaleSupplyAttachmentDto>> AddAttachmentAsync(
         string voucherNo,
-        [FromQuery] int documentId,
-        [FromQuery] string? description,
+        SaleSupplyAttachmentCreateRequest request,
         CancellationToken cancellationToken)
     {
-        var result = await _saleSupplyService.AddAttachmentAsync(voucherNo, documentId, description, cancellationToken);
+        var result = await _saleSupplyService.AddAttachmentAsync(voucherNo, request.MediaId, request.FileName, request.Description, cancellationToken);
         return result.ToInformationResponse("Attachment added.");
     }
 

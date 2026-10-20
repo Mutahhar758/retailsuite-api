@@ -8,5 +8,5 @@ public class SaleSupplyCreateRequest
     public string? Narration { get; set; }
     public int? SupplyOrderMasterId { get; set; }
     public List<SaleSupplyLineRequest> Lines { get; set; } = [];
-    public List<int> AttachmentDocumentIds { get; set; } = [];
+    public List<string> AttachmentMediaIds { get; set; } = [];
 }

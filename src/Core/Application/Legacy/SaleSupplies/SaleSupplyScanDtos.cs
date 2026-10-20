@@ -5,7 +5,7 @@ public class SaleSupplyScanResponse
     public List<ScannedSaleSupplyLineDto> Lines { get; set; } = [];
     public int RemainingScansThisMonth { get; set; }
     public int MonthlyLimit { get; set; }
-    public int? DocumentId { get; set; }
+    public string? MediaId { get; set; }
     public string? AccessUrl { get; set; }
     public string? RawDetectedText { get; set; }
 }
@@ -28,11 +28,22 @@ public class ScannedSaleSupplyLineDto
 public class SaleSupplyAttachmentDto
 {
     public int Id { get; set; }
-    public int DocumentId { get; set; }
-    public string FileName { get; set; } = default!;
+    public string VType { get; set; } = "SP";
+    public string VNo { get; set; } = default!;
+    public string MediaId { get; set; } = default!;
+    public string? FileName { get; set; }
     public string? FileUrl { get; set; }
-    public string? FileType { get; set; }
+    public string? DownloadUrl { get; set; }
     public string? Description { get; set; }
     public DateTime CreatedOn { get; set; }
     public string? CreatedBy { get; set; }
+}
+
+public class SaleSupplyAttachmentCreateRequest
+{
+    public string VType { get; set; } = "SP";
+    public string VNo { get; set; } = default!;
+    public string MediaId { get; set; } = default!;
+    public string? FileName { get; set; }
+    public string? Description { get; set; }
 }
