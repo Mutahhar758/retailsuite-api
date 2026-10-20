@@ -62,7 +62,7 @@ internal class BankAccountService : IBankAccountService
 
         var accountIds = accounts.Select(x => x.Id).ToList();
 
-        // 1. Fetch bank details (safely, in case table is not yet migrated)
+        // Fetch bank details (safely, in case table is not yet migrated)
         Dictionary<string, BankDetail> detailMap = [];
         try
         {
@@ -76,39 +76,31 @@ internal class BankAccountService : IBankAccountService
             _logger.LogWarning(ex, "Could not query BankDetail table; falling back to ChartOfAccount only.");
         }
 
-        // 2. Calculate current balances from GL entries: Debit increases bank asset, Credit decreases it
-        var debits = await _glRepository.GetAll()
-            .AsNoTracking()
-            .Where(x => x.DrAccountId != null && accountIds.Contains(x.DrAccountId))
-            .GroupBy(x => x.DrAccountId!)
-            .Select(g => new { AccountId = g.Key, Total = g.Sum(x => x.Amount) })
-            .ToDictionaryAsync(x => x.AccountId, x => x.Total, cancellationToken);
+        // Fetch opening balances (fast indexed lookup on VType == 'Op')
+        Dictionary<string, decimal> opMap = [];
+        try
+        {
+            var opEntries = await _glRepository.GetAll()
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .Where(x => x.VType == OpeningVType &&
+                            (accountIds.Contains(x.DrAccountId!) || accountIds.Contains(x.CrAccountId!)))
+                .Select(x => new { x.DrAccountId, x.CrAccountId, x.Amount })
+                .ToListAsync(cancellationToken);
 
-        var credits = await _glRepository.GetAll()
-            .AsNoTracking()
-            .Where(x => x.CrAccountId != null && accountIds.Contains(x.CrAccountId))
-            .GroupBy(x => x.CrAccountId!)
-            .Select(g => new { AccountId = g.Key, Total = g.Sum(x => x.Amount) })
-            .ToDictionaryAsync(x => x.AccountId, x => x.Total, cancellationToken);
-
-        // 3. Fetch opening balances (Op entries)
-        var openingEntries = await _glRepository.GetAll()
-            .AsNoTracking()
-            .Where(x => x.VType == OpeningVType && (accountIds.Contains(x.DrAccountId!) || accountIds.Contains(x.CrAccountId!)))
-            .Select(x => new { x.DrAccountId, x.CrAccountId, x.Amount })
-            .ToListAsync(cancellationToken);
-
-        var openingMap = openingEntries.ToDictionary(
-            x => !string.IsNullOrEmpty(x.DrAccountId) ? x.DrAccountId! : x.CrAccountId!,
-            x => !string.IsNullOrEmpty(x.DrAccountId) ? x.Amount : -x.Amount);
+            opMap = opEntries.ToDictionary(
+                x => (x.DrAccountId ?? x.CrAccountId)!,
+                x => x.DrAccountId != null ? x.Amount : -x.Amount);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not query opening balance GL entries.");
+        }
 
         return accounts.Select(x =>
         {
             detailMap.TryGetValue(x.Id, out var detail);
-            var debit = debits.GetValueOrDefault(x.Id, 0m);
-            var credit = credits.GetValueOrDefault(x.Id, 0m);
-            var currentBal = debit - credit;
-            var opBal = openingMap.GetValueOrDefault(x.Id, 0m);
+            opMap.TryGetValue(x.Id, out var opBal);
 
             return new BankAccountResponse
             {
@@ -123,7 +115,6 @@ internal class BankAccountService : IBankAccountService
                 Currency = detail?.Currency ?? "PKR",
                 Notes = detail?.Notes,
                 Active = detail?.Active ?? true,
-                CurrentBalance = currentBal,
                 OpeningBalance = opBal,
                 CreatedBy = detail?.CreatedBy ?? x.CreatedBy,
                 CreatedOn = detail?.CreatedOn ?? x.CreatedOn,
@@ -317,6 +308,26 @@ internal class BankAccountService : IBankAccountService
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Could not update BankDetail for account {Account}.", account);
+        }
+
+        // Update opening balance if specified
+        if (request.OpeningBalance.HasValue)
+        {
+            try
+            {
+                var dr = request.OpeningBalance.Value > 0 ? request.OpeningBalance.Value : (decimal?)null;
+                var cr = request.OpeningBalance.Value < 0 ? -request.OpeningBalance.Value : (decimal?)null;
+                await _openingBalanceService.UpsertAsync(new OpeningBalanceUpsertRequest
+                {
+                    Account = account,
+                    DrAmount = dr,
+                    CrAmount = cr
+                }, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to update opening balance for bank account {Account}.", account);
+            }
         }
     }
 

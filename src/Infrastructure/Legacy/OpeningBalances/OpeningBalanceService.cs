@@ -81,6 +81,9 @@ internal class OpeningBalanceService : IOpeningBalanceService
 
         if (existing is null)
         {
+            if (dr == 0 && cr == 0)
+                return;
+
             // All opening entries share one VoucherNo; get or default to "00001"
             var voucherNo = "00001";
 
@@ -107,6 +110,12 @@ internal class OpeningBalanceService : IOpeningBalanceService
         }
         else
         {
+            if (dr == 0 && cr == 0)
+            {
+                await _glRepository.DeleteAsync(existing);
+                return;
+            }
+
             existing.DrAccountId = netAmount >= 0 ? request.Account : null;
             existing.Amount = dr != 0 ? dr : cr;
             existing.CrAccountId = netAmount < 0 ? request.Account : null;

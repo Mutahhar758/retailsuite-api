@@ -13,7 +13,6 @@ public class BankAccountResponse
     public string? Currency { get; set; }
     public string? Notes { get; set; }
     public bool Active { get; set; } = true;
-    public decimal CurrentBalance { get; set; }
     public decimal OpeningBalance { get; set; }
     public string? CreatedBy { get; set; }
     public DateTime? CreatedOn { get; set; }
