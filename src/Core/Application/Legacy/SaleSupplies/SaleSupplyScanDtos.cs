@@ -41,8 +41,8 @@ public class SaleSupplyAttachmentDto
 
 public class SaleSupplyAttachmentCreateRequest
 {
-    public string VType { get; set; } = "SP";
-    public string VNo { get; set; } = default!;
+    public string? VType { get; set; } = "SP";
+    public string? VNo { get; set; }
     public string MediaId { get; set; } = default!;
     public string? FileName { get; set; }
     public string? Description { get; set; }
