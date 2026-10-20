@@ -74,12 +74,16 @@ public class GeminiVisionService : IAiScanService
         await imageStream.CopyToAsync(memoryStream, cancellationToken);
         var imageBytes = memoryStream.ToArray();
 
-        // 3. Call Gemini Vision API using Configuration / gemini.json
+        // 3. Call Gemini Vision API using Configuration / UserSecrets / Environment variables
         var geminiSection = _config.GetSection("GeminiSettings");
-        var apiKey = geminiSection["ApiKey"]
-            ?? _config["Gemini:ApiKey"]
-            ?? _config["GeminiApiKey"]
-            ?? Environment.GetEnvironmentVariable("GEMINI_API_KEY");
+        var apiKey = new[]
+        {
+            geminiSection["ApiKey"],
+            _config["GeminiSettings:ApiKey"],
+            _config["Gemini:ApiKey"],
+            _config["GeminiApiKey"],
+            Environment.GetEnvironmentVariable("GEMINI_API_KEY")
+        }.FirstOrDefault(k => !string.IsNullOrWhiteSpace(k));
 
         if (string.IsNullOrWhiteSpace(apiKey))
         {
