@@ -126,17 +126,40 @@ public class SaleSuppliesController : VersionNeutralApiController
     [MustHavePermission(AppAction.Create, AppResource.SaleSupplies)]
     [OpenApiOperation("Scan handwritten sale supply sheet via AI vision.", "")]
     public async Task<HttpResponseDto<SaleSupplyScanResponse>> ScanSheetAsync(
-        IFormFile file,
+        List<IFormFile>? files,
+        IFormFile? file,
+        [FromForm] string? targetDate,
         CancellationToken cancellationToken)
     {
-        if (file == null || file.Length == 0)
+        var allFiles = (files ?? new List<IFormFile>()).Where(f => f != null && f.Length > 0).ToList();
+        if (file != null && file.Length > 0 && !allFiles.Contains(file))
         {
-            throw new CustomException("Please select an image file to scan.", statusCode: System.Net.HttpStatusCode.BadRequest);
+            allFiles.Insert(0, file);
         }
 
-        using var stream = file.OpenReadStream();
-        var response = await _aiScanService.ScanSaleSupplySheetAsync(stream, file.FileName, file.ContentType, cancellationToken);
-        return response.ToInformationResponse("Sheet scanned successfully.");
+        if (allFiles.Count == 0)
+        {
+            throw new CustomException("Please select at least one image file to scan.", statusCode: System.Net.HttpStatusCode.BadRequest);
+        }
+
+        var imageStreams = new List<(Stream stream, string fileName, string contentType)>();
+        try
+        {
+            foreach (var f in allFiles)
+            {
+                imageStreams.Add((f.OpenReadStream(), f.FileName, f.ContentType));
+            }
+
+            var response = await _aiScanService.ScanSaleSupplySheetAsync(imageStreams, targetDate, cancellationToken);
+            return response.ToInformationResponse("Sheet scanned successfully.");
+        }
+        finally
+        {
+            foreach (var item in imageStreams)
+            {
+                item.stream.Dispose();
+            }
+        }
     }
 
     [HttpPost("attachments/presigned-upload-url")]

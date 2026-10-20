@@ -19,7 +19,7 @@ public class GeminiVisionService : IAiScanService
     private readonly ICurrentTenant _currentTenant;
     private readonly TenantDbContext _tenantDbContext;
     private readonly IChartOfAccountService _chartOfAccountService;
-    private static readonly HttpClient _httpClient = new();
+    private static readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(120) };
     private readonly ILogger<GeminiVisionService> _logger;
 
     public GeminiVisionService(
@@ -36,12 +36,28 @@ public class GeminiVisionService : IAiScanService
         _logger = logger;
     }
 
-    public async Task<SaleSupplyScanResponse> ScanSaleSupplySheetAsync(
+    public Task<SaleSupplyScanResponse> ScanSaleSupplySheetAsync(
         Stream imageStream,
         string fileName,
         string contentType,
         CancellationToken cancellationToken)
     {
+        return ScanSaleSupplySheetAsync(
+            new List<(Stream stream, string fileName, string contentType)> { (imageStream, fileName, contentType) },
+            null,
+            cancellationToken);
+    }
+
+    public async Task<SaleSupplyScanResponse> ScanSaleSupplySheetAsync(
+        List<(Stream stream, string fileName, string contentType)> images,
+        string? targetDate,
+        CancellationToken cancellationToken)
+    {
+        if (images == null || images.Count == 0)
+        {
+            throw new CustomException("Please select at least one image file to scan.", statusCode: System.Net.HttpStatusCode.BadRequest);
+        }
+
         // 1. Validate Tenant & Quota
         var tenantId = _currentTenant.Id;
         if (string.IsNullOrWhiteSpace(tenantId))
@@ -70,9 +86,24 @@ public class GeminiVisionService : IAiScanService
         }
 
         // 2. Read Image Bytes for Gemini Analysis
-        using var memoryStream = new MemoryStream();
-        await imageStream.CopyToAsync(memoryStream, cancellationToken);
-        var imageBytes = memoryStream.ToArray();
+        var imageParts = new List<object>();
+        foreach (var img in images)
+        {
+            using var memoryStream = new MemoryStream();
+            await img.stream.CopyToAsync(memoryStream, cancellationToken);
+            var imageBytes = memoryStream.ToArray();
+            var mime = string.IsNullOrWhiteSpace(img.contentType) ? "image/jpeg" : img.contentType;
+            var base64Data = Convert.ToBase64String(imageBytes);
+
+            imageParts.Add(new
+            {
+                inline_data = new
+                {
+                    mime_type = mime,
+                    data = base64Data
+                }
+            });
+        }
 
         // 3. Call Gemini Vision API using Configuration / UserSecrets / Environment variables
         var geminiSection = _config.GetSection("GeminiSettings");
@@ -92,32 +123,54 @@ public class GeminiVisionService : IAiScanService
                 statusCode: System.Net.HttpStatusCode.BadRequest);
         }
 
-        var model = geminiSection["Model"] ?? "gemini-3.8-flash";
+        var model = geminiSection["Model"] ?? "gemini-3.5-flash-lite";
         var baseEndpoint = (geminiSection["Endpoint"] ?? "https://generativelanguage.googleapis.com/v1beta/models").TrimEnd('/');
         var endpoint = $"{baseEndpoint}/{model}:generateContent?key={apiKey}";
 
-        var mime = string.IsNullOrWhiteSpace(contentType) ? "image/jpeg" : contentType;
-        var base64Data = Convert.ToBase64String(imageBytes);
+        var dateFilterPrompt = !string.IsNullOrWhiteSpace(targetDate)
+            ? $@"
+TARGET DATE FILTER:
+- The target date to extract is: '{targetDate}'.
+- If the register sheet contains multiple dates (e.g. daily rows across a month or week), ONLY extract entries corresponding to target date '{targetDate}'.
+- Match dates flexibly (e.g., '{targetDate}' can match '{targetDate}', 'DD/MM/YYYY', 'DD-MM', or day number if month/year are written in the heading).
+- If no dates are found in the rows, assume all lines belong to the target date."
+            : "";
 
-        var prompt = @"You are an expert OCR AI specialized in retail supply sheets, daily distribution registers, and handwritten customer khata slips.
-The image records goods/supplies delivered to various customers.
+        var prompt = $@"You are an expert OCR AI specialized in retail supply sheets, daily distribution registers, and handwritten customer khata slips.
+The image(s) record goods/supplies delivered to various customers.
 The handwriting may be in Urdu (اردو), Roman Urdu, or English.
-Extract every customer supply line into the specified JSON format.
-Rules:
+{dateFilterPrompt}
+
+LAYOUT MODES SUPPORTED:
+1. Standard Row View:
+   - Each row lists a Customer Name, followed by Qty, Rate, Amount.
+2. Pivot / Matrix View (Customers as Columns, Dates as Rows):
+   - The column headers across the page represent Customer / Shop Names.
+   - The rows represent Dates or Days of the month.
+   - For the target date row, read across the customer columns. For every customer column that has a quantity/delivery entry, create one customer supply line:
+     * customerName: the column header name (e.g. 'Ahmed Milk Shop', 'Bismillah Dairy').
+     * qty: the numeric quantity in the cell.
+     * rate: rate if written, otherwise 0.
+     * amount: amount if written, otherwise 0.
+   - Skip customers where the cell is blank, 0, dashed (-), or crossed out.
+3. Multi-Page Continuation:
+   - If multiple images are provided, they represent consecutive pages or continuation sheets of the same register (e.g. Page 1 has customers 1-10, Page 2 has customers 11-20). Merge all customers across all provided images for the target date.
+
+Extraction Rules:
 - seq: sequential number starting at 1.
-- customerName: extract the handwritten customer or shop name as accurately as possible (can be Urdu or English).
+- customerName: extract customer/shop name accurately (Urdu or English).
 - qty: numeric quantity delivered.
-- rate: unit price or rate if written, otherwise 0.
+- rate: unit price/rate if written, otherwise 0.
 - discount: discount if written, otherwise 0.
 - addLess: addition or deduction amount if written, otherwise 0.
 - carriage: carriage or transport charges if written, otherwise 0.
 - amount: total line amount if written, otherwise calculate (qty * rate) - discount + addLess + carriage.
 
 Return strictly valid JSON with this schema:
-{
+{{
   ""notes"": ""optional brief summary or heading found on the paper"",
   ""lines"": [
-    {
+    {{
       ""seq"": 1,
       ""customerName"": ""string"",
       ""qty"": 0.0,
@@ -126,9 +179,15 @@ Return strictly valid JSON with this schema:
       ""addLess"": 0.0,
       ""carriage"": 0.0,
       ""amount"": 0.0
-    }
+    }}
   ]
-}";
+}}";
+
+        var parts = new List<object>
+        {
+            new { text = prompt }
+        };
+        parts.AddRange(imageParts);
 
         var payload = new
         {
@@ -136,18 +195,7 @@ Return strictly valid JSON with this schema:
             {
                 new
                 {
-                    parts = new object[]
-                    {
-                        new { text = prompt },
-                        new
-                        {
-                            inline_data = new
-                            {
-                                mime_type = mime,
-                                data = base64Data
-                            }
-                        }
-                    }
+                    parts = parts.ToArray()
                 }
             },
             generationConfig = new
