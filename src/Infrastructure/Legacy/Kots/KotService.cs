@@ -46,6 +46,9 @@ internal class KotService : IKotService
         decimal totalAmount = request.Lines.Sum(x => x.Qty * x.Rate);
 
         // 3. Create the order
+        var initialStatus = !string.IsNullOrWhiteSpace(request.Status) ? request.Status : "Pending";
+        var itemStatus = initialStatus == "Served" ? "Served" : "Pending";
+
         var order = new KotOrder
         {
             TokenNo = tokenNo,
@@ -57,7 +60,7 @@ internal class KotService : IKotService
             Remarks = request.Remarks,
             SaleVoucherNo = request.SaleVoucherNo,
             TotalAmount = totalAmount,
-            Status = "Pending"
+            Status = initialStatus
         };
 
         await _kotOrderRepository.AddAsync(order, false);
@@ -71,7 +74,7 @@ internal class KotService : IKotService
                 Qty = line.Qty,
                 Rate = line.Rate,
                 Notes = line.Notes,
-                Status = "Pending"
+                Status = itemStatus
             }, false);
         }
 

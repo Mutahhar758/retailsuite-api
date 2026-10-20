@@ -15,5 +15,6 @@ public class KotOrderCreateRequest
     public string? CustomerId { get; set; }
     public string? Remarks { get; set; }
     public string? SaleVoucherNo { get; set; }
+    public string? Status { get; set; }
     public List<KotOrderItemRequest> Lines { get; set; } = [];
 }
