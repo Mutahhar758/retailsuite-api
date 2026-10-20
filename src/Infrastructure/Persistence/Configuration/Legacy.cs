@@ -19,6 +19,24 @@ public class ChartOfAccountConfig : IEntityTypeConfiguration<ChartOfAccount>
     }
 }
 
+public class BankDetailConfig : IEntityTypeConfiguration<BankDetail>
+{
+    public void Configure(EntityTypeBuilder<BankDetail> builder)
+    {
+        builder.IsMultiTenant();
+        builder.Property(x => x.Id).ValueGeneratedNever();
+        builder.Property(x => x.BankName).HasMaxLength(200);
+        builder.Property(x => x.AccountTitle).HasMaxLength(200);
+        builder.Property(x => x.AccountNumber).HasMaxLength(100);
+        builder.Property(x => x.Iban).HasMaxLength(100);
+        builder.Property(x => x.BranchName).HasMaxLength(200);
+        builder.Property(x => x.BranchCode).HasMaxLength(50);
+        builder.Property(x => x.SwiftCode).HasMaxLength(50);
+        builder.Property(x => x.Currency).HasMaxLength(20);
+        builder.Property(x => x.Notes).HasMaxLength(500);
+    }
+}
+
 public class DefaultAccountConfig : IEntityTypeConfiguration<DefaultAccount>
 {
     public void Configure(EntityTypeBuilder<DefaultAccount> builder)

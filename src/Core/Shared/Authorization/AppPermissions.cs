@@ -71,6 +71,7 @@ public static class AppResource
     public const string RecurringVouchers = nameof(RecurringVouchers);
     public const string BillOfMaterials = nameof(BillOfMaterials);
     public const string Manufacturing = nameof(Manufacturing);
+    public const string BankAccounts = nameof(BankAccounts);
 }
 
 public static class AppPermissions
@@ -346,6 +347,14 @@ public static class AppPermissions
         new("Delete StockAdjustments", AppAction.Delete, AppResource.StockAdjustments),
         new("Export StockAdjustments", AppAction.Export, AppResource.StockAdjustments),
 
+        // BankAccounts
+        new("View BankAccounts", AppAction.View, AppResource.BankAccounts),
+        new("Search BankAccounts", AppAction.Search, AppResource.BankAccounts),
+        new("Create BankAccounts", AppAction.Create, AppResource.BankAccounts),
+        new("Update BankAccounts", AppAction.Update, AppResource.BankAccounts),
+        new("Delete BankAccounts", AppAction.Delete, AppResource.BankAccounts),
+        new("Export BankAccounts", AppAction.Export, AppResource.BankAccounts),
+
         // BankReconciliations
         new("View BankReconciliations", AppAction.View, AppResource.BankReconciliations),
         new("Search BankReconciliations", AppAction.Search, AppResource.BankReconciliations),
@@ -456,6 +465,7 @@ public static class AppPermissions
         p.Resource == AppResource.ReceiptVouchers ||
         p.Resource == AppResource.JournalVouchers ||
         p.Resource == AppResource.RecurringVouchers ||
+        p.Resource == AppResource.BankAccounts ||
         p.Resource == AppResource.BankReconciliations ||
         p.Resource == AppResource.OpeningBalances ||
         p.Resource == AppResource.AccountStatement ||

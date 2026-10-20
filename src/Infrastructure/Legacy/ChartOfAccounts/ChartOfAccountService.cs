@@ -184,19 +184,43 @@ internal class ChartOfAccountService : IChartOfAccountService
 
     public async Task<List<ChartOfAccountHeadResponse>> GetCashBankAccountsAsync(CancellationToken cancellationToken)
     {
-        var defaultAccount = await _defaultAccountRepository.GetAll()
+        var prefixesFromDb = await _defaultAccountRepository.GetAll()
             .AsNoTracking()
-            .Where(x => x.Title == CashBankDefaultAccountTitle)
-            .Select(x => new { x.AccountId, x.MapAccountId })
-            .FirstOrDefaultAsync(cancellationToken);
+            .Where(x => x.Title == "Cash" || x.Title == "Bank" || x.Title == "Banks")
+            .Select(x => x.MapAccountId ?? x.AccountId)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .ToListAsync(cancellationToken);
 
-        var prefix = defaultAccount?.MapAccountId ?? defaultAccount?.AccountId;
-        if (string.IsNullOrWhiteSpace(prefix))
-            throw new NotFoundException($"Default account mapping for '{CashBankDefaultAccountTitle}' is not configured.");
+        var prefixes = new List<string>();
+        foreach (var accId in prefixesFromDb)
+        {
+            if (string.IsNullOrWhiteSpace(accId)) continue;
+            var acc = await _repository.GetByIdAsync(accId, cancellationToken);
+            if (acc != null)
+            {
+                if (acc.AccLevel <= 4)
+                    prefixes.Add(acc.Id);
+                else if (acc.AccLevel == 5 && !string.IsNullOrWhiteSpace(acc.ParentId))
+                    prefixes.Add(acc.ParentId);
+                else
+                    prefixes.Add(acc.Id);
+            }
+            else
+            {
+                prefixes.Add(accId);
+            }
+        }
 
-        return await _repository.GetAll()
+        if (prefixes.Count == 0)
+        {
+            prefixes.Add("001002002");
+        }
+
+        var distinctPrefixes = prefixes.Distinct().ToList();
+
+        var accounts = await _repository.GetAll()
             .AsNoTracking()
-            .Where(x => x.AccLevel == 5 && x.Id.StartsWith(prefix))
+            .Where(x => x.AccLevel == 5)
             .OrderBy(x => x.Id)
             .Select(x => new ChartOfAccountHeadResponse
             {
@@ -204,6 +228,10 @@ internal class ChartOfAccountService : IChartOfAccountService
                 Title = x.Title
             })
             .ToListAsync(cancellationToken);
+
+        return accounts
+            .Where(x => distinctPrefixes.Any(p => x.Account.StartsWith(p)))
+            .ToList();
     }
 
     public async Task<List<ChartOfAccountHeadResponse>> GetSupplierAccountsAsync(CancellationToken cancellationToken)
