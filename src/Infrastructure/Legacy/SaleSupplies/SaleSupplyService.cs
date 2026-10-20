@@ -21,6 +21,8 @@ internal class SaleSupplyService : ISaleSupplyService
     private readonly IRepository<ItemDetail> _itemRepository;
     private readonly IItemTransactionBalanceService _balanceService;
     private readonly ICurrentTenant _currentTenant;
+    private readonly IRepository<SaleSupplyAttachment> _saleSupplyAttachmentRepository;
+    private readonly IRepository<Retailer.Domain.Public.Document> _documentRepository;
 
     public SaleSupplyService(
         IRepository<SaleSupplyMaster> saleSupplyMasterRepository,
@@ -30,7 +32,9 @@ internal class SaleSupplyService : ISaleSupplyService
         IRepository<DefaultAccount> defaultAccountRepository,
         IRepository<ItemDetail> itemRepository,
         IItemTransactionBalanceService balanceService,
-        ICurrentTenant currentTenant)
+        ICurrentTenant currentTenant,
+        IRepository<SaleSupplyAttachment> saleSupplyAttachmentRepository,
+        IRepository<Retailer.Domain.Public.Document> documentRepository)
     {
         _saleSupplyMasterRepository = saleSupplyMasterRepository;
         _saleSupplyDetailRepository = saleSupplyDetailRepository;
@@ -40,6 +44,8 @@ internal class SaleSupplyService : ISaleSupplyService
         _itemRepository = itemRepository;
         _balanceService = balanceService;
         _currentTenant = currentTenant;
+        _saleSupplyAttachmentRepository = saleSupplyAttachmentRepository;
+        _documentRepository = documentRepository;
     }
 
     public async Task<List<SaleSupplyResponse>> GetListAsync(SaleSupplyListFilter filter, CancellationToken cancellationToken)
@@ -193,6 +199,24 @@ internal class SaleSupplyService : ISaleSupplyService
         await UpsertItemTransactionsAsync(voucherNo, request.Date, request.ItemId, request.Lines, "001", item, cancellationToken);
         await UpsertGlEntriesAsync(voucherNo, request.Date, request.Narration, request.Description, request.Lines, cancellationToken);
 
+        if (request.AttachmentDocumentIds?.Count > 0)
+        {
+            var existingDocIds = await _saleSupplyAttachmentRepository.GetAll()
+                .Where(x => x.VType == VType && x.VNo == voucherNo)
+                .Select(x => x.DocumentId)
+                .ToListAsync(cancellationToken);
+
+            foreach (var docId in request.AttachmentDocumentIds.Distinct().Except(existingDocIds))
+            {
+                await _saleSupplyAttachmentRepository.AddAsync(new SaleSupplyAttachment
+                {
+                    VType = VType,
+                    VNo = voucherNo,
+                    DocumentId = docId
+                }, false);
+            }
+        }
+
         await _saleSupplyMasterRepository.SaveChangesAsync(cancellationToken);
         return voucherNo;
     }
@@ -295,6 +319,24 @@ internal class SaleSupplyService : ISaleSupplyService
 
         await UpsertItemTransactionsAsync(voucherNo, request.Date, request.ItemId, request.Lines, master.Counter, item, cancellationToken);
         await UpsertGlEntriesAsync(voucherNo, request.Date, request.Narration, request.Description, request.Lines, cancellationToken);
+
+        if (request.AttachmentDocumentIds?.Count > 0)
+        {
+            var existingDocIds = await _saleSupplyAttachmentRepository.GetAll()
+                .Where(x => x.VType == VType && x.VNo == voucherNo)
+                .Select(x => x.DocumentId)
+                .ToListAsync(cancellationToken);
+
+            foreach (var docId in request.AttachmentDocumentIds.Distinct().Except(existingDocIds))
+            {
+                await _saleSupplyAttachmentRepository.AddAsync(new SaleSupplyAttachment
+                {
+                    VType = VType,
+                    VNo = voucherNo,
+                    DocumentId = docId
+                }, false);
+            }
+        }
 
         await _saleSupplyMasterRepository.SaveChangesAsync(cancellationToken);
     }
@@ -716,6 +758,67 @@ internal class SaleSupplyService : ISaleSupplyService
         foreach (var item in requests)
         {
             await UpdateLineAsync(item.VoucherNo, item.Seq, item.Line, cancellationToken);
+        }
+    }
+
+    public async Task<List<SaleSupplyAttachmentDto>> GetAttachmentsAsync(string voucherNo, CancellationToken cancellationToken)
+    {
+        return await (
+            from a in _saleSupplyAttachmentRepository.GetAll().AsNoTracking()
+            join d in _documentRepository.GetAll().AsNoTracking() on a.DocumentId equals d.Id
+            where a.VType == VType && a.VNo == voucherNo
+            orderby a.CreatedOn descending
+            select new SaleSupplyAttachmentDto
+            {
+                Id = a.Id,
+                DocumentId = a.DocumentId,
+                FileName = d.OriginalFileName,
+                FileUrl = d.AccessURL,
+                FileType = d.FileType,
+                Description = a.Description,
+                CreatedOn = a.CreatedOn,
+                CreatedBy = a.CreatedBy
+            })
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<SaleSupplyAttachmentDto> AddAttachmentAsync(string voucherNo, int documentId, string? description, CancellationToken cancellationToken)
+    {
+        var doc = await _documentRepository.GetByIdAsync(documentId, cancellationToken);
+        if (doc == null)
+            throw new NotFoundException("Document not found.");
+
+        var attachment = new SaleSupplyAttachment
+        {
+            VType = VType,
+            VNo = voucherNo,
+            DocumentId = documentId,
+            Description = description
+        };
+
+        await _saleSupplyAttachmentRepository.AddAsync(attachment, true);
+
+        return new SaleSupplyAttachmentDto
+        {
+            Id = attachment.Id,
+            DocumentId = attachment.DocumentId,
+            FileName = doc.OriginalFileName,
+            FileUrl = doc.AccessURL,
+            FileType = doc.FileType,
+            Description = attachment.Description,
+            CreatedOn = attachment.CreatedOn,
+            CreatedBy = attachment.CreatedBy
+        };
+    }
+
+    public async Task DeleteAttachmentAsync(string voucherNo, int attachmentId, CancellationToken cancellationToken)
+    {
+        var attachment = await _saleSupplyAttachmentRepository.GetAll()
+            .FirstOrDefaultAsync(x => x.VType == VType && x.VNo == voucherNo && x.Id == attachmentId, cancellationToken);
+
+        if (attachment != null)
+        {
+            await _saleSupplyAttachmentRepository.DeleteAsync(attachment, true);
         }
     }
 }

@@ -31,4 +31,8 @@ public class TenantInfo : ITenantInfo
     public DateTime ValidFrom { get; set; } = DateTime.UtcNow;
 
     public DateTime? ValidUntil { get; set; }
+
+    public int AiScanMonthlyLimit { get; set; } = 50;
+    public int AiScanUsedThisMonth { get; set; } = 0;
+    public string? AiScanCurrentMonth { get; set; }
 }

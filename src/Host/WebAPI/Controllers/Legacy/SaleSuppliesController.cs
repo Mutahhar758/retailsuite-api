@@ -1,3 +1,8 @@
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using NSwag.Annotations;
+using Retailer.Application.Common.Exceptions;
+using Retailer.Application.Common.Interfaces;
 using Retailer.Application.Legacy.SaleSupplies;
 using Retailer.Infrastructure.Common.Extensions;
 using Retailer.Infrastructure.Auth.Permissions;
@@ -8,10 +13,14 @@ namespace Retailer.Host.Controllers.Legacy;
 public class SaleSuppliesController : VersionNeutralApiController
 {
     private readonly ISaleSupplyService _saleSupplyService;
+    private readonly IAiScanService _aiScanService;
 
-    public SaleSuppliesController(ISaleSupplyService saleSupplyService)
+    public SaleSuppliesController(
+        ISaleSupplyService saleSupplyService,
+        IAiScanService aiScanService)
     {
         _saleSupplyService = saleSupplyService;
+        _aiScanService = aiScanService;
     }
 
     [HttpGet]
@@ -111,5 +120,58 @@ public class SaleSuppliesController : VersionNeutralApiController
     {
         await _saleSupplyService.UpdateCustomerLinesAsync(requests, cancellationToken);
         return "Sale supply lines updated.".ToInformationResponse("Sale supply lines updated.");
+    }
+
+    [HttpPost("scan-sheet")]
+    [MustHavePermission(AppAction.Create, AppResource.SaleSupplies)]
+    [OpenApiOperation("Scan handwritten sale supply sheet via AI vision.", "")]
+    public async Task<HttpResponseDto<SaleSupplyScanResponse>> ScanSheetAsync(
+        IFormFile file,
+        CancellationToken cancellationToken)
+    {
+        if (file == null || file.Length == 0)
+        {
+            throw new CustomException("Please select an image file to scan.", statusCode: System.Net.HttpStatusCode.BadRequest);
+        }
+
+        using var stream = file.OpenReadStream();
+        var response = await _aiScanService.ScanSaleSupplySheetAsync(stream, file.FileName, file.ContentType, cancellationToken);
+        return response.ToInformationResponse("Sheet scanned successfully.");
+    }
+
+    [HttpGet("{voucherNo}/attachments")]
+    [MustHavePermission(AppAction.View, AppResource.SaleSupplies)]
+    [OpenApiOperation("Get attachments for a sale supply voucher.", "")]
+    public async Task<HttpResponseDto<List<SaleSupplyAttachmentDto>>> GetAttachmentsAsync(
+        string voucherNo,
+        CancellationToken cancellationToken)
+    {
+        var result = await _saleSupplyService.GetAttachmentsAsync(voucherNo, cancellationToken);
+        return result.ToInformationResponse();
+    }
+
+    [HttpPost("{voucherNo}/attachments")]
+    [MustHavePermission(AppAction.Create, AppResource.SaleSupplies)]
+    [OpenApiOperation("Attach a document to a sale supply voucher.", "")]
+    public async Task<HttpResponseDto<SaleSupplyAttachmentDto>> AddAttachmentAsync(
+        string voucherNo,
+        [FromQuery] int documentId,
+        [FromQuery] string? description,
+        CancellationToken cancellationToken)
+    {
+        var result = await _saleSupplyService.AddAttachmentAsync(voucherNo, documentId, description, cancellationToken);
+        return result.ToInformationResponse("Attachment added.");
+    }
+
+    [HttpDelete("{voucherNo}/attachments/{attachmentId:int}")]
+    [MustHavePermission(AppAction.Delete, AppResource.SaleSupplies)]
+    [OpenApiOperation("Delete an attachment from a sale supply voucher.", "")]
+    public async Task<HttpResponseDto<string>> DeleteAttachmentAsync(
+        string voucherNo,
+        int attachmentId,
+        CancellationToken cancellationToken)
+    {
+        await _saleSupplyService.DeleteAttachmentAsync(voucherNo, attachmentId, cancellationToken);
+        return "Attachment deleted.".ToInformationResponse("Attachment deleted.");
     }
 }

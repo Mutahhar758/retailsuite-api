@@ -575,6 +575,22 @@ public class SaleSupplyDetailConfig : IEntityTypeConfiguration<SaleSupplyDetail>
     }
 }
 
+public class SaleSupplyAttachmentConfig : IEntityTypeConfiguration<SaleSupplyAttachment>
+{
+    public void Configure(EntityTypeBuilder<SaleSupplyAttachment> builder)
+    {
+        var mtBuilder = builder.IsMultiTenant();
+        builder.Property(x => x.Id).ValueGeneratedOnAdd();
+        builder.HasIndex(x => new { x.VType, x.VNo });
+        mtBuilder.AdjustUniqueIndexes();
+
+        builder.HasOne(x => x.Document)
+            .WithMany()
+            .HasForeignKey(x => x.DocumentId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
 public class StockAdjMasterConfig : IEntityTypeConfiguration<StockAdjMaster>
 {
     public void Configure(EntityTypeBuilder<StockAdjMaster> builder)

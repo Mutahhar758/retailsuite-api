@@ -11,4 +11,7 @@ public interface ISaleSupplyService : ITransientService
     Task<List<SaleSupplyLineResponse>> GetCustomerLinesAsync(string customerId, DateOnly? fromDate, DateOnly? toDate, string? itemId, CancellationToken cancellationToken);
     Task UpdateLineAsync(string voucherNo, int seq, SaleSupplyLineRequest request, CancellationToken cancellationToken);
     Task UpdateCustomerLinesAsync(List<SaleSupplyCustomerLineUpdateRequest> requests, CancellationToken cancellationToken);
+    Task<List<SaleSupplyAttachmentDto>> GetAttachmentsAsync(string voucherNo, CancellationToken cancellationToken);
+    Task<SaleSupplyAttachmentDto> AddAttachmentAsync(string voucherNo, int documentId, string? description, CancellationToken cancellationToken);
+    Task DeleteAttachmentAsync(string voucherNo, int attachmentId, CancellationToken cancellationToken);
 }
