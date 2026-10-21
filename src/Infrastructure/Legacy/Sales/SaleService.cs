@@ -157,7 +157,7 @@ internal class SaleService : ISaleService
             : ((x.Qty * x.Rate) + ((x.SecQty ?? 0) * (x.SecRate ?? 0))));
         var discountAmount = request.Lines.Sum(x => x.Discount);
         var netAmount = request.Lines.Sum(x => isWanda
-            ? ((x.Qty * x.Rate) - x.Discount + (x.Carriage ?? 0))
+            ? ((x.Qty * x.Rate) - x.Discount + ((x.SecQty ?? 0) * (x.Carriage ?? 0)))
             : (((x.Qty * x.Rate) + ((x.SecQty ?? 0) * (x.SecRate ?? 0))) - x.Discount + (x.Carriage ?? 0)));
 
         var master = new SaleMaster
@@ -197,7 +197,7 @@ internal class SaleService : ISaleService
             var resolvedSecUnitId = !string.IsNullOrWhiteSpace(line.SecUnit) ? line.SecUnit : item?.SecondaryUnitId;
 
             var lineAmount = isWanda
-                ? (line.Qty * line.Rate) - line.Discount + (line.Carriage ?? 0)
+                ? (line.Qty * line.Rate) - line.Discount + ((line.SecQty ?? 0) * (line.Carriage ?? 0))
                 : ((line.Qty * line.Rate) + ((line.SecQty ?? 0) * (line.SecRate ?? 0))) - line.Discount + (line.Carriage ?? 0);
 
             await _saleRepository.AddAsync(new Sale
@@ -268,7 +268,7 @@ internal class SaleService : ISaleService
             : ((x.Qty * x.Rate) + ((x.SecQty ?? 0) * (x.SecRate ?? 0))));
         var discountAmount = request.Lines.Sum(x => x.Discount);
         var netAmount = request.Lines.Sum(x => isWanda
-            ? ((x.Qty * x.Rate) - x.Discount + (x.Carriage ?? 0))
+            ? ((x.Qty * x.Rate) - x.Discount + ((x.SecQty ?? 0) * (x.Carriage ?? 0)))
             : (((x.Qty * x.Rate) + ((x.SecQty ?? 0) * (x.SecRate ?? 0))) - x.Discount + (x.Carriage ?? 0)));
 
         master.VDate = request.Date;
@@ -308,7 +308,7 @@ internal class SaleService : ISaleService
                     cancellationToken);
 
             var lineAmount = isWanda
-                ? (line.Qty * line.Rate) - line.Discount + (line.Carriage ?? 0)
+                ? (line.Qty * line.Rate) - line.Discount + ((line.SecQty ?? 0) * (line.Carriage ?? 0))
                 : ((line.Qty * line.Rate) + ((line.SecQty ?? 0) * (line.SecRate ?? 0))) - line.Discount + (line.Carriage ?? 0);
 
             if (existing is null)
