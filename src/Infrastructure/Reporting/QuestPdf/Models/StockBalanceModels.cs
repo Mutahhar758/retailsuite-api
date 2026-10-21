@@ -15,6 +15,9 @@ public class StockBalanceReportItem
     public string? ClosingQtyDisplay { get; set; }
     public decimal Rate { get; set; }
     public decimal TotalValue => ClosingQty * Rate;
+    public decimal? LowStockQty { get; set; }
+    public bool? LowStockAlert { get; set; }
+    public string Status { get; set; } = "In Stock";
 }
 
 public class StockBalanceHeader

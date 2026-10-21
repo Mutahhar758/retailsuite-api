@@ -208,7 +208,7 @@ internal class DashboardService : IDashboardService
         var itemInfos = await _itemDetailRepository.GetAll()
             .AsNoTracking()
             .Where(x => x.ItemType != ItemType.Service)
-            .Select(x => new { x.Id, x.Title })
+            .Select(x => new { x.Id, x.Title, x.Barcode, x.LowStockAlert, x.LowStockQty })
             .ToDictionaryAsync(x => x.Id, x => x, cancellationToken);
 
         return stockData
@@ -217,12 +217,29 @@ internal class DashboardService : IDashboardService
             {
                 var info = itemInfos[x.ItemId!];
                 var rate = x.PosQtyBal == 0 ? 0 : x.Amt / x.PosQtyBal;
+                string status;
+                if (x.QtyBal <= 0)
+                {
+                    status = "Out of Stock";
+                }
+                else if (info.LowStockAlert == true && info.LowStockQty.HasValue && x.QtyBal <= info.LowStockQty.Value)
+                {
+                    status = "Low Stock";
+                }
+                else
+                {
+                    status = "In Stock";
+                }
+
                 return new StockStatusDto
                 {
+                    Code = info.Barcode ?? x.ItemId,
                     Name = info.Title,
                     Qty = x.QtyBal,
                     Value = x.QtyBal * rate,
-                    Status = x.QtyBal > 10 ? "In Stock" : (x.QtyBal > 0 ? "Low Stock" : "Out of Stock")
+                    Status = status,
+                    LowStockQty = info.LowStockQty,
+                    LowStockAlert = info.LowStockAlert
                 };
             })
             .OrderByDescending(x => x.Value)

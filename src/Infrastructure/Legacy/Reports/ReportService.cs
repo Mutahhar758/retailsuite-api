@@ -923,6 +923,8 @@ internal class ReportService : IReportService
                 Item = x.Item != null ? x.Item.Title : string.Empty,
                 PrimaryUnitId = x.Item != null ? (x.Item.PrimaryUnitId ?? x.Item.DefaultUnitId) : null,
                 AdditionalUnits = x.Item != null ? x.Item.AdditionalUnits : null,
+                LowStockAlert = x.Item != null ? x.Item.LowStockAlert : null,
+                LowStockQty = x.Item != null ? x.Item.LowStockQty : null,
                 Unit = x.Item != null ? (x.Item.PrimaryUnit != null ? (x.Item.PrimaryUnit.ShortTitle ?? x.Item.PrimaryUnit.Title) : (x.Item.DefaultUnit != null ? (x.Item.DefaultUnit.ShortTitle ?? x.Item.DefaultUnit.Title) : x.Item.DefaultUnitId)) : string.Empty,
                 SecUnit = x.Item != null ? (x.Item.SecondaryUnit != null ? x.Item.SecondaryUnit.Title : x.Item.SecondaryUnitId) : string.Empty,
                 x.VDate,
@@ -954,7 +956,7 @@ internal class ReportService : IReportService
                 .ToListAsync(cancellationToken);
 
         var data = rows
-            .GroupBy(x => new { x.ItemId, x.Item, x.PrimaryUnitId, x.AdditionalUnits, x.Unit, x.SecUnit })
+            .GroupBy(x => new { x.ItemId, x.Item, x.PrimaryUnitId, x.AdditionalUnits, x.Unit, x.SecUnit, x.LowStockAlert, x.LowStockQty })
             .Select(g =>
             {
                 var latestTx = g.OrderByDescending(x => x.VDate).ThenByDescending(x => x.VTime).ThenByDescending(x => x.TranType == "in" ? 0 : 1).ThenByDescending(x => x.Id).FirstOrDefault();
@@ -980,8 +982,13 @@ internal class ReportService : IReportService
                 var secQtyOut = g.Where(x => x.VDate >= filter.FromDate && x.VDate <= filter.ToDate && x.VType != "Op").Sum(x => x.SecQtyOut);
                 var secQtyBal = g.Sum(x => x.SecQtyIn - x.SecQtyOut);
 
+                var status = qtyBal <= 0 
+                    ? "Out of Stock" 
+                    : (g.Key.LowStockAlert == true && g.Key.LowStockQty.HasValue && qtyBal <= g.Key.LowStockQty.Value ? "Low Stock" : "In Stock");
+
                 return new StockBalanceLineResponse
                 {
+                    ItemId = g.Key.ItemId,
                     Item = g.Key.Item,
                     Unit = g.Key.Unit ?? string.Empty,
                     PriQty = priQty,
@@ -998,19 +1005,24 @@ internal class ReportService : IReportService
                     PriQtyDisplay = ItemUnitDisplayHelper.FormatQtyWithUnitText(priQty, g.Key.PrimaryUnitId, g.Key.Unit, g.Key.AdditionalUnits, subUnits),
                     QtyInDisplay = qtyIn > 0 ? ItemUnitDisplayHelper.FormatQtyWithUnitText(qtyIn, g.Key.PrimaryUnitId, g.Key.Unit, g.Key.AdditionalUnits, subUnits) : null,
                     QtyOutDisplay = qtyOut > 0 ? ItemUnitDisplayHelper.FormatQtyWithUnitText(qtyOut, g.Key.PrimaryUnitId, g.Key.Unit, g.Key.AdditionalUnits, subUnits) : null,
-                    QtyBalDisplay = ItemUnitDisplayHelper.FormatQtyWithUnitText(qtyBal, g.Key.PrimaryUnitId, g.Key.Unit, g.Key.AdditionalUnits, subUnits)
+                    QtyBalDisplay = ItemUnitDisplayHelper.FormatQtyWithUnitText(qtyBal, g.Key.PrimaryUnitId, g.Key.Unit, g.Key.AdditionalUnits, subUnits),
+                    LowStockAlert = g.Key.LowStockAlert,
+                    LowStockQty = g.Key.LowStockQty,
+                    Status = status
                 };
             })
             .Where(x => x.QtyBal != 0 || x.SecQtyBal != 0)
             .ToList();
 
         var mode = (filter.Filter ?? "All").Trim();
-        if (mode.Equals("Equal", StringComparison.OrdinalIgnoreCase))
+        if (mode.Equals("Equal", StringComparison.OrdinalIgnoreCase) || mode == "= 0")
             data = data.Where(x => x.QtyBal == filter.Qty).ToList();
-        else if (mode.Equals("Greater", StringComparison.OrdinalIgnoreCase))
-            data = data.Where(x => x.QtyBal >= filter.Qty).ToList();
-        else if (mode.Equals("Less", StringComparison.OrdinalIgnoreCase))
-            data = data.Where(x => x.QtyBal <= filter.Qty).ToList();
+        else if (mode.Equals("Greater", StringComparison.OrdinalIgnoreCase) || mode == "> 0")
+            data = data.Where(x => x.QtyBal > (mode == "> 0" ? 0 : filter.Qty)).ToList();
+        else if (mode.Equals("Less", StringComparison.OrdinalIgnoreCase) || mode == "< 0")
+            data = data.Where(x => x.QtyBal < (mode == "< 0" ? 0 : filter.Qty)).ToList();
+        else if (mode.Equals("LowStock", StringComparison.OrdinalIgnoreCase) || mode.Equals("Low Stock", StringComparison.OrdinalIgnoreCase))
+            data = data.Where(x => x.Status == "Low Stock").ToList();
 
         return data
             .OrderBy(x => x.Item)
@@ -1049,7 +1061,10 @@ internal class ReportService : IReportService
                 QtyInDisplay = line.QtyInDisplay,
                 QtyOutDisplay = line.QtyOutDisplay,
                 ClosingQtyDisplay = line.QtyBalDisplay,
-                Rate = line.Rate
+                Rate = line.Rate,
+                LowStockAlert = line.LowStockAlert,
+                LowStockQty = line.LowStockQty,
+                Status = line.Status
             });
         }
 

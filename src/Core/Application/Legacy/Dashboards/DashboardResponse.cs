@@ -44,10 +44,13 @@ public class RecentExpenseDto
 
 public class StockStatusDto
 {
+    public string? Code { get; set; }
     public string Name { get; set; } = default!;
     public decimal Qty { get; set; }
     public decimal Value { get; set; }
     public string Status { get; set; } = default!;
+    public decimal? LowStockQty { get; set; }
+    public bool? LowStockAlert { get; set; }
 }
 
 public class RecentPaymentDto

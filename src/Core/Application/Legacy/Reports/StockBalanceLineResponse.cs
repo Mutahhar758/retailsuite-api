@@ -2,6 +2,7 @@ namespace Retailer.Application.Legacy.Reports;
 
 public class StockBalanceLineResponse
 {
+    public string? ItemId { get; set; }
     public string Item { get; set; } = string.Empty;
     public string Unit { get; set; } = string.Empty;
     public decimal PriQty { get; set; }
@@ -21,4 +22,8 @@ public class StockBalanceLineResponse
     public string? QtyInDisplay { get; set; }
     public string? QtyOutDisplay { get; set; }
     public string? QtyBalDisplay { get; set; }
+
+    public bool? LowStockAlert { get; set; }
+    public decimal? LowStockQty { get; set; }
+    public string Status { get; set; } = "In Stock";
 }

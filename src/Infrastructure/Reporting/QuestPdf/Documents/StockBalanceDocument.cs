@@ -196,7 +196,14 @@ public class StockBalanceDocument : IDocument
 
                 // Closing Qty
                 var closeText = !string.IsNullOrWhiteSpace(item.ClosingQtyDisplay) ? item.ClosingQtyDisplay : item.ClosingQty.ToString("#,##0.##");
-                table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text(closeText).SemiBold();
+                table.Cell().Element(c => BodyCell(c, bg)).AlignRight().Text(text =>
+                {
+                    text.Span(closeText).SemiBold().FontColor(item.Status == "Low Stock" ? Colors.Orange.Darken3 : (item.Status == "Out of Stock" ? Colors.Red.Darken2 : Colors.Grey.Darken4));
+                    if (item.Status == "Low Stock")
+                    {
+                        text.Span(" (Low)").FontSize(7f).Bold().FontColor(Colors.Orange.Darken3);
+                    }
+                });
 
                 if (_showStockValue)
                 {
