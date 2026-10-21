@@ -138,7 +138,7 @@ public class ReportsController : VersionNeutralApiController
     [MustHavePermission(AppAction.View, AppResource.StockBalance)]
     [OpenApiOperation("Get stock balance report data.", "")]
     public async Task<HttpResponseDto<List<StockBalanceLineResponse>>> GetStockBalanceAsync(
-        [FromQuery] StockBalanceFilter filter,
+        [FromQuery(Name = "")] StockBalanceFilter filter,
         CancellationToken cancellationToken)
     {
         var result = await _reportService.GetStockBalanceAsync(filter, cancellationToken);
@@ -149,7 +149,7 @@ public class ReportsController : VersionNeutralApiController
     [MustHavePermission(AppAction.View, AppResource.StockBalance)]
     [OpenApiOperation("Get stock balance report as a vector PDF document.", "")]
     public async Task<IActionResult> GetStockBalancePdfAsync(
-        [FromQuery] StockBalanceFilter filter,
+        [FromQuery(Name = "")] StockBalanceFilter filter,
         CancellationToken cancellationToken)
     {
         var pdfBytes = await _reportService.GetStockBalancePdfAsync(filter, cancellationToken);

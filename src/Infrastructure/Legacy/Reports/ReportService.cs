@@ -909,6 +909,20 @@ internal class ReportService : IReportService
 
     public async Task<List<StockBalanceLineResponse>> GetStockBalanceAsync(StockBalanceFilter filter, CancellationToken cancellationToken)
     {
+        if (filter.FromDate == default && filter.ToDate == default)
+        {
+            filter.FromDate = DateOnly.FromDateTime(DateTime.Today.AddMonths(-1));
+            filter.ToDate = DateOnly.FromDateTime(DateTime.Today);
+        }
+        else if (filter.FromDate == default)
+        {
+            filter.FromDate = filter.ToDate.AddMonths(-1);
+        }
+        else if (filter.ToDate == default)
+        {
+            filter.ToDate = DateOnly.FromDateTime(DateTime.Today);
+        }
+
         if (filter.ToDate < filter.FromDate)
             throw new BadRequestException("To date must be greater than or equal to from date.");
 
