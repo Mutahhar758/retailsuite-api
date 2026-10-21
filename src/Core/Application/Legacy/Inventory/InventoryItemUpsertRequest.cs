@@ -18,6 +18,7 @@ public class InventoryItemUpsertRequest
     public bool Alert { get; set; }
     public bool? LowStockAlert { get; set; }
     public decimal? LowStockQty { get; set; }
+    public decimal? MinSalePrice { get; set; }
     public decimal? OpnStock { get; set; }
     public decimal? OpnRate { get; set; }
     public ItemType? ItemType { get; set; }

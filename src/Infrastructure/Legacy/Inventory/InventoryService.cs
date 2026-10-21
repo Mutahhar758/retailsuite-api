@@ -198,6 +198,7 @@ internal class InventoryService : IInventoryService
             Alert = x.Alert ?? false,
             LowStockAlert = x.LowStockAlert,
             LowStockQty = x.LowStockQty,
+            MinSalePrice = x.MinSalePrice,
             OpnStock = x.OpnStock,
             OpnRate = x.OpnRate,
             ItemType = x.ItemType,
@@ -250,6 +251,7 @@ internal class InventoryService : IInventoryService
             Alert = item.Alert ?? false,
             LowStockAlert = item.LowStockAlert,
             LowStockQty = item.LowStockQty,
+            MinSalePrice = item.MinSalePrice,
             OpnStock = item.OpnStock,
             OpnRate = item.OpnRate,
             ItemType = item.ItemType,
@@ -312,6 +314,7 @@ internal class InventoryService : IInventoryService
                 Alert = request.Alert,
                 LowStockAlert = isNewService ? null : request.LowStockAlert,
                 LowStockQty = isNewService || request.LowStockAlert != true ? null : request.LowStockQty,
+                MinSalePrice = request.MinSalePrice,
                 OpnStock = isNewService ? 0 : request.OpnStock,
                 OpnRate = isNewService ? 0 : request.OpnRate,
                 MediaId = request.MediaId,
@@ -361,6 +364,7 @@ internal class InventoryService : IInventoryService
         existing.Alert = request.Alert;
         existing.LowStockAlert = isExistingService ? null : request.LowStockAlert;
         existing.LowStockQty = isExistingService || request.LowStockAlert != true ? null : request.LowStockQty;
+        existing.MinSalePrice = request.MinSalePrice;
         existing.OpnStock = isExistingService ? 0 : request.OpnStock;
         existing.OpnRate = isExistingService ? 0 : request.OpnRate;
         existing.MediaId = request.MediaId;
@@ -639,6 +643,7 @@ internal class InventoryService : IInventoryService
                 existing.Alert = item.Alert;
                 existing.LowStockAlert = isExistingService ? null : item.LowStockAlert;
                 existing.LowStockQty = isExistingService || item.LowStockAlert != true ? null : item.LowStockQty;
+                existing.MinSalePrice = item.MinSalePrice;
                 existing.OpnStock = isExistingService ? 0 : item.OpnStock;
                 existing.OpnRate = isExistingService ? 0 : item.OpnRate;
                 existing.QuickQtyPresets = item.QuickQtyPresets;
@@ -694,6 +699,7 @@ internal class InventoryService : IInventoryService
                     Alert = item.Alert,
                     LowStockAlert = isNewService ? null : item.LowStockAlert,
                     LowStockQty = isNewService || item.LowStockAlert != true ? null : item.LowStockQty,
+                    MinSalePrice = item.MinSalePrice,
                     OpnStock = isNewService ? 0 : item.OpnStock,
                     OpnRate = isNewService ? 0 : item.OpnRate,
                     QuickQtyPresets = item.QuickQtyPresets,

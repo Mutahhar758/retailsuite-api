@@ -1886,6 +1886,10 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasColumnType("decimal(18,2)")
                         .HasColumnName("low_stock_qty");
 
+                    b.Property<decimal?>("MinSalePrice")
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("min_sale_price");
+
                     b.Property<string>("MediaId")
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("media_id");

@@ -1885,6 +1885,10 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnType("numeric")
                         .HasColumnName("low_stock_qty");
 
+                    b.Property<decimal?>("MinSalePrice")
+                        .HasColumnType("numeric")
+                        .HasColumnName("min_sale_price");
+
                     b.Property<string>("MediaId")
                         .HasColumnType("text")
                         .HasColumnName("media_id");
