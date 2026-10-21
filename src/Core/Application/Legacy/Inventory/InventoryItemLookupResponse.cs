@@ -9,6 +9,9 @@ public class InventoryItemLookupResponse
     public string? ItemKey { get; set; }
     public decimal PriRate { get; set; }
     public decimal SecRate { get; set; }
+    /// <summary>Only populated when the caller asks for it and has purchase view permission.</summary>
+    public decimal? LastPurchaseRate { get; set; }
+    public decimal? LastPurchaseSecRate { get; set; }
     public string? PrimaryUnit { get; set; }
     public string? PrimaryUnitTitle { get; set; }
     public string? SecondaryUnit { get; set; }

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Retailer.Application.Legacy.Inventory;
 using Retailer.Application.Common.Interfaces;
 using Retailer.Infrastructure.Common.Extensions;
@@ -35,9 +36,21 @@ public class InventoryController : VersionNeutralApiController
 
     [HttpGet("items/lookup")]
     [OpenApiOperation("Get inventory items lookup.", "")]
-    public async Task<HttpResponseDto<List<InventoryItemLookupResponse>>> GetItemsLookupAsync([FromQuery] string? itemCategoryCode, CancellationToken cancellationToken)
+    public async Task<HttpResponseDto<List<InventoryItemLookupResponse>>> GetItemsLookupAsync(
+        [FromQuery] string? itemCategoryCode,
+        [FromQuery] bool includeLastPurchaseRate,
+        [FromServices] IAuthorizationService authorizationService,
+        CancellationToken cancellationToken)
     {
-        var items = await _inventoryService.GetItemsLookupAsync(itemCategoryCode, cancellationToken);
+        // Last purchase rate is only returned when requested AND the caller may view purchases.
+        var allowLastPurchaseRate = false;
+        if (includeLastPurchaseRate)
+        {
+            var policy = AppPermission.NameFor(AppAction.View, AppResource.Purchases);
+            allowLastPurchaseRate = (await authorizationService.AuthorizeAsync(User, policy)).Succeeded;
+        }
+
+        var items = await _inventoryService.GetItemsLookupAsync(itemCategoryCode, allowLastPurchaseRate, cancellationToken);
         return items.ToInformationResponse();
     }
 

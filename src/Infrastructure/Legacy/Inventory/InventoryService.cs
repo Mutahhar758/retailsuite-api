@@ -13,6 +13,8 @@ namespace Retailer.Infrastructure.Legacy.Inventory;
 internal class InventoryService : IInventoryService
 {
     private readonly IRepository<ItemDetail> _itemRepository;
+    private readonly IRepository<PurchaseDetail> _purchaseDetailRepository;
+    private readonly IRepository<PurchaseMaster> _purchaseMasterRepository;
     private readonly IRepository<Unit> _unitRepository;
     private readonly IRepository<ItemTransaction> _itemTransactionRepository;
     private readonly IRepository<ItemCustomerCategoryPrice> _categoryPriceRepository;
@@ -22,6 +24,8 @@ internal class InventoryService : IInventoryService
 
     public InventoryService(
         IRepository<ItemDetail> itemRepository,
+        IRepository<PurchaseDetail> purchaseDetailRepository,
+        IRepository<PurchaseMaster> purchaseMasterRepository,
         IRepository<Unit> unitRepository,
         IRepository<ItemTransaction> itemTransactionRepository,
         IRepository<ItemCustomerCategoryPrice> categoryPriceRepository,
@@ -30,6 +34,8 @@ internal class InventoryService : IInventoryService
         ICurrentTenant currentTenant)
     {
         _itemRepository = itemRepository;
+        _purchaseDetailRepository = purchaseDetailRepository;
+        _purchaseMasterRepository = purchaseMasterRepository;
         _unitRepository = unitRepository;
         _itemTransactionRepository = itemTransactionRepository;
         _categoryPriceRepository = categoryPriceRepository;
@@ -38,7 +44,7 @@ internal class InventoryService : IInventoryService
         _currentTenant = currentTenant;
     }
 
-    public async Task<List<InventoryItemLookupResponse>> GetItemsLookupAsync(string? itemCategoryCode, CancellationToken cancellationToken)
+    public async Task<List<InventoryItemLookupResponse>> GetItemsLookupAsync(string? itemCategoryCode, bool includeLastPurchaseRate, CancellationToken cancellationToken)
     {
         var query = _itemRepository.GetAll().AsNoTracking();
 
@@ -118,7 +124,41 @@ internal class InventoryService : IInventoryService
 
         await PopulateMediaUrlsAsync(items, cancellationToken);
 
+        if (includeLastPurchaseRate)
+            await PopulateLastPurchaseRatesAsync(items, cancellationToken);
+
         return items;
+    }
+
+    private async Task PopulateLastPurchaseRatesAsync(List<InventoryItemLookupResponse> items, CancellationToken cancellationToken)
+    {
+        if (items.Count == 0) return;
+
+        var details = _purchaseDetailRepository.GetAll().AsNoTracking();
+        var masters = _purchaseMasterRepository.GetAll().AsNoTracking();
+
+        // Latest purchase line per item (by voucher date, then creation time, then line seq).
+        var lastRates = await (
+            from d in details
+            join m in masters on new { d.VType, d.VNo } equals new { m.VType, m.VNo }
+            where d.VType == "PU" && d.ItemId != null
+            group new { d, m } by d.ItemId into g
+            select g.OrderByDescending(x => x.m.VDate)
+                    .ThenByDescending(x => x.m.CreatedOn)
+                    .ThenByDescending(x => x.d.Seq)
+                    .Select(x => new { ItemId = x.d.ItemId!, x.d.Rate, x.d.SecRate })
+                    .First())
+            .ToListAsync(cancellationToken);
+
+        var map = lastRates.ToDictionary(x => x.ItemId);
+        foreach (var item in items)
+        {
+            if (map.TryGetValue(item.Id, out var last))
+            {
+                item.LastPurchaseRate = last.Rate;
+                item.LastPurchaseSecRate = last.SecRate;
+            }
+        }
     }
 
     public async Task<List<InventoryItemResponse>> GetItemsAsync(string? itemCategoryCode, CancellationToken cancellationToken)
