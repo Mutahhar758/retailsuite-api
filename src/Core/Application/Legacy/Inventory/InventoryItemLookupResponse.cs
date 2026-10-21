@@ -18,6 +18,8 @@ public class InventoryItemLookupResponse
     public string? DefaultUnit { get; set; }
     public string? DefaultUnitTitle { get; set; }
     public decimal? QtyInPack { get; set; }
+    public decimal? LowStockQty { get; set; }
+    public decimal? MinSalePrice { get; set; }
     public string? MediaId { get; set; }
     public string? MediaUrl { get; set; }
     public string? QuickQtyPresets { get; set; }
