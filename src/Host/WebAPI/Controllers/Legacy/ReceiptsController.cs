@@ -16,12 +16,24 @@ public class ReceiptsController : VersionNeutralApiController
 
     [HttpGet]
     [MustHavePermission(AppAction.View, AppResource.ReceiptVouchers)]
-    [OpenApiOperation("Get receipt voucher list.", "")]
+    [OpenApiOperation("Get receipt voucher list (obsolete).", "Obsolete: returns the full unpaginated list. Use GET api/receipts/paged instead. Will be removed.")]
+    [Obsolete("Use GET api/receipts/paged. This endpoint will be removed.")]
     public async Task<HttpResponseDto<List<ReceiptResponse>>> GetListAsync(
         [FromQuery] ReceiptListFilter filter,
         CancellationToken cancellationToken)
     {
         var result = await _receiptService.GetListAsync(filter, cancellationToken);
+        return result.ToInformationResponse();
+    }
+
+    [HttpGet("paged")]
+    [MustHavePermission(AppAction.View, AppResource.ReceiptVouchers)]
+    [OpenApiOperation("Get receipt voucher list (paginated).", "Server-side pagination. Supports pageNumber, pageSize, fromDate, toDate, cashBankAccount, account, narration, voucherNo.")]
+    public async Task<HttpResponseDto<PaginationResponse<ReceiptResponse>>> GetPagedListAsync(
+        [FromQuery] ReceiptPagedListFilter filter,
+        CancellationToken cancellationToken)
+    {
+        var result = await _receiptService.GetPagedListAsync(filter, cancellationToken);
         return result.ToInformationResponse();
     }
 
