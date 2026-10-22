@@ -224,7 +224,7 @@ public class BarcodeDocument : IDocument
                     col.Item().AlignCenter().Text(company)
                         .FontSize(companyFontSize)
                         .Bold()
-                        .FontColor(Colors.Grey.Darken3);
+                        .FontColor(Colors.Black);
                 }
 
                 if (_request.IncludeTitle)
@@ -237,8 +237,8 @@ public class BarcodeDocument : IDocument
 
                 // Vector barcode bars via QuestPDF Row - no SVG aspect-ratio wrapping or scaling conflicts!
                 col.Item()
-                    .PaddingTop(0.5f)
-                    .PaddingBottom(0.5f)
+                    .PaddingTop(0.4f)
+                    .PaddingBottom(0.4f)
                     .AlignCenter()
                     .Width(maxLabelWidthMm - 3, Unit.Millimetre)
                     .Height(effectiveBarcodeHeight, Unit.Millimetre)
@@ -254,15 +254,16 @@ public class BarcodeDocument : IDocument
                     });
 
                 float barcodeFontSize = maxLabelWidthMm <= 32f
-                    ? (barcode.Length > 22 ? 2.8f : (barcode.Length > 18 ? 3.2f : (barcode.Length > 12 ? 3.8f : 4.8f)))
-                    : (barcode.Length > 22 ? 3.5f : (barcode.Length > 18 ? 4.0f : (barcode.Length > 12 ? 4.8f : 5.5f)));
+                    ? (barcode.Length > 22 ? 3.6f : (barcode.Length > 18 ? 4.8f : (barcode.Length > 12 ? 5.8f : 6.8f)))
+                    : (barcode.Length > 22 ? 4.2f : (barcode.Length > 18 ? 5.5f : (barcode.Length > 12 ? 6.5f : 7.5f)));
 
                 col.Item().AlignCenter().Text(text =>
                 {
                     text.ClampLines(1);
                     text.Span(barcode)
                         .FontSize(barcodeFontSize)
-                        .FontColor(Colors.Grey.Darken2);
+                        .Bold()
+                        .FontColor(Colors.Black);
                 });
 
                 if (_request.IncludePrice)
@@ -273,18 +274,19 @@ public class BarcodeDocument : IDocument
                         decimal rate = Math.Round(item.Rate);
                         string unitStr = !string.IsNullOrWhiteSpace(item.Unit) && !decimal.TryParse(item.Unit, out _) ? item.Unit : "kg";
                         col.Item().AlignCenter().Text($"Qty: {item.Qty:0.###} {unitStr}  •  Rs. {total:#,##0}")
-                            .FontSize(priceFontSize - 0.5f)
+                            .FontSize(priceFontSize)
                             .Bold()
                             .FontColor(Colors.Black);
 
                         col.Item().AlignCenter().Text($"Rate: Rs. {rate:#,##0}/{unitStr}")
-                            .FontSize(companyFontSize - 0.5f)
-                            .FontColor(Colors.Grey.Darken2);
+                            .FontSize(companyFontSize)
+                            .Bold()
+                            .FontColor(Colors.Black);
                     }
                     else
                     {
                         col.Item().AlignCenter().Text($"Rs. {Math.Round(item.Rate):#,##0}")
-                            .FontSize(priceFontSize)
+                            .FontSize(priceFontSize + 1.2f)
                             .Bold()
                             .FontColor(Colors.Black);
                     }
