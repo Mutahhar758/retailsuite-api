@@ -68,6 +68,10 @@ public class BarcodeDocument : IDocument
         int pageSize = 3; // 3 stickers horizontally per row
         int totalRows = (int)Math.Ceiling(expandedItems.Count / (double)pageSize);
 
+        float spread = _request.SideStickersSpreadMm > 0 ? _request.SideStickersSpreadMm : 2.0f;
+        float pageMarginH = Math.Max(0.2f, 1.0f - (spread * 0.35f));
+        float interStickerGap = 2.0f + (spread * 0.65f);
+
         for (int r = 0; r < totalRows; r++)
         {
             var rowItems = expandedItems.Skip(r * pageSize).Take(pageSize).ToList();
@@ -76,7 +80,7 @@ public class BarcodeDocument : IDocument
             {
                 page.Size(100f, 22.86f, Unit.Millimetre);
                 page.MarginVertical(0.4f, Unit.Millimetre);
-                page.MarginHorizontal(1.0f, Unit.Millimetre);
+                page.MarginHorizontal(pageMarginH, Unit.Millimetre);
                 page.PageColor(Colors.White);
 
                 page.Content().Row(row =>
@@ -85,12 +89,27 @@ public class BarcodeDocument : IDocument
                     {
                         if (c > 0)
                         {
-                            row.ConstantItem(2, Unit.Millimetre); // Gap between stickers
+                            row.ConstantItem(interStickerGap, Unit.Millimetre); // Gap between stickers
                         }
 
                         if (c < rowItems.Count)
                         {
-                            row.RelativeItem().Element(cell => RenderStickerCell(cell, rowItems[c], 30f, 7.5f, 5.5f, 6.5f, 7.5f));
+                            float leftPad = 0.5f;
+                            float rightPad = 0.5f;
+                            if (c == 0)
+                            {
+                                // Shift leftmost sticker outward (left) to decrease outer left margin
+                                leftPad = Math.Max(0.2f, 0.5f - (spread * 0.3f));
+                                rightPad = 0.5f + (spread * 0.3f);
+                            }
+                            else if (c == 2)
+                            {
+                                // Shift rightmost sticker outward (right) to decrease outer right margin
+                                leftPad = 0.5f + (spread * 0.3f);
+                                rightPad = Math.Max(0.2f, 0.5f - (spread * 0.3f));
+                            }
+
+                            row.RelativeItem().Element(cell => RenderStickerCell(cell, rowItems[c], 30f, 7.5f, 5.5f, 6.5f, 7.5f, leftPad, rightPad));
                         }
                         else
                         {
@@ -176,7 +195,9 @@ public class BarcodeDocument : IDocument
         float barcodeHeightMm,
         float companyFontSize,
         float titleFontSize,
-        float priceFontSize)
+        float priceFontSize,
+        float leftPaddingMm = 0.5f,
+        float rightPaddingMm = 0.5f)
     {
         string barcode = !string.IsNullOrWhiteSpace(item.Barcode)
             ? item.Barcode.Replace("\r", string.Empty).Replace("\n", string.Empty).Trim()
@@ -193,7 +214,8 @@ public class BarcodeDocument : IDocument
         float effectiveBarcodeHeight = isVariable ? Math.Max(5f, barcodeHeightMm - 1.2f) : barcodeHeightMm;
 
         container
-            .PaddingHorizontal(0.5f, Unit.Millimetre)
+            .PaddingLeft(leftPaddingMm, Unit.Millimetre)
+            .PaddingRight(rightPaddingMm, Unit.Millimetre)
             .PaddingVertical(0.5f, Unit.Millimetre)
             .Column(col =>
             {
