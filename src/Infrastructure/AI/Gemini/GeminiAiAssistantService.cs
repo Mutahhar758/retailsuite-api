@@ -126,7 +126,7 @@ public class GeminiAiAssistantService : IAiAssistantService
 
         var model = !string.IsNullOrWhiteSpace(geminiSection["Model"]) && geminiSection["Model"] != "gemini-2.5-flash"
             ? geminiSection["Model"]
-            : "gemini-3.8-flash";
+            : "gemini-3.5-flash-lite";
 
         var baseEndpoint = (geminiSection["Endpoint"] ?? "https://generativelanguage.googleapis.com/v1beta/models").TrimEnd('/');
         var endpoint = $"{baseEndpoint}/{model}:generateContent?key={apiKey}";
@@ -249,7 +249,8 @@ CAPABILITIES & RULES:
                 generationConfig = new
                 {
                     temperature = 0.2,
-                    maxOutputTokens = 800
+                    maxOutputTokens = 800,
+                    thinking_level = "low"
                 }
             };
 
