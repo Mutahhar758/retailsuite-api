@@ -1,7 +1,7 @@
 {
   "GeminiSettings": {
     "Model": "gemini-3.8-flash",
-    "EmbeddingModel": "text-embedding-004",
+    "EmbeddingModel": "gemini-embedding-2",
     "Endpoint": "https://generativelanguage.googleapis.com/v1beta/models",
     "DefaultMonthlyScanLimit": 50
   }

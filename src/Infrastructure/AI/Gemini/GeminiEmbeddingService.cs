@@ -10,7 +10,7 @@ public class GeminiEmbeddingService : IGeminiEmbeddingService
 {
     private readonly IConfiguration _config;
     private readonly ILogger<GeminiEmbeddingService> _logger;
-    private static readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(15) };
+    private static readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(3) };
 
     public GeminiEmbeddingService(IConfiguration config, ILogger<GeminiEmbeddingService> logger)
     {
@@ -40,7 +40,7 @@ public class GeminiEmbeddingService : IGeminiEmbeddingService
             return null;
         }
 
-        var embeddingModel = geminiSection["EmbeddingModel"] ?? "text-embedding-004";
+        var embeddingModel = geminiSection["EmbeddingModel"] ?? "gemini-embedding-2";
         var baseEndpoint = (geminiSection["Endpoint"] ?? "https://generativelanguage.googleapis.com/v1beta/models").TrimEnd('/');
         var endpoint = $"{baseEndpoint}/{embeddingModel}:embedContent?key={apiKey}";
 

@@ -23,7 +23,7 @@ public class GeminiAiAssistantService : IAiAssistantService
     private readonly IRepository<ChartOfAccount> _chartOfAccountRepository;
     private readonly IRepository<GlEntry> _glRepository;
     private readonly ILogger<GeminiAiAssistantService> _logger;
-    private static readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(60) };
+    private static readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(12) };
 
     public GeminiAiAssistantService(
         IConfiguration config,
