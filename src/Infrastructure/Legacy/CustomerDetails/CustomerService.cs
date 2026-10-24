@@ -73,6 +73,8 @@ internal class CustomerService : ICustomerService
                 x.MediaId,
                 x.CustomerCategoryId,
                 CustomerCategoryTitle = x.CustomerCategory != null ? x.CustomerCategory.Title : null,
+                x.ParentCustomerAccountId,
+                ParentCustomerTitle = x.ParentCustomerAccount != null ? x.ParentCustomerAccount.Title : null,
                 x.CreatedBy,
                 x.CreatedOn,
                 x.LastModifiedBy,
@@ -139,6 +141,8 @@ internal class CustomerService : ICustomerService
                 MediaId = detail?.MediaId,
                 CustomerCategoryId = detail?.CustomerCategoryId,
                 CustomerCategoryTitle = detail?.CustomerCategoryTitle,
+                ParentCustomerAccountId = detail?.ParentCustomerAccountId,
+                ParentCustomerTitle = detail?.ParentCustomerTitle,
                 CreatedBy = detail?.CreatedBy,
                 CreatedOn = detail?.CreatedOn,
                 LastModifiedBy = detail?.LastModifiedBy,
@@ -162,6 +166,17 @@ internal class CustomerService : ICustomerService
         var parent = await _chartOfAccountRepository.GetByIdAsync(customerAccountPrefix, cancellationToken);
         if (parent is null)
             throw new NotFoundException($"Parent customer account '{customerAccountPrefix}' not found in Chart of Accounts.");
+
+        if (!string.IsNullOrWhiteSpace(request.ParentCustomerAccountId))
+        {
+            var parentAccount = await _chartOfAccountRepository.GetByIdAsync(request.ParentCustomerAccountId, cancellationToken);
+            if (parentAccount == null || !parentAccount.Id.StartsWith(customerAccountPrefix))
+                throw new BadRequestException($"Main customer account '{request.ParentCustomerAccountId}' was not found.");
+
+            var parentDetail = await _customerDetailRepository.GetByIdAsync(request.ParentCustomerAccountId, cancellationToken);
+            if (!string.IsNullOrWhiteSpace(parentDetail?.ParentCustomerAccountId))
+                throw new BadRequestException("Multi-level sub-accounts are not allowed. The selected customer is already a sub-account.");
+        }
 
         // Generate the next level 5 account suffix under the customers parent
         var maxChildId = await _chartOfAccountRepository.GetAll()
@@ -210,7 +225,8 @@ internal class CustomerService : ICustomerService
             EmailAlert = request.EmailAlert,
             Active = request.Active,
             MediaId = request.MediaId,
-            CustomerCategoryId = request.CustomerCategoryId
+            CustomerCategoryId = request.CustomerCategoryId,
+            ParentCustomerAccountId = string.IsNullOrWhiteSpace(request.ParentCustomerAccountId) ? null : request.ParentCustomerAccountId.Trim()
         };
         await _customerDetailRepository.AddAsync(customerDetail);
 
@@ -257,6 +273,20 @@ internal class CustomerService : ICustomerService
         {
             chartOfAccount.Title = request.Title;
             await _chartOfAccountRepository.UpdateAsync(chartOfAccount);
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.ParentCustomerAccountId))
+        {
+            if (string.Equals(request.ParentCustomerAccountId.Trim(), account, StringComparison.OrdinalIgnoreCase))
+                throw new BadRequestException("A customer cannot be a sub-account of itself.");
+
+            var parentAccount = await _chartOfAccountRepository.GetByIdAsync(request.ParentCustomerAccountId, cancellationToken);
+            if (parentAccount == null || !parentAccount.Id.StartsWith(customerAccountPrefix))
+                throw new BadRequestException($"Main customer account '{request.ParentCustomerAccountId}' was not found.");
+
+            var parentDetail = await _customerDetailRepository.GetByIdAsync(request.ParentCustomerAccountId, cancellationToken);
+            if (!string.IsNullOrWhiteSpace(parentDetail?.ParentCustomerAccountId))
+                throw new BadRequestException("Multi-level sub-accounts are not allowed. The selected customer is already a sub-account.");
         }
 
         var customerDetail = await _customerDetailRepository.GetByIdAsync(account, cancellationToken);
@@ -448,6 +478,7 @@ internal class CustomerService : ICustomerService
         customerDetail.EmailAlert = request.EmailAlert;
         customerDetail.Active = request.Active;
         customerDetail.CustomerCategoryId = request.CustomerCategoryId;
+        customerDetail.ParentCustomerAccountId = string.IsNullOrWhiteSpace(request.ParentCustomerAccountId) ? null : request.ParentCustomerAccountId.Trim();
     }
 
     public async Task<BulkOperationResult> BulkUpsertAsync(CustomerBulkUpsertRequest request, CancellationToken cancellationToken)

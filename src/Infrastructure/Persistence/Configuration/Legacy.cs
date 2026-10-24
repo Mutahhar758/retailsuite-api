@@ -125,6 +125,14 @@ public class CustomerDetailConfig : IEntityTypeConfiguration<CustomerDetail>
             .WithMany()
             .HasForeignKey(x => x.CustomerCategoryId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Property(x => x.ParentCustomerAccountId)
+            .HasColumnName("parent_customer_account_id");
+
+        builder.HasOne(x => x.ParentCustomerAccount)
+            .WithMany()
+            .HasForeignKey(x => x.ParentCustomerAccountId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }
 

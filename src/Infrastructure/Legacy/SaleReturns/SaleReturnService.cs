@@ -21,6 +21,7 @@ internal class SaleReturnService : ISaleReturnService
     private readonly IRepository<DefaultAccount> _defaultAccountRepository;
     private readonly IRepository<ChartOfAccount> _chartOfAccountRepository;
     private readonly IRepository<ItemDetail> _itemRepository;
+    private readonly IRepository<CustomerDetail> _customerDetailRepository;
     private readonly IItemTransactionBalanceService _balanceService;
     private readonly ICurrentTenant _currentTenant;
 
@@ -32,6 +33,7 @@ internal class SaleReturnService : ISaleReturnService
         IRepository<DefaultAccount> defaultAccountRepository,
         IRepository<ChartOfAccount> chartOfAccountRepository,
         IRepository<ItemDetail> itemRepository,
+        IRepository<CustomerDetail> customerDetailRepository,
         IItemTransactionBalanceService balanceService,
         ICurrentTenant currentTenant)
     {
@@ -42,6 +44,7 @@ internal class SaleReturnService : ISaleReturnService
         _defaultAccountRepository = defaultAccountRepository;
         _chartOfAccountRepository = chartOfAccountRepository;
         _itemRepository = itemRepository;
+        _customerDetailRepository = customerDetailRepository;
         _balanceService = balanceService;
         _currentTenant = currentTenant;
     }
@@ -509,8 +512,30 @@ internal class SaleReturnService : ISaleReturnService
         if (string.IsNullOrWhiteSpace(cashAccount))
             throw new NotFoundException("Default cash account is not configured.");
 
-        await UpsertGlEntryAsync(voucherNo, request.Date, 1, saleReturnAccount, request.Account, netAmount, request.Narration, request.Description, cancellationToken);
-        await UpsertGlEntryAsync(voucherNo, request.Date, 2, request.Account, cashAccount, request.CashReceipt - request.CashBack, request.Narration, request.Description, cancellationToken);
+        var customerDetail = !string.IsNullOrWhiteSpace(request.Account)
+            ? await _customerDetailRepository.GetAll()
+                .AsNoTracking()
+                .Where(x => x.Id == request.Account)
+                .Select(x => new { x.Id, x.ParentCustomerAccountId })
+                .FirstOrDefaultAsync(cancellationToken)
+            : null;
+
+        var isSub = !string.IsNullOrWhiteSpace(customerDetail?.ParentCustomerAccountId);
+        var effectiveCustomerAccount = isSub ? customerDetail!.ParentCustomerAccountId! : request.Account;
+        var glDescription = request.Description;
+        if (isSub)
+        {
+            var subTitle = await _chartOfAccountRepository.GetAll()
+                .AsNoTracking()
+                .Where(x => x.Id == request.Account)
+                .Select(x => x.Title)
+                .FirstOrDefaultAsync(cancellationToken) ?? request.Account;
+            var prefix = $"[Sub: {subTitle}]";
+            glDescription = string.IsNullOrWhiteSpace(glDescription) ? prefix : $"{prefix} {glDescription}";
+        }
+
+        await UpsertGlEntryAsync(voucherNo, request.Date, 1, saleReturnAccount, effectiveCustomerAccount, netAmount, request.Narration, glDescription, cancellationToken);
+        await UpsertGlEntryAsync(voucherNo, request.Date, 2, effectiveCustomerAccount, cashAccount, request.CashReceipt - request.CashBack, request.Narration, glDescription, cancellationToken);
     }
 
     private async Task UpsertGlEntriesAsync(string voucherNo, SaleReturnUpdateRequest request, decimal netAmount, CancellationToken cancellationToken)
@@ -533,8 +558,30 @@ internal class SaleReturnService : ISaleReturnService
         if (string.IsNullOrWhiteSpace(cashAccount))
             throw new NotFoundException("Default cash account is not configured.");
 
-        await UpsertGlEntryAsync(voucherNo, request.Date, 1, saleReturnAccount, request.Account, netAmount, request.Narration, request.Description, cancellationToken);
-        await UpsertGlEntryAsync(voucherNo, request.Date, 2, request.Account, cashAccount, request.CashReceipt - request.CashBack, request.Narration, request.Description, cancellationToken);
+        var customerDetail = !string.IsNullOrWhiteSpace(request.Account)
+            ? await _customerDetailRepository.GetAll()
+                .AsNoTracking()
+                .Where(x => x.Id == request.Account)
+                .Select(x => new { x.Id, x.ParentCustomerAccountId })
+                .FirstOrDefaultAsync(cancellationToken)
+            : null;
+
+        var isSub = !string.IsNullOrWhiteSpace(customerDetail?.ParentCustomerAccountId);
+        var effectiveCustomerAccount = isSub ? customerDetail!.ParentCustomerAccountId! : request.Account;
+        var glDescription = request.Description;
+        if (isSub)
+        {
+            var subTitle = await _chartOfAccountRepository.GetAll()
+                .AsNoTracking()
+                .Where(x => x.Id == request.Account)
+                .Select(x => x.Title)
+                .FirstOrDefaultAsync(cancellationToken) ?? request.Account;
+            var prefix = $"[Sub: {subTitle}]";
+            glDescription = string.IsNullOrWhiteSpace(glDescription) ? prefix : $"{prefix} {glDescription}";
+        }
+
+        await UpsertGlEntryAsync(voucherNo, request.Date, 1, saleReturnAccount, effectiveCustomerAccount, netAmount, request.Narration, glDescription, cancellationToken);
+        await UpsertGlEntryAsync(voucherNo, request.Date, 2, effectiveCustomerAccount, cashAccount, request.CashReceipt - request.CashBack, request.Narration, glDescription, cancellationToken);
     }
 
     private async Task UpsertGlEntryAsync(

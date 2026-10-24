@@ -151,7 +151,8 @@ public class WandaCustomerBillDocument : IDocument
 
                             table.Cell().Element(WandaBodyCell).AlignCenter().Text($"{line.Date:dd/MM/yy}").FontSize(7.5f);
                             table.Cell().Element(WandaBodyCell).AlignCenter().Text(line.VNo).FontSize(7.5f);
-                            table.Cell().Element(WandaBodyCell).AlignLeft().Text(line.Item).SemiBold().FontSize(8f);
+                            var itemDisplay = !string.IsNullOrWhiteSpace(line.SubAccountTitle) ? $"[{line.SubAccountTitle}] {line.Item}" : line.Item;
+                            table.Cell().Element(WandaBodyCell).AlignLeft().Text(itemDisplay).SemiBold().FontSize(8f);
                             table.Cell().Element(WandaBodyCell).AlignRight().Text(line.Qty.ToString("#,##0")).FontSize(8f);
                             table.Cell().Element(WandaBodyCell).AlignRight().Text(bagQty > 0 ? bagQty.ToString("#,##0") : "-").FontSize(8f);
                             table.Cell().Element(WandaBodyCell).AlignRight().Text(kgRate > 0 ? kgRate.ToString("#,##0.00") : "-").FontSize(8f);

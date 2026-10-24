@@ -17,6 +17,6 @@ public class CustomerCreateRequest
     public bool Active { get; set; } = true;
     public string? MediaId { get; set; }
     public string? CustomerCategoryId { get; set; }
+    public string? ParentCustomerAccountId { get; set; }
     public List<CustomerSupplyItemDto> SupplyItems { get; set; } = new();
 }
-

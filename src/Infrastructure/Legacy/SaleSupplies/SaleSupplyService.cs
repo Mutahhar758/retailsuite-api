@@ -23,6 +23,8 @@ internal class SaleSupplyService : ISaleSupplyService
     private readonly ICurrentTenant _currentTenant;
     private readonly IRepository<SaleSupplyAttachment> _saleSupplyAttachmentRepository;
     private readonly IMediaServiceClient _mediaServiceClient;
+    private readonly IRepository<CustomerDetail> _customerDetailRepository;
+    private readonly IRepository<ChartOfAccount> _chartOfAccountRepository;
 
     public SaleSupplyService(
         IRepository<SaleSupplyMaster> saleSupplyMasterRepository,
@@ -34,8 +36,12 @@ internal class SaleSupplyService : ISaleSupplyService
         IItemTransactionBalanceService balanceService,
         ICurrentTenant currentTenant,
         IRepository<SaleSupplyAttachment> saleSupplyAttachmentRepository,
-        IMediaServiceClient mediaServiceClient)
+        IMediaServiceClient mediaServiceClient,
+        IRepository<CustomerDetail> customerDetailRepository,
+        IRepository<ChartOfAccount> chartOfAccountRepository)
     {
+        _customerDetailRepository = customerDetailRepository;
+        _chartOfAccountRepository = chartOfAccountRepository;
         _saleSupplyMasterRepository = saleSupplyMasterRepository;
         _saleSupplyDetailRepository = saleSupplyDetailRepository;
         _glRepository = glRepository;
@@ -577,10 +583,18 @@ internal class SaleSupplyService : ISaleSupplyService
         string? itemId,
         CancellationToken cancellationToken)
     {
+        var subAccountIds = await _customerDetailRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => x.ParentCustomerAccountId == customerId)
+            .Select(x => x.Id)
+            .ToListAsync(cancellationToken);
+
+        var targetAccountIds = new HashSet<string>(subAccountIds) { customerId };
+
         var query = from d in _saleSupplyDetailRepository.GetAll().AsNoTracking()
                     join m in _saleSupplyMasterRepository.GetAll().AsNoTracking()
                         on new { d.VType, d.VNo } equals new { m.VType, VNo = m.VNo }
-                    where d.VType == VType && d.CustomerAccountId == customerId
+                    where d.VType == VType && targetAccountIds.Contains(d.CustomerAccountId)
                     select new { d, m };
 
         if (fromDate.HasValue)
@@ -712,6 +726,27 @@ internal class SaleSupplyService : ISaleSupplyService
 
         if (!string.IsNullOrWhiteSpace(saleSupplyAccount))
         {
+            var customerDetail = await _customerDetailRepository.GetAll()
+                .AsNoTracking()
+                .Where(x => x.Id == request.CustomerId)
+                .Select(x => new { x.Id, x.ParentCustomerAccountId })
+                .FirstOrDefaultAsync(cancellationToken);
+
+            var isSub = !string.IsNullOrWhiteSpace(customerDetail?.ParentCustomerAccountId);
+            var effectiveDrAccount = isSub ? customerDetail!.ParentCustomerAccountId! : request.CustomerId;
+
+            var lineRemarks = master.Descr;
+            if (isSub)
+            {
+                var subTitle = await _chartOfAccountRepository.GetAll()
+                    .AsNoTracking()
+                    .Where(x => x.Id == request.CustomerId)
+                    .Select(x => x.Title)
+                    .FirstOrDefaultAsync(cancellationToken) ?? request.CustomerId;
+                var prefix = $"[Sub: {subTitle}]";
+                lineRemarks = string.IsNullOrWhiteSpace(master.Descr) ? prefix : $"{prefix} {master.Descr}";
+            }
+
             var gl = await _glRepository.GetAll()
                 .IgnoreQueryFilters([GlobalQueryFilterConstants.SoftDelete])
                 .FirstOrDefaultAsync(x => x.VType == VType && x.VoucherNo == voucherNo && x.VSeq == seq, cancellationToken);
@@ -727,9 +762,10 @@ internal class SaleSupplyService : ISaleSupplyService
                     gl.DeletedOn = null;
                     gl.DeletedBy = null;
                     gl.VDate = master.VDate;
-                    gl.DrAccountId = request.CustomerId;
+                    gl.DrAccountId = effectiveDrAccount;
                     gl.CrAccountId = saleSupplyAccount;
                     gl.Amount = netLineAmt;
+                    gl.Remarks = lineRemarks;
                     await _glRepository.UpdateAsync(gl, false);
                 }
             }
@@ -742,11 +778,11 @@ internal class SaleSupplyService : ISaleSupplyService
                     VoucherNo = voucherNo,
                     VType = VType,
                     VSeq = seq,
-                    DrAccountId = request.CustomerId,
+                    DrAccountId = effectiveDrAccount,
                     CrAccountId = saleSupplyAccount,
                     Amount = netLineAmt,
                     NarrationId = master.NarrationId,
-                    Remarks = master.Descr,
+                    Remarks = lineRemarks,
                     Clear = 0
                 }, false);
             }

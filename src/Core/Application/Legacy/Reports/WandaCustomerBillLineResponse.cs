@@ -24,4 +24,6 @@ public class WandaCustomerBillLineResponse
     public int? WarrantyMonths { get; set; }
     public string? ConditionNote { get; set; }
     public string TransactionType { get; set; } = "Sale";
+    public string? SubAccountId { get; set; }
+    public string? SubAccountTitle { get; set; }
 }

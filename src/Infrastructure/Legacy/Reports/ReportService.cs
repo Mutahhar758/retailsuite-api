@@ -1799,6 +1799,28 @@ internal class ReportService : IReportService
             .Distinct()
             .ToDictionaryAsync(x => x.Code, x => x.Title, cancellationToken);
 
+        var customerDetail = await _customerDetailRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => x.Id == filter.Account)
+            .Select(x => new { x.Id, x.ParentCustomerAccountId })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        string? linkedMainAccountId = customerDetail?.ParentCustomerAccountId;
+        string? linkedMainAccountTitle = null;
+        decimal? linkedMainAccountBalance = null;
+
+        var childAccounts = await _customerDetailRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => x.ParentCustomerAccountId == filter.Account)
+            .Join(_chartOfAccountRepository.GetAll().AsNoTracking(),
+                cd => cd.Id,
+                ca => ca.Id,
+                (cd, ca) => new { Id = cd.Id, Title = ca.Title })
+            .ToListAsync(cancellationToken);
+
+        var childAccountMap = childAccounts.ToDictionary(x => x.Id, x => x.Title);
+        var targetSupplyAccounts = new HashSet<string>(childAccounts.Select(x => x.Id)) { filter.Account };
+
         var saleLinesRaw = await (
             from sd in _saleRepository.GetAll().AsNoTracking()
             join sm in _saleMasterRepository.GetAll().AsNoTracking()
@@ -1865,16 +1887,18 @@ internal class ReportService : IReportService
             }
         }
 
-        var supplyLines = await (
+        var supplyLinesRaw = await (
             from ssd in _saleSupplyDetailRepository.GetAll().AsNoTracking()
             join ssm in _saleSupplyMasterRepository.GetAll().AsNoTracking()
                 on new { ssd.VType, ssd.VNo } equals new { ssm.VType, VNo = ssm.VNo }
-            where ssd.CustomerAccountId == filter.Account
+            where targetSupplyAccounts.Contains(ssd.CustomerAccountId)
                   && ssm.VDate >= filter.FromDate && ssm.VDate <= filter.ToDate
-            select new WandaCustomerBillLineResponse
+            select new
             {
-                Date = ssm.VDate,
-                VNo = ssd.VType + "-" + ssd.VNo,
+                ssm.VDate,
+                ssd.VType,
+                ssd.VNo,
+                CustomerAccountId = ssd.CustomerAccountId,
                 Item = ssm.Item != null ? ssm.Item.Title : (ssm.ItemId ?? string.Empty),
                 UnitId = ssd.UnitId ?? string.Empty,
                 UnitTitle = ssd.Unit != null ? ssd.Unit.Title : (!string.IsNullOrWhiteSpace(ssd.UnitId) && unitMap.ContainsKey(ssd.UnitId) ? unitMap[ssd.UnitId] : (ssm.Item != null && ssm.Item.DefaultUnit != null ? ssm.Item.DefaultUnit.Title : (ssm.Item != null && ssm.Item.PrimaryUnit != null ? ssm.Item.PrimaryUnit.Title : (ssd.UnitId ?? string.Empty)))),
@@ -1886,13 +1910,46 @@ internal class ReportService : IReportService
                 SecQty = ssd.SecQty,
                 SecRate = ssd.SecRate,
                 QtyInPack = ssd.QtyInPack,
-                SecUnitTitle = ssd.SecUnit != null ? ssd.SecUnit.Title : (!string.IsNullOrWhiteSpace(ssd.SecUnitId) && unitMap.ContainsKey(ssd.SecUnitId) ? unitMap[ssd.SecUnitId] : (ssm.Item != null && ssm.Item.SecondaryUnit != null ? ssm.Item.SecondaryUnit.Title : (ssd.SecUnitId ?? string.Empty))),
-                ReceiptDate = null,
-                ReceiptAmount = null,
-                TransactionType = "Sale"
+                SecUnitTitle = ssd.SecUnit != null ? ssd.SecUnit.Title : (!string.IsNullOrWhiteSpace(ssd.SecUnitId) && unitMap.ContainsKey(ssd.SecUnitId) ? unitMap[ssd.SecUnitId] : (ssm.Item != null && ssm.Item.SecondaryUnit != null ? ssm.Item.SecondaryUnit.Title : (ssd.SecUnitId ?? string.Empty)))
             }).ToListAsync(cancellationToken);
 
+        var supplyLines = supplyLinesRaw.Select(x => new WandaCustomerBillLineResponse
+        {
+            Date = x.VDate,
+            VNo = x.VType + "-" + x.VNo,
+            Item = x.Item,
+            UnitId = x.UnitId,
+            UnitTitle = x.UnitTitle,
+            Qty = x.Qty,
+            Rate = x.Rate,
+            AddLess = x.AddLess,
+            Carriage = x.Carriage,
+            Amount = x.Amount,
+            SecQty = x.SecQty,
+            SecRate = x.SecRate,
+            QtyInPack = x.QtyInPack,
+            SecUnitTitle = x.SecUnitTitle,
+            ReceiptDate = null,
+            ReceiptAmount = null,
+            TransactionType = "Sale",
+            SubAccountId = x.CustomerAccountId != filter.Account ? x.CustomerAccountId : null,
+            SubAccountTitle = x.CustomerAccountId != filter.Account && childAccountMap.TryGetValue(x.CustomerAccountId, out var st) ? st : null
+        }).ToList();
+
         bool useClearingDate = string.Equals(filter.DateBasis, "ClearingDate", StringComparison.OrdinalIgnoreCase);
+
+        if (!string.IsNullOrWhiteSpace(linkedMainAccountId))
+        {
+            var mainAcc = await _chartOfAccountRepository.GetByIdAsync(linkedMainAccountId, cancellationToken);
+            linkedMainAccountTitle = mainAcc?.Title;
+
+            linkedMainAccountBalance = await _glRepository.GetAll()
+                .AsNoTracking()
+                .Where(x => (x.DrAccountId == linkedMainAccountId || x.CrAccountId == linkedMainAccountId)
+                            && (x.VType == "Op" || (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) <= filter.ToDate))
+                .Select(x => x.DrAccountId == linkedMainAccountId ? x.Amount : -x.Amount)
+                .SumAsync(cancellationToken);
+        }
 
         var saleReturnLines = await (
             from srd in _saleRetDetailRepository.GetAll().AsNoTracking()
@@ -2060,6 +2117,9 @@ internal class ReportService : IReportService
         return new WandaCustomerBillResponse
         {
             Lines = lines,
+            LinkedMainAccountId = linkedMainAccountId,
+            LinkedMainAccountTitle = linkedMainAccountTitle,
+            LinkedMainAccountBalance = linkedMainAccountBalance,
             Summary = new WandaCustomerBillSummaryResponse
             {
                 PreviousBalance = previousBalance,

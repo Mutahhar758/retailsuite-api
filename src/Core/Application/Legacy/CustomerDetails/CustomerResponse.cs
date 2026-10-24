@@ -20,10 +20,12 @@ public class CustomerResponse
     public string? MediaUrl { get; set; }
     public string? CustomerCategoryId { get; set; }
     public string? CustomerCategoryTitle { get; set; }
+    public string? ParentCustomerAccountId { get; set; }
+    public string? ParentCustomerTitle { get; set; }
+    public bool IsSubAccount => !string.IsNullOrEmpty(ParentCustomerAccountId);
     public string? CreatedBy { get; set; }
     public DateTime? CreatedOn { get; set; }
     public string? LastModifiedBy { get; set; }
     public DateTime? LastModifiedOn { get; set; }
     public List<CustomerSupplyItemDto> SupplyItems { get; set; } = new();
 }
-

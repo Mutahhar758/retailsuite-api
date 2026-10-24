@@ -22,5 +22,7 @@ public class CustomerDetail : AuditableEntity<string>, IAggregateRoot
 
     public string? CustomerCategoryId { get; set; }
     public CustomerCategory? CustomerCategory { get; set; }
-}
 
+    public string? ParentCustomerAccountId { get; set; }
+    public ChartOfAccount? ParentCustomerAccount { get; set; }
+}
