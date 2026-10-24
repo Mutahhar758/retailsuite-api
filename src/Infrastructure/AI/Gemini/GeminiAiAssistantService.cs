@@ -249,8 +249,7 @@ CAPABILITIES & RULES:
                 generationConfig = new
                 {
                     temperature = 0.2,
-                    maxOutputTokens = 800,
-                    thinking_level = "low"
+                    maxOutputTokens = 800
                 }
             };
 
