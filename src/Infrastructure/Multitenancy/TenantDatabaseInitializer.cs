@@ -44,6 +44,9 @@ internal class TenantDatabaseInitializer
             await _tenantDbContext.Database.MigrateAsync(cancellationToken);
         }
 
+        var aiToolSeeder = new AiToolSeeder(_tenantDbContext, _serviceProvider.GetRequiredService<ILogger<AiToolSeeder>>());
+        await aiToolSeeder.SeedAiToolsAsync(cancellationToken);
+
         await EnsureDefaultTenantAsync(cancellationToken);
 
         // Migrate and seed each registered tenant's database
@@ -97,27 +100,37 @@ internal class TenantDatabaseInitializer
 
     private async Task EnsureDefaultTenantAsync(CancellationToken cancellationToken)
     {
-        if (await _tenantDbContext.TenantInfo.AnyAsync(cancellationToken))
+        var defaultTenant = await _tenantDbContext.TenantInfo.FirstOrDefaultAsync(t => t.Id == "root", cancellationToken);
+        if (defaultTenant == null)
         {
-            return;
+            defaultTenant = new AppTenantInfo
+            {
+                Id = "root",
+                Identifier = "root",
+                Name = "Root Tenant",
+                ConnectionString = _databaseSettings.ConnectionString,
+                DbProvider = _databaseSettings.DBProvider,
+                IsActive = true,
+                IndustryType = "general",
+                BusinessSubType = "general_store",
+                ValidFrom = DateTime.UtcNow
+            };
+
+            _tenantDbContext.TenantInfo.Add(defaultTenant);
+            await _tenantDbContext.SaveChangesAsync(cancellationToken);
+            _logger.LogInformation("Created default tenant '{TenantIdentifier}'.", defaultTenant.Identifier);
         }
-
-        var defaultTenant = new AppTenantInfo
+        else
         {
-            Id = "root",
-            Identifier = "root",
-            Name = "Root Tenant",
-            ConnectionString = _databaseSettings.ConnectionString,
-            DbProvider = _databaseSettings.DBProvider,
-            IsActive = true,
-            IndustryType = "general",
-            BusinessSubType = "general_store",
-            ValidFrom = DateTime.UtcNow
-        };
-
-        _tenantDbContext.TenantInfo.Add(defaultTenant);
-        await _tenantDbContext.SaveChangesAsync(cancellationToken);
-        _logger.LogInformation("Created default tenant '{TenantIdentifier}'.", defaultTenant.Identifier);
+            if (defaultTenant.DbProvider != _databaseSettings.DBProvider || defaultTenant.ConnectionString != _databaseSettings.ConnectionString)
+            {
+                defaultTenant.DbProvider = _databaseSettings.DBProvider;
+                defaultTenant.ConnectionString = _databaseSettings.ConnectionString;
+                _tenantDbContext.TenantInfo.Update(defaultTenant);
+                await _tenantDbContext.SaveChangesAsync(cancellationToken);
+                _logger.LogInformation("Updated default tenant '{TenantIdentifier}' to match environment provider '{DbProvider}'.", defaultTenant.Identifier, _databaseSettings.DBProvider);
+            }
+        }
     }
 
     private async Task EnsureDatabaseExistsAsync(DbContext dbContext, CancellationToken cancellationToken)

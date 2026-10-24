@@ -1,0 +1,6 @@
+{
+  "DatabaseSettings": {
+    "DBProvider": "postgresql",
+    "ConnectionString": "Host=localhost;Database=RetailerApp;Username=postgres;Password=postgres;Persist Security Info=true;Include Error Detail=true"
+  }
+}

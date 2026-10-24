@@ -1,11 +1,14 @@
 using Retailer.Domain.Multitenancy;
 using Finbuckle.MultiTenant.EntityFrameworkCore.Stores;
 using Microsoft.EntityFrameworkCore;
+using Pgvector.EntityFrameworkCore;
 
 namespace Retailer.Infrastructure.Multitenancy;
 
 public class TenantDbContext : EFCoreStoreDbContext<Domain.Multitenancy.TenantInfo>
 {
+    public DbSet<AiTool> AiTools => Set<AiTool>();
+
     public TenantDbContext(DbContextOptions<TenantDbContext> options)
         : base(options)
     {
@@ -14,6 +17,8 @@ public class TenantDbContext : EFCoreStoreDbContext<Domain.Multitenancy.TenantIn
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        modelBuilder.HasPostgresExtension("vector");
 
         modelBuilder.Entity<Domain.Multitenancy.TenantInfo>(entity =>
         {
@@ -37,6 +42,23 @@ public class TenantDbContext : EFCoreStoreDbContext<Domain.Multitenancy.TenantIn
             entity.Property(t => t.AiScanMonthlyLimit).HasDefaultValue(50);
             entity.Property(t => t.AiScanUsedThisMonth).HasDefaultValue(0);
             entity.Property(t => t.AiScanCurrentMonth).HasMaxLength(16);
+        });
+
+        modelBuilder.Entity<AiTool>(entity =>
+        {
+            entity.ToTable("AiTools");
+            entity.HasKey(t => t.Id);
+            entity.Property(t => t.Id).HasMaxLength(64);
+            entity.Property(t => t.ToolName).HasMaxLength(128).IsRequired();
+            entity.Property(t => t.Description).HasMaxLength(1024).IsRequired();
+            entity.Property(t => t.Category).HasMaxLength(64).IsRequired();
+            entity.Property(t => t.JsonSchema).HasColumnType("text").IsRequired();
+            entity.Property(t => t.RouteHint).HasMaxLength(256);
+            entity.Property(t => t.RequiredPermission).HasMaxLength(128);
+            entity.Property(t => t.Embedding).HasColumnType("vector(768)");
+            entity.HasIndex(t => t.Embedding).HasMethod("hnsw").HasOperators("vector_cosine_ops");
+            entity.HasIndex(t => t.RouteHint);
+            entity.HasIndex(t => t.Category);
         });
     }
 }

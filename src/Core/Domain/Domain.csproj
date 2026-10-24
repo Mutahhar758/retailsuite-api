@@ -8,6 +8,7 @@
         <PackageReference Include="Finbuckle.MultiTenant.Abstractions" Version="10.0.4" />
         <PackageReference Include="Microsoft.Extensions.Identity.Stores" Version="10.0.2" />
         <PackageReference Include="NewId" Version="4.0.1" />
+        <PackageReference Include="Pgvector" Version="0.3.2" />
         <PackageReference Include="NSwag.CodeGeneration.TypeScript" Version="14.6.3" />
     </ItemGroup>
     <ItemGroup>

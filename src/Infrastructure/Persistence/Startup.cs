@@ -71,7 +71,7 @@ internal static class Startup
         return dbProvider.ToLowerInvariant() switch
         {
             DbProviderKeys.Npgsql or "npgsql" or "postgres" => builder.UseNpgsql(connectionString, e =>
-                                 e.MigrationsAssembly(migrationsAssembly ?? "Migrators.PostgreSQL")).UseSnakeCaseNamingConvention(),
+                                 { e.MigrationsAssembly(migrationsAssembly ?? "Migrators.PostgreSQL"); e.UseVector(); }).UseSnakeCaseNamingConvention(),
             DbProviderKeys.SqlServer or "sqlserver" => builder.UseSqlServer(connectionString, e =>
                                  e.MigrationsAssembly(migrationsAssembly ?? "Migrators.MSSQL")).UseSnakeCaseNamingConvention(),
             _ => throw new InvalidOperationException($"DB Provider {dbProvider} is not supported."),
