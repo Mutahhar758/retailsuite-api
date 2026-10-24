@@ -66,7 +66,9 @@ public class GeminiAiAssistantService : IAiAssistantService
             return FallbackSimpleNavigation(request);
         }
 
-        var model = geminiSection["Model"] ?? "gemini-2.5-flash";
+        var model = !string.IsNullOrWhiteSpace(geminiSection["Model"]) && geminiSection["Model"] != "gemini-2.5-flash"
+            ? geminiSection["Model"]
+            : "gemini-3.8-flash";
         var baseEndpoint = (geminiSection["Endpoint"] ?? "https://generativelanguage.googleapis.com/v1beta/models").TrimEnd('/');
         var endpoint = $"{baseEndpoint}/{model}:generateContent?key={apiKey}";
 
