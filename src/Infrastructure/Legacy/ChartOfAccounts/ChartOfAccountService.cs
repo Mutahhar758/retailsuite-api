@@ -288,16 +288,28 @@ internal class ChartOfAccountService : IChartOfAccountService
         if (accounts.Count > 0)
         {
             var accountIds = accounts.Select(a => a.Account).ToList();
-            var categoryMap = await _customerDetailRepository.GetAll()
+            var details = await _customerDetailRepository.GetAll()
                 .AsNoTracking()
-                .Where(x => accountIds.Contains(x.Id) && x.CustomerCategoryId != null)
-                .Select(x => new { x.Id, x.CustomerCategoryId })
-                .ToDictionaryAsync(x => x.Id, x => x.CustomerCategoryId, cancellationToken);
+                .Where(x => accountIds.Contains(x.Id))
+                .Select(x => new
+                {
+                    x.Id,
+                    x.CustomerCategoryId,
+                    x.ParentCustomerAccountId,
+                    ParentTitle = x.ParentCustomerAccount != null ? x.ParentCustomerAccount.Title : null
+                })
+                .ToListAsync(cancellationToken);
+
+            var detailMap = details.ToDictionary(x => x.Id, x => x);
 
             foreach (var acc in accounts)
             {
-                if (categoryMap.TryGetValue(acc.Account, out var catId))
-                    acc.CustomerCategoryId = catId;
+                if (detailMap.TryGetValue(acc.Account, out var d))
+                {
+                    acc.CustomerCategoryId = d.CustomerCategoryId;
+                    acc.ParentCustomerAccountId = d.ParentCustomerAccountId;
+                    acc.ParentCustomerTitle = d.ParentTitle;
+                }
             }
         }
 
