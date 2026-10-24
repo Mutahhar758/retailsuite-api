@@ -23,7 +23,7 @@ public class GeminiAiAssistantService : IAiAssistantService
     private readonly IRepository<ChartOfAccount> _chartOfAccountRepository;
     private readonly IRepository<GlEntry> _glRepository;
     private readonly ILogger<GeminiAiAssistantService> _logger;
-    private static readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(12) };
+    private static readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(40) };
 
     public GeminiAiAssistantService(
         IConfiguration config,
@@ -49,7 +49,7 @@ public class GeminiAiAssistantService : IAiAssistantService
     {
         if (string.IsNullOrWhiteSpace(request.Prompt))
         {
-            return new AiAssistantResponse { Success = false, ErrorMessage = "Prompt cannot be empty." };
+            return new AiAssistantResponse { Success = false, ErrorMessage = "Prompt cannot be empty.", ReplyText = "Prompt cannot be empty." };
         }
 
         try
@@ -58,23 +58,43 @@ public class GeminiAiAssistantService : IAiAssistantService
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            _logger.LogWarning("AI Assistant chat request was canceled by client. Returning fallback navigation.");
-            return FallbackSimpleNavigation(request);
+            _logger.LogWarning("AI Assistant chat request was canceled by client.");
+            return new AiAssistantResponse
+            {
+                Success = false,
+                ErrorMessage = "Request was canceled by client.",
+                ReplyText = "Request was canceled."
+            };
         }
         catch (TaskCanceledException ex)
         {
-            _logger.LogWarning(ex, "Gemini API request timed out. Returning fallback navigation.");
-            return FallbackSimpleNavigation(request);
+            _logger.LogError(ex, "Gemini API request timed out after {Timeout} seconds.", _httpClient.Timeout.TotalSeconds);
+            return new AiAssistantResponse
+            {
+                Success = false,
+                ErrorMessage = $"Gemini AI request timed out after {_httpClient.Timeout.TotalSeconds} seconds.",
+                ReplyText = "Gemini AI service timed out. Please try again."
+            };
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogError(ex, "HTTP error while communicating with Gemini API. Returning fallback navigation.");
-            return FallbackSimpleNavigation(request);
+            _logger.LogError(ex, "HTTP connection error while communicating with Gemini API: {Message}", ex.Message);
+            return new AiAssistantResponse
+            {
+                Success = false,
+                ErrorMessage = $"Gemini API connection error: {ex.Message}",
+                ReplyText = "Could not connect to Gemini AI service. Please check network connection."
+            };
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unexpected error in Gemini AI assistant. Returning fallback navigation.");
-            return FallbackSimpleNavigation(request);
+            _logger.LogError(ex, "Unexpected error in Gemini AI assistant: {Message}", ex.Message);
+            return new AiAssistantResponse
+            {
+                Success = false,
+                ErrorMessage = ex.Message,
+                ReplyText = $"AI assistant error: {ex.Message}"
+            };
         }
     }
 
@@ -95,7 +115,13 @@ public class GeminiAiAssistantService : IAiAssistantService
 
         if (string.IsNullOrWhiteSpace(apiKey))
         {
-            return FallbackSimpleNavigation(request);
+            _logger.LogError("Gemini API key is not configured.");
+            return new AiAssistantResponse
+            {
+                Success = false,
+                ErrorMessage = "Gemini API key is not configured.",
+                ReplyText = "Gemini API key is not configured. Please set the API key in the server configuration."
+            };
         }
 
         var model = !string.IsNullOrWhiteSpace(geminiSection["Model"]) && geminiSection["Model"] != "gemini-2.5-flash"
@@ -105,63 +131,37 @@ public class GeminiAiAssistantService : IAiAssistantService
         var baseEndpoint = (geminiSection["Endpoint"] ?? "https://generativelanguage.googleapis.com/v1beta/models").TrimEnd('/');
         var endpoint = $"{baseEndpoint}/{model}:generateContent?key={apiKey}";
 
-        // 1. Vector embedding for prompt
-        var embedding = await _embeddingService.GenerateEmbeddingAsync(request.Prompt, cancellationToken);
+        // Fast In-Memory / Database Tool Routing without blocking on slow embedding network calls
+        var targetedTools = await _toolRouterService.GetTargetedToolsAsync(request.CurrentRoute, null, request.Prompt, cancellationToken);
 
-        // 2. Hybrid Tool Routing: UI Context + Semantic pgvector search
-        var targetedTools = await _toolRouterService.GetTargetedToolsAsync(request.CurrentRoute, embedding, request.Prompt, cancellationToken);
+        // Always ensure all core ERP tools are available to Gemini
+        EnsureToolAvailable(targetedTools, "search_vendor", "search_vendor",
+            "Searches for vendors/suppliers in database by name. Set includeBalance=true to retrieve their current balance.",
+            """{"type":"object","properties":{"name":{"type":"string","description":"Vendor name to search"},"includeBalance":{"type":"boolean","description":"Include ledger balance"}},"required":["name"]}""");
 
-        var lowerPrompt = request.Prompt.ToLowerInvariant();
-        if (lowerPrompt.Contains("payment") || lowerPrompt.Contains("receipt") || lowerPrompt.Contains("voucher") ||
-            lowerPrompt.Contains("create") || lowerPrompt.Contains("pay") || lowerPrompt.Contains("balance") ||
-            lowerPrompt.Contains("vendor") || lowerPrompt.Contains("customer") || lowerPrompt.Contains("account"))
-        {
-            if (!targetedTools.Any(t => t.Id == "search_vendor"))
-            {
-                targetedTools.Add(new AiTool
-                {
-                    Id = "search_vendor",
-                    ToolName = "search_vendor",
-                    Description = "Searches for vendors/suppliers in database by name. Set includeBalance=true to retrieve their current balance.",
-                    JsonSchema = """{"type":"object","properties":{"name":{"type":"string","description":"Vendor name to search"},"includeBalance":{"type":"boolean","description":"Include ledger balance"}},"required":["name"]}"""
-                });
-            }
+        EnsureToolAvailable(targetedTools, "search_account", "search_account",
+            "Searches accounts in the Chart of Accounts (customers, vendors, cash, bank). Set includeBalance=true to retrieve current balance.",
+            """{"type":"object","properties":{"name":{"type":"string","description":"Account or customer name to search"},"includeBalance":{"type":"boolean","description":"Include ledger balance"}},"required":["name"]}""");
 
-            if (!targetedTools.Any(t => t.Id == "search_account"))
-            {
-                targetedTools.Add(new AiTool
-                {
-                    Id = "search_account",
-                    ToolName = "search_account",
-                    Description = "Searches accounts in the Chart of Accounts (customers, vendors, cash, bank). Set includeBalance=true to retrieve current balance.",
-                    JsonSchema = """{"type":"object","properties":{"name":{"type":"string","description":"Account or customer name to search"},"includeBalance":{"type":"boolean","description":"Include ledger balance"}},"required":["name"]}"""
-                });
-            }
+        EnsureToolAvailable(targetedTools, "filter_payment_listing", "filter_payment_listing",
+            "Filters and navigates to the payment voucher listing screen by date range, cash/bank account, or voucher number.",
+            """{"type":"object","properties":{"fromDate":{"type":"string","description":"Start date YYYY-MM-DD"},"toDate":{"type":"string","description":"End date YYYY-MM-DD"},"cashBankAccount":{"type":"string","description":"Cash/Bank account"},"voucherNo":{"type":"string","description":"Voucher number"}}}""");
 
-            if (lowerPrompt.Contains("receipt") && !targetedTools.Any(t => t.Id == "filter_receipt_listing"))
-            {
-                targetedTools.Add(new AiTool
-                {
-                    Id = "filter_receipt_listing",
-                    ToolName = "filter_receipt_listing",
-                    Description = "Filters and navigates to the receipt voucher listing screen by date range, cash/bank account, or voucher number.",
-                    RouteHint = "/daily-entries/receipt-voucher",
-                    JsonSchema = """{"type":"object","properties":{"fromDate":{"type":"string","description":"Start date YYYY-MM-DD"},"toDate":{"type":"string","description":"End date YYYY-MM-DD"},"cashBankAccount":{"type":"string","description":"Cash/Bank account"},"voucherNo":{"type":"string","description":"Voucher number"}}}"""
-                });
-            }
+        EnsureToolAvailable(targetedTools, "draft_payment_voucher", "draft_payment_voucher",
+            "Drafts a new payment voucher for a vendor, supplier, or expense with pre-filled amount and remarks.",
+            """{"type":"object","properties":{"vendorId":{"type":"string","description":"Resolved Vendor ID"},"vendorName":{"type":"string","description":"Vendor name"},"amount":{"type":"number","description":"Payment amount"},"remarks":{"type":"string","description":"Remarks"},"cashBankAccountId":{"type":"string","description":"Account ID to pay from"}},"required":["amount"]}""");
 
-            if (lowerPrompt.Contains("receipt") && !targetedTools.Any(t => t.Id == "draft_receipt_voucher"))
-            {
-                targetedTools.Add(new AiTool
-                {
-                    Id = "draft_receipt_voucher",
-                    ToolName = "draft_receipt_voucher",
-                    Description = "Drafts a new receipt voucher from a customer/debtor with pre-filled amount and remarks.",
-                    RouteHint = "/daily-entries/receipt-voucher/new",
-                    JsonSchema = """{"type":"object","properties":{"customerId":{"type":"string","description":"Customer or account ID"},"customerName":{"type":"string","description":"Customer name"},"amount":{"type":"number","description":"Amount received"},"remarks":{"type":"string","description":"Remarks"},"cashBankAccountId":{"type":"string","description":"Cash/Bank receiving account"}},"required":["amount"]}"""
-                });
-            }
-        }
+        EnsureToolAvailable(targetedTools, "filter_receipt_listing", "filter_receipt_listing",
+            "Filters and navigates to the receipt voucher listing screen by date range, cash/bank account, or voucher number.",
+            """{"type":"object","properties":{"fromDate":{"type":"string","description":"Start date YYYY-MM-DD"},"toDate":{"type":"string","description":"End date YYYY-MM-DD"},"cashBankAccount":{"type":"string","description":"Cash/Bank account"},"voucherNo":{"type":"string","description":"Voucher number"}}}""");
+
+        EnsureToolAvailable(targetedTools, "draft_receipt_voucher", "draft_receipt_voucher",
+            "Drafts a new receipt voucher from a customer/debtor with pre-filled amount and remarks.",
+            """{"type":"object","properties":{"customerId":{"type":"string","description":"Customer or account ID"},"customerName":{"type":"string","description":"Customer name"},"amount":{"type":"number","description":"Amount received"},"remarks":{"type":"string","description":"Remarks"},"cashBankAccountId":{"type":"string","description":"Cash/Bank receiving account"}},"required":["amount"]}""");
+
+        EnsureToolAvailable(targetedTools, "filter_sale_listing", "filter_sale_listing",
+            "Filters and navigates to the sales listing screen by date range, customer, or invoice number.",
+            """{"type":"object","properties":{"fromDate":{"type":"string","description":"Start date YYYY-MM-DD"},"toDate":{"type":"string","description":"End date YYYY-MM-DD"},"customerId":{"type":"string","description":"Customer ID"}}}""");
 
         // 3. Prune and scrub conversational history
         var prunedHistory = _contextPrunerService.PruneAndScrubHistory(request.History);
@@ -260,7 +260,12 @@ CAPABILITIES & RULES:
             {
                 var error = await response.Content.ReadAsStringAsync(cancellationToken);
                 _logger.LogError("Gemini API error ({StatusCode}): {Error}", response.StatusCode, error);
-                return FallbackSimpleNavigation(request);
+                return new AiAssistantResponse
+                {
+                    Success = false,
+                    ErrorMessage = $"Gemini API error ({response.StatusCode}): {error}",
+                    ReplyText = $"Gemini AI request failed ({response.StatusCode})."
+                };
             }
 
             var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -451,7 +456,12 @@ CAPABILITIES & RULES:
             };
         }
 
-        return FallbackSimpleNavigation(request);
+        return new AiAssistantResponse
+        {
+            Success = false,
+            ActionType = AiActionType.Answer,
+            ReplyText = "Gemini AI did not return a valid response."
+        };
     }
 
     private async Task<List<object>> SearchVendorsAsync(string name, bool includeBalance, CancellationToken cancellationToken)
@@ -534,93 +544,17 @@ CAPABILITIES & RULES:
         return results;
     }
 
-    private static AiAssistantResponse FallbackSimpleNavigation(AiAssistantRequest request)
+    private static void EnsureToolAvailable(List<AiTool> tools, string id, string name, string description, string schema)
     {
-        var lower = request.Prompt.ToLowerInvariant();
-        Dictionary<string, object>? payload = null;
-        string dateSuffix = "";
-
-        if (lower.Contains("yesterday"))
+        if (!tools.Any(t => t.Id == id))
         {
-            var yesterday = DateTime.Today.AddDays(-1).ToString("yyyy-MM-dd");
-            payload = new Dictionary<string, object>
+            tools.Add(new AiTool
             {
-                ["fromDate"] = yesterday,
-                ["toDate"] = yesterday
-            };
-            dateSuffix = " for yesterday";
+                Id = id,
+                ToolName = name,
+                Description = description,
+                JsonSchema = schema
+            });
         }
-        else if (lower.Contains("today"))
-        {
-            var today = DateTime.Today.ToString("yyyy-MM-dd");
-            payload = new Dictionary<string, object>
-            {
-                ["fromDate"] = today,
-                ["toDate"] = today
-            };
-            dateSuffix = " for today";
-        }
-        else if (lower.Contains("this month"))
-        {
-            var firstDay = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1).ToString("yyyy-MM-dd");
-            var today = DateTime.Today.ToString("yyyy-MM-dd");
-            payload = new Dictionary<string, object>
-            {
-                ["fromDate"] = firstDay,
-                ["toDate"] = today
-            };
-            dateSuffix = " for this month";
-        }
-        else if (lower.Contains("last month"))
-        {
-            var prevMonth = DateTime.Today.AddMonths(-1);
-            var firstDay = new DateTime(prevMonth.Year, prevMonth.Month, 1).ToString("yyyy-MM-dd");
-            var lastDay = new DateTime(prevMonth.Year, prevMonth.Month, DateTime.DaysInMonth(prevMonth.Year, prevMonth.Month)).ToString("yyyy-MM-dd");
-            payload = new Dictionary<string, object>
-            {
-                ["fromDate"] = firstDay,
-                ["toDate"] = lastDay
-            };
-            dateSuffix = " for last month";
-        }
-
-        if (lower.Contains("receipt"))
-        {
-            return new AiAssistantResponse
-            {
-                ActionType = AiActionType.Navigate,
-                TargetRoute = "/daily-entries/receipt-voucher",
-                ActionPayload = payload,
-                ReplyText = $"Navigating to receipt vouchers{dateSuffix}."
-            };
-        }
-
-        if (lower.Contains("payment") || lower.Contains("voucher"))
-        {
-            return new AiAssistantResponse
-            {
-                ActionType = AiActionType.Navigate,
-                TargetRoute = "/daily-entries/payment-voucher",
-                ActionPayload = payload,
-                ReplyText = $"Navigating to payment vouchers{dateSuffix}."
-            };
-        }
-
-        if (lower.Contains("sale") || lower.Contains("invoice"))
-        {
-            return new AiAssistantResponse
-            {
-                ActionType = AiActionType.Navigate,
-                TargetRoute = "/daily-entries/sale",
-                ActionPayload = payload,
-                ReplyText = $"Navigating to sales listing{dateSuffix}."
-            };
-        }
-
-        return new AiAssistantResponse
-        {
-            ActionType = AiActionType.Answer,
-            ReplyText = "I can help you navigate to vouchers, filter listings by date, check account balances, or draft new vouchers. What would you like to do?"
-        };
     }
 }
