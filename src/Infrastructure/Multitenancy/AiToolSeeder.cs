@@ -17,25 +17,33 @@ internal class AiToolSeeder
 
     public async Task SeedAiToolsAsync(CancellationToken cancellationToken = default)
     {
-        var existingToolIds = await _tenantDbContext.AiTools
-            .Select(t => t.Id)
-            .ToListAsync(cancellationToken);
+        var existingTools = await _tenantDbContext.AiTools
+            .ToDictionaryAsync(t => t.Id, cancellationToken);
 
         var toolsToSeed = GetInitialTools();
 
         foreach (var tool in toolsToSeed)
         {
-            if (!existingToolIds.Contains(tool.Id))
+            if (!existingTools.TryGetValue(tool.Id, out var existing))
             {
                 _logger.LogInformation("Seeding AI Tool: {ToolId}", tool.Id);
                 await _tenantDbContext.AiTools.AddAsync(tool, cancellationToken);
+            }
+            else
+            {
+                existing.Description = tool.Description;
+                existing.JsonSchema = tool.JsonSchema;
+                existing.RouteHint = tool.RouteHint;
+                existing.Category = tool.Category;
+                existing.RequiredPermission = tool.RequiredPermission;
+                _tenantDbContext.AiTools.Update(existing);
             }
         }
 
         if (_tenantDbContext.ChangeTracker.HasChanges())
         {
             await _tenantDbContext.SaveChangesAsync(cancellationToken);
-            _logger.LogInformation("AI Tools successfully seeded in TenantDbContext.");
+            _logger.LogInformation("AI Tools successfully seeded/updated in TenantDbContext.");
         }
     }
 
@@ -91,9 +99,55 @@ internal class AiToolSeeder
             },
             new()
             {
+                Id = "filter_receipt_listing",
+                ToolName = "filter_receipt_listing",
+                Description = "Filters and navigates to the receipt voucher listing screen by date range, cash/bank account, or voucher number.",
+                Category = "Receipt",
+                RouteHint = "/daily-entries/receipt-voucher",
+                RequiredPermission = "Permissions.ReceiptVouchers.View",
+                JsonSchema = """
+                {
+                  "type": "object",
+                  "properties": {
+                    "fromDate": { "type": "string", "description": "Start date in YYYY-MM-DD format" },
+                    "toDate": { "type": "string", "description": "End date in YYYY-MM-DD format" },
+                    "cashBankAccount": { "type": "string", "description": "Cash or Bank Account name or ID" },
+                    "voucherNo": { "type": "string", "description": "Specific voucher number to find" }
+                  }
+                }
+                """,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            },
+            new()
+            {
+                Id = "draft_receipt_voucher",
+                ToolName = "draft_receipt_voucher",
+                Description = "Drafts a new receipt voucher for receiving money from a customer, debtor, or income account with pre-filled amount and remarks.",
+                Category = "Receipt",
+                RouteHint = "/daily-entries/receipt-voucher/new",
+                RequiredPermission = "Permissions.ReceiptVouchers.Create",
+                JsonSchema = """
+                {
+                  "type": "object",
+                  "properties": {
+                    "customerId": { "type": "string", "description": "The resolved Customer/Payer Account ID" },
+                    "customerName": { "type": "string", "description": "Name of the customer or paying account" },
+                    "amount": { "type": "number", "description": "Received amount" },
+                    "remarks": { "type": "string", "description": "Remarks or receipt narration" },
+                    "cashBankAccountId": { "type": "string", "description": "Cash/Bank account receiving the deposit" }
+                  },
+                  "required": ["amount"]
+                }
+                """,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            },
+            new()
+            {
                 Id = "search_vendor",
                 ToolName = "search_vendor",
-                Description = "Searches the active tenant database for vendors or suppliers matching a given name or keyword to resolve their ID.",
+                Description = "Searches the active tenant database for vendors or suppliers matching a given name or keyword. Set includeBalance=true to fetch their current ledger balance.",
                 Category = "Vendor",
                 RouteHint = "/setup/vendors",
                 RequiredPermission = "Permissions.Vendors.View",
@@ -101,7 +155,8 @@ internal class AiToolSeeder
                 {
                   "type": "object",
                   "properties": {
-                    "name": { "type": "string", "description": "Vendor or supplier business name to search for" }
+                    "name": { "type": "string", "description": "Vendor or supplier business name to search for" },
+                    "includeBalance": { "type": "boolean", "description": "Whether to return the current ledger balance (dr - cr) for each matched vendor" }
                   },
                   "required": ["name"]
                 }
@@ -113,7 +168,7 @@ internal class AiToolSeeder
             {
                 Id = "search_account",
                 ToolName = "search_account",
-                Description = "Searches cash and bank accounts in the Chart of Accounts to find the exact account ID.",
+                Description = "Searches accounts in the Chart of Accounts by title or code (customers, vendors, cash, bank, expenses). Set includeBalance=true to fetch current balance.",
                 Category = "Accounting",
                 RouteHint = "/setup/bank-accounts",
                 RequiredPermission = "Permissions.BankAccounts.View",
@@ -121,7 +176,8 @@ internal class AiToolSeeder
                 {
                   "type": "object",
                   "properties": {
-                    "name": { "type": "string", "description": "Account name (e.g. 'Cash In Hand', 'Meezan Bank')" }
+                    "name": { "type": "string", "description": "Account name (e.g. 'Cash In Hand', 'Meezan Bank', 'Customer ABC')" },
+                    "includeBalance": { "type": "boolean", "description": "Whether to return the current ledger balance (dr - cr) for each matched account" }
                   },
                   "required": ["name"]
                 }

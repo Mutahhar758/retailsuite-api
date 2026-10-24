@@ -1,397 +1,626 @@
-using System.Text;
-using System.Text.Json;
-using System.Text.Json.Nodes;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
-using Retailer.Application.Common.Interfaces;
-using Retailer.Application.Common.Persistence;
-using Retailer.Domain.Legacy;
-using Retailer.Domain.Multitenancy;
-using Retailer.Infrastructure.AI.ContextPruner;
-using Retailer.Infrastructure.AI.ToolRouter;
-
-namespace Retailer.Infrastructure.AI.Gemini;
-
-public class GeminiAiAssistantService : IAiAssistantService
-{
-    private readonly IConfiguration _config;
-    private readonly ICurrentTenant _currentTenant;
-    private readonly IGeminiEmbeddingService _embeddingService;
-    private readonly IToolRouterService _toolRouterService;
-    private readonly IContextPrunerService _contextPrunerService;
-    private readonly IRepository<ChartOfAccount> _chartOfAccountRepository;
-    private readonly ILogger<GeminiAiAssistantService> _logger;
-    private static readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(30) };
-
-    public GeminiAiAssistantService(
-        IConfiguration config,
-        ICurrentTenant currentTenant,
-        IGeminiEmbeddingService embeddingService,
-        IToolRouterService toolRouterService,
-        IContextPrunerService contextPrunerService,
-        IRepository<ChartOfAccount> chartOfAccountRepository,
-        ILogger<GeminiAiAssistantService> logger)
-    {
-        _config = config;
-        _currentTenant = currentTenant;
-        _embeddingService = embeddingService;
-        _toolRouterService = toolRouterService;
-        _contextPrunerService = contextPrunerService;
-        _chartOfAccountRepository = chartOfAccountRepository;
-        _logger = logger;
-    }
-
-    public async Task<AiAssistantResponse> ProcessPromptAsync(AiAssistantRequest request, CancellationToken cancellationToken = default)
-    {
-        if (string.IsNullOrWhiteSpace(request.Prompt))
-        {
-            return new AiAssistantResponse { Success = false, ErrorMessage = "Prompt cannot be empty." };
-        }
-
-        var geminiSection = _config.GetSection("GeminiSettings");
-        var apiKey = new[]
-        {
-            geminiSection["ApiKey"],
-            _config["GeminiSettings:ApiKey"],
-            _config["Gemini:ApiKey"],
-            _config["GeminiApiKey"],
-            Environment.GetEnvironmentVariable("GEMINI_API_KEY"),
-            Environment.GetEnvironmentVariable("GeminiSettings__ApiKey"),
-            Environment.GetEnvironmentVariable("Gemini__ApiKey"),
-            Environment.GetEnvironmentVariable("GeminiApiKey")
-        }.FirstOrDefault(k => !string.IsNullOrWhiteSpace(k));
-        if (string.IsNullOrWhiteSpace(apiKey))
-        {
-            return FallbackSimpleNavigation(request);
-        }
-
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Retailer.Application.Common.Interfaces;
+using Retailer.Application.Common.Persistence;
+using Retailer.Domain.Legacy;
+using Retailer.Domain.Multitenancy;
+using Retailer.Infrastructure.AI.ContextPruner;
+using Retailer.Infrastructure.AI.ToolRouter;
+
+namespace Retailer.Infrastructure.AI.Gemini;
+
+public class GeminiAiAssistantService : IAiAssistantService
+{
+    private readonly IConfiguration _config;
+    private readonly ICurrentTenant _currentTenant;
+    private readonly IGeminiEmbeddingService _embeddingService;
+    private readonly IToolRouterService _toolRouterService;
+    private readonly IContextPrunerService _contextPrunerService;
+    private readonly IRepository<ChartOfAccount> _chartOfAccountRepository;
+    private readonly IRepository<GlEntry> _glRepository;
+    private readonly ILogger<GeminiAiAssistantService> _logger;
+    private static readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(60) };
+
+    public GeminiAiAssistantService(
+        IConfiguration config,
+        ICurrentTenant currentTenant,
+        IGeminiEmbeddingService embeddingService,
+        IToolRouterService toolRouterService,
+        IContextPrunerService contextPrunerService,
+        IRepository<ChartOfAccount> chartOfAccountRepository,
+        IRepository<GlEntry> glRepository,
+        ILogger<GeminiAiAssistantService> logger)
+    {
+        _config = config;
+        _currentTenant = currentTenant;
+        _embeddingService = embeddingService;
+        _toolRouterService = toolRouterService;
+        _contextPrunerService = contextPrunerService;
+        _chartOfAccountRepository = chartOfAccountRepository;
+        _glRepository = glRepository;
+        _logger = logger;
+    }
+
+    public async Task<AiAssistantResponse> ProcessPromptAsync(AiAssistantRequest request, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.Prompt))
+        {
+            return new AiAssistantResponse { Success = false, ErrorMessage = "Prompt cannot be empty." };
+        }
+
+        try
+        {
+            return await ExecuteAgentLoopAsync(request, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            _logger.LogWarning("AI Assistant chat request was canceled by client. Returning fallback navigation.");
+            return FallbackSimpleNavigation(request);
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogWarning(ex, "Gemini API request timed out. Returning fallback navigation.");
+            return FallbackSimpleNavigation(request);
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "HTTP error while communicating with Gemini API. Returning fallback navigation.");
+            return FallbackSimpleNavigation(request);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error in Gemini AI assistant. Returning fallback navigation.");
+            return FallbackSimpleNavigation(request);
+        }
+    }
+
+    private async Task<AiAssistantResponse> ExecuteAgentLoopAsync(AiAssistantRequest request, CancellationToken cancellationToken)
+    {
+        var geminiSection = _config.GetSection("GeminiSettings");
+        var apiKey = new[]
+        {
+            geminiSection["ApiKey"],
+            _config["GeminiSettings:ApiKey"],
+            _config["Gemini:ApiKey"],
+            _config["GeminiApiKey"],
+            Environment.GetEnvironmentVariable("GEMINI_API_KEY"),
+            Environment.GetEnvironmentVariable("GeminiSettings__ApiKey"),
+            Environment.GetEnvironmentVariable("Gemini__ApiKey"),
+            Environment.GetEnvironmentVariable("GeminiApiKey")
+        }.FirstOrDefault(k => !string.IsNullOrWhiteSpace(k));
+
+        if (string.IsNullOrWhiteSpace(apiKey))
+        {
+            return FallbackSimpleNavigation(request);
+        }
+
         var model = !string.IsNullOrWhiteSpace(geminiSection["Model"]) && geminiSection["Model"] != "gemini-2.5-flash"
             ? geminiSection["Model"]
-            : "gemini-3.8-flash";
-        var baseEndpoint = (geminiSection["Endpoint"] ?? "https://generativelanguage.googleapis.com/v1beta/models").TrimEnd('/');
-        var endpoint = $"{baseEndpoint}/{model}:generateContent?key={apiKey}";
-
-        // 1. Vector embedding for prompt
-        var embedding = await _embeddingService.GenerateEmbeddingAsync(request.Prompt, cancellationToken);
-
-        // 2. Hybrid Tool Routing: UI Context + Semantic pgvector search
-        var targetedTools = await _toolRouterService.GetTargetedToolsAsync(request.CurrentRoute, embedding, request.Prompt, cancellationToken);
-
-        // Always ensure search_vendor and search_account are available if the user is asking to create/draft
-        var lowerPrompt = request.Prompt.ToLowerInvariant();
-        if (lowerPrompt.Contains("payment") || lowerPrompt.Contains("voucher") || lowerPrompt.Contains("create") || lowerPrompt.Contains("pay"))
-        {
-            if (!targetedTools.Any(t => t.Id == "search_vendor"))
-            {
-                targetedTools.Add(new AiTool
-                {
-                    Id = "search_vendor",
-                    ToolName = "search_vendor",
-                    Description = "Searches for vendors/suppliers in database by name to resolve their ID.",
-                    JsonSchema = """{"type":"object","properties":{"name":{"type":"string","description":"Vendor name to search"}},"required":["name"]}"""
-                });
-            }
-        }
-
-        // 3. Prune and scrub conversational history
-        var prunedHistory = _contextPrunerService.PruneAndScrubHistory(request.History);
-
-        // 4. Build Gemini Tool Declarations
-        var functionDeclarations = new List<object>();
-        foreach (var tool in targetedTools)
-        {
-            try
-            {
-                using var schemaDoc = JsonDocument.Parse(tool.JsonSchema);
-                var schemaObj = JsonSerializer.Deserialize<object>(tool.JsonSchema);
-                functionDeclarations.Add(new
-                {
-                    name = tool.ToolName,
-                    description = tool.Description,
-                    parameters = schemaObj
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to parse schema for tool {ToolName}", tool.ToolName);
-            }
-        }
-
-        var systemInstructions = $@"You are the official voice and text AI Assistant for RetailSuite ERP.
-Current UTC Date: {DateTime.UtcNow:yyyy-MM-dd (dddd)}.
-Active Tenant ID: {_currentTenant.Id ?? "default"}.
-Current Screen Route: {request.CurrentRoute ?? "/"}.
-
-CAPABILITIES & RULES:
-1. Navigation: When user asks to go to or view a list (e.g. payment listing, sales), call the appropriate filter/navigation tool and calculate explicit YYYY-MM-DD dates for relative terms like 'this month', 'today', 'last week'.
-2. Data Entry & Drafting: When user asks to create or record a voucher:
-   - If a vendor or supplier name is mentioned, FIRST call search_vendor to resolve their database ID.
-   - Once resolved, call draft_payment_voucher with the vendorId, vendorName, and amount.
-3. Language: Seamlessly understand English, Urdu (اردو), and Roman Urdu. Reply in the user's spoken language. Keep spoken replies concise, friendly, and natural for text-to-speech.
-4. Human in the loop: Do not claim you saved the voucher permanently; state that you have drafted it for their review.";
-
-        // Build Contents array
-        var contents = new List<object>();
-
-        foreach (var msg in prunedHistory)
-        {
-            var role = msg.Role.Equals("assistant", StringComparison.OrdinalIgnoreCase) || msg.Role.Equals("model", StringComparison.OrdinalIgnoreCase)
-                ? "model"
-                : "user";
-
-            contents.Add(new
-            {
-                role,
-                parts = new[] { new { text = msg.Content } }
-            });
-        }
-
-        var activeFilterSummary = request.ActiveFilters != null && request.ActiveFilters.Count > 0
-            ? $" [Active Screen Filters: {JsonSerializer.Serialize(request.ActiveFilters)}]"
-            : "";
-
-        contents.Add(new
-        {
-            role = "user",
-            parts = new[] { new { text = $"[Current Screen: {request.CurrentRoute ?? "/"}{activeFilterSummary}] {request.Prompt}" } }
-        });
-
-        // 5. Agentic Recursive Loop (up to 2 tool execution turns)
-        int maxLoopTurns = 2;
-        while (maxLoopTurns-- > 0)
-        {
-            var payload = new
-            {
-                system_instruction = new { parts = new[] { new { text = systemInstructions } } },
-                contents = contents.ToArray(),
-                tools = functionDeclarations.Count > 0 ? new[] { new { function_declarations = functionDeclarations.ToArray() } } : null,
-                generationConfig = new
-                {
-                    temperature = 0.2
-                }
-            };
-
-            var jsonContent = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
-            var response = await _httpClient.PostAsync(endpoint, jsonContent, cancellationToken);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                var error = await response.Content.ReadAsStringAsync(cancellationToken);
-                _logger.LogError("Gemini API error ({StatusCode}): {Error}", response.StatusCode, error);
-                return FallbackSimpleNavigation(request);
-            }
-
-            var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
-            using var doc = JsonDocument.Parse(responseJson);
-
-            var candidate = doc.RootElement.GetProperty("candidates")[0];
-            var contentEl = candidate.GetProperty("content");
-            var parts = contentEl.GetProperty("parts");
-
-            string? modelText = null;
-            JsonElement? functionCall = null;
-
-            foreach (var part in parts.EnumerateArray())
-            {
-                if (part.TryGetProperty("text", out var textEl))
-                {
-                    modelText = textEl.GetString();
-                }
-
-                if (part.TryGetProperty("functionCall", out var fnEl))
-                {
-                    functionCall = fnEl;
-                }
-            }
-
-            // If Gemini invoked a function call
-            if (functionCall.HasValue)
-            {
-                var fnName = functionCall.Value.GetProperty("name").GetString();
-                var args = functionCall.Value.GetProperty("args");
-
-                // Check if it's a backend read tool
-                if (fnName == "search_vendor")
-                {
-                    var vendorName = args.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "";
-                    var vendors = await SearchVendorsAsync(vendorName, cancellationToken);
-
-                    // Add functionCall to history
-                    contents.Add(new
-                    {
-                        role = "model",
-                        parts = new object[]
-                        {
-                            new { functionCall = new { name = fnName, args = JsonSerializer.Deserialize<object>(args.GetRawText()) } }
-                        }
-                    });
-
-                    // Add functionResponse to history
-                    contents.Add(new
-                    {
-                        role = "user",
-                        parts = new object[]
-                        {
-                            new
-                            {
-                                functionResponse = new
-                                {
-                                    name = fnName,
-                                    response = new { results = vendors }
-                                }
-                            }
-                        }
-                    });
-
-                    // Continue loop so Gemini can now generate the draft_payment_voucher tool call
-                    continue;
-                }
-
-                if (fnName == "search_account")
-                {
-                    var accountName = args.TryGetProperty("name", out var an) ? an.GetString() ?? "" : "";
-                    var accounts = await SearchAccountsAsync(accountName, cancellationToken);
-
-                    contents.Add(new
-                    {
-                        role = "model",
-                        parts = new object[]
-                        {
-                            new { functionCall = new { name = fnName, args = JsonSerializer.Deserialize<object>(args.GetRawText()) } }
-                        }
-                    });
-
-                    contents.Add(new
-                    {
-                        role = "user",
-                        parts = new object[]
-                        {
-                            new
-                            {
-                                functionResponse = new
-                                {
-                                    name = fnName,
-                                    response = new { results = accounts }
-                                }
-                            }
-                        }
-                    });
-
-                    continue;
-                }
-
-                // If it's a client action tool:
-                if (fnName == "filter_payment_listing")
-                {
-                    var speech = !string.IsNullOrWhiteSpace(modelText)
-                        ? modelText
-                        : "Navigating to payment listing with your requested filters.";
-
-                    return new AiAssistantResponse
-                    {
-                        ActionType = AiActionType.Navigate,
-                        TargetRoute = "/daily-entries/payment-voucher",
-                        ActionPayload = JsonSerializer.Deserialize<Dictionary<string, object>>(args.GetRawText()),
-                        ReplyText = speech
-                    };
-                }
-
-                if (fnName == "draft_payment_voucher")
-                {
-                    var speech = !string.IsNullOrWhiteSpace(modelText)
-                        ? modelText
-                        : "I've drafted the payment voucher for you. Please review and save.";
-
-                    return new AiAssistantResponse
-                    {
-                        ActionType = AiActionType.DraftVoucher,
-                        TargetRoute = "/daily-entries/payment-voucher/new",
-                        ActionPayload = JsonSerializer.Deserialize<Dictionary<string, object>>(args.GetRawText()),
-                        ReplyText = speech
-                    };
-                }
-
-                if (fnName == "filter_sale_listing")
-                {
-                    var speech = !string.IsNullOrWhiteSpace(modelText)
-                        ? modelText
-                        : "Opening sales records.";
-
-                    return new AiAssistantResponse
-                    {
-                        ActionType = AiActionType.Navigate,
-                        TargetRoute = "/daily-entries/sale",
-                        ActionPayload = JsonSerializer.Deserialize<Dictionary<string, object>>(args.GetRawText()),
-                        ReplyText = speech
-                    };
-                }
-            }
-
-            // Normal conversational answer
-            return new AiAssistantResponse
-            {
-                ActionType = AiActionType.Answer,
-                ReplyText = modelText ?? "I've processed your request."
-            };
-        }
-
-        return FallbackSimpleNavigation(request);
-    }
-
-    private async Task<List<object>> SearchVendorsAsync(string name, CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrWhiteSpace(name)) return new List<object>();
-
-        var query = _chartOfAccountRepository.GetAll()
-            .AsNoTracking()
-            .Where(x => x.AccLevel == 5 && (EF.Functions.ILike(x.Title, $"%{name}%") || EF.Functions.ILike(x.Id, $"%{name}%")))
-            .Take(5);
-
-        var list = await query.Select(x => new { id = x.Id, name = x.Title }).ToListAsync(cancellationToken);
-        return list.Cast<object>().ToList();
-    }
-
-    private async Task<List<object>> SearchAccountsAsync(string name, CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrWhiteSpace(name)) return new List<object>();
-
-        var query = _chartOfAccountRepository.GetAll()
-            .AsNoTracking()
-            .Where(x => x.AccLevel == 5 && (EF.Functions.ILike(x.Title, $"%{name}%") || EF.Functions.ILike(x.Id, $"%{name}%")))
-            .Take(5);
-
-        var list = await query.Select(x => new { id = x.Id, name = x.Title }).ToListAsync(cancellationToken);
-        return list.Cast<object>().ToList();
-    }
-
-    private static AiAssistantResponse FallbackSimpleNavigation(AiAssistantRequest request)
-    {
-        var lower = request.Prompt.ToLowerInvariant();
-        if (lower.Contains("payment") || lower.Contains("voucher"))
-        {
-            return new AiAssistantResponse
-            {
-                ActionType = AiActionType.Navigate,
-                TargetRoute = "/daily-entries/payment-voucher",
-                ReplyText = "Navigating to payment vouchers."
-            };
-        }
-
-        if (lower.Contains("sale") || lower.Contains("invoice"))
-        {
-            return new AiAssistantResponse
-            {
-                ActionType = AiActionType.Navigate,
-                TargetRoute = "/daily-entries/sale",
-                ReplyText = "Navigating to sales listing."
-            };
-        }
-
-        return new AiAssistantResponse
-        {
-            ActionType = AiActionType.Answer,
-            ReplyText = "I understand your request. You can ask me to navigate to payment listings, sales, or draft vouchers."
-        };
-    }
-}
+            : "gemini-3.8-flash";
+
+        var baseEndpoint = (geminiSection["Endpoint"] ?? "https://generativelanguage.googleapis.com/v1beta/models").TrimEnd('/');
+        var endpoint = $"{baseEndpoint}/{model}:generateContent?key={apiKey}";
+
+        // 1. Vector embedding for prompt
+        var embedding = await _embeddingService.GenerateEmbeddingAsync(request.Prompt, cancellationToken);
+
+        // 2. Hybrid Tool Routing: UI Context + Semantic pgvector search
+        var targetedTools = await _toolRouterService.GetTargetedToolsAsync(request.CurrentRoute, embedding, request.Prompt, cancellationToken);
+
+        var lowerPrompt = request.Prompt.ToLowerInvariant();
+        if (lowerPrompt.Contains("payment") || lowerPrompt.Contains("receipt") || lowerPrompt.Contains("voucher") ||
+            lowerPrompt.Contains("create") || lowerPrompt.Contains("pay") || lowerPrompt.Contains("balance") ||
+            lowerPrompt.Contains("vendor") || lowerPrompt.Contains("customer") || lowerPrompt.Contains("account"))
+        {
+            if (!targetedTools.Any(t => t.Id == "search_vendor"))
+            {
+                targetedTools.Add(new AiTool
+                {
+                    Id = "search_vendor",
+                    ToolName = "search_vendor",
+                    Description = "Searches for vendors/suppliers in database by name. Set includeBalance=true to retrieve their current balance.",
+                    JsonSchema = """{"type":"object","properties":{"name":{"type":"string","description":"Vendor name to search"},"includeBalance":{"type":"boolean","description":"Include ledger balance"}},"required":["name"]}"""
+                });
+            }
+
+            if (!targetedTools.Any(t => t.Id == "search_account"))
+            {
+                targetedTools.Add(new AiTool
+                {
+                    Id = "search_account",
+                    ToolName = "search_account",
+                    Description = "Searches accounts in the Chart of Accounts (customers, vendors, cash, bank). Set includeBalance=true to retrieve current balance.",
+                    JsonSchema = """{"type":"object","properties":{"name":{"type":"string","description":"Account or customer name to search"},"includeBalance":{"type":"boolean","description":"Include ledger balance"}},"required":["name"]}"""
+                });
+            }
+
+            if (lowerPrompt.Contains("receipt") && !targetedTools.Any(t => t.Id == "filter_receipt_listing"))
+            {
+                targetedTools.Add(new AiTool
+                {
+                    Id = "filter_receipt_listing",
+                    ToolName = "filter_receipt_listing",
+                    Description = "Filters and navigates to the receipt voucher listing screen by date range, cash/bank account, or voucher number.",
+                    RouteHint = "/daily-entries/receipt-voucher",
+                    JsonSchema = """{"type":"object","properties":{"fromDate":{"type":"string","description":"Start date YYYY-MM-DD"},"toDate":{"type":"string","description":"End date YYYY-MM-DD"},"cashBankAccount":{"type":"string","description":"Cash/Bank account"},"voucherNo":{"type":"string","description":"Voucher number"}}}"""
+                });
+            }
+
+            if (lowerPrompt.Contains("receipt") && !targetedTools.Any(t => t.Id == "draft_receipt_voucher"))
+            {
+                targetedTools.Add(new AiTool
+                {
+                    Id = "draft_receipt_voucher",
+                    ToolName = "draft_receipt_voucher",
+                    Description = "Drafts a new receipt voucher from a customer/debtor with pre-filled amount and remarks.",
+                    RouteHint = "/daily-entries/receipt-voucher/new",
+                    JsonSchema = """{"type":"object","properties":{"customerId":{"type":"string","description":"Customer or account ID"},"customerName":{"type":"string","description":"Customer name"},"amount":{"type":"number","description":"Amount received"},"remarks":{"type":"string","description":"Remarks"},"cashBankAccountId":{"type":"string","description":"Cash/Bank receiving account"}},"required":["amount"]}"""
+                });
+            }
+        }
+
+        // 3. Prune and scrub conversational history
+        var prunedHistory = _contextPrunerService.PruneAndScrubHistory(request.History);
+
+        // 4. Build Gemini Tool Declarations
+        var functionDeclarations = new List<object>();
+        foreach (var tool in targetedTools)
+        {
+            try
+            {
+                using var schemaDoc = JsonDocument.Parse(tool.JsonSchema);
+                var schemaObj = JsonSerializer.Deserialize<object>(tool.JsonSchema);
+                functionDeclarations.Add(new
+                {
+                    name = tool.ToolName,
+                    description = tool.Description,
+                    parameters = schemaObj
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to parse schema for tool {ToolName}", tool.ToolName);
+            }
+        }
+
+        var systemInstructions = $@"You are the official voice and text AI Assistant for RetailSuite ERP.
+Current UTC Date: {DateTime.UtcNow:yyyy-MM-dd (dddd)}.
+Active Tenant ID: {_currentTenant.Id ?? "default"}.
+Current Screen Route: {request.CurrentRoute ?? "/"}.
+
+CAPABILITIES & RULES:
+1. Navigation: When user asks to go to or view a list (e.g. payment listing, receipt listing, sales):
+   - Call the appropriate filter/navigation tool (filter_payment_listing, filter_receipt_listing, filter_sale_listing).
+   - Calculate explicit YYYY-MM-DD dates for relative terms like 'today', 'yesterday', 'this month', 'last week'.
+2. Balance Inquiries: When user asks for the balance of any customer, vendor, bank, cash, or expense account (e.g., 'what is the balance of X?', 'kitna balance hai?'):
+   - Call search_account or search_vendor with includeBalance=true.
+   - Reply directly to the user with the exact account title and balance formatted clearly (e.g., 'The current balance of ABC is Rs. 15,000 (Receivable)').
+3. Data Entry & Drafting:
+   - Payments: When user asks to pay or create a payment voucher, FIRST call search_vendor to resolve their ID, then call draft_payment_voucher.
+   - Receipts: When user asks to record received money or create a receipt voucher, FIRST call search_account or search_vendor to resolve customer/account ID, then call draft_receipt_voucher.
+4. Language: Seamlessly understand English, Urdu (اردو), and Roman Urdu. Reply in the user's spoken language. Keep spoken replies concise, friendly, and natural for text-to-speech.
+5. Human in the loop: Do not claim you saved vouchers permanently; state that you have drafted it for their review.";
+
+        // Build Contents array
+        var contents = new List<object>();
+
+        foreach (var msg in prunedHistory)
+        {
+            var role = msg.Role.Equals("assistant", StringComparison.OrdinalIgnoreCase) || msg.Role.Equals("model", StringComparison.OrdinalIgnoreCase)
+                ? "model"
+                : "user";
+
+            contents.Add(new
+            {
+                role,
+                parts = new[] { new { text = msg.Content } }
+            });
+        }
+
+        var activeFilterSummary = request.ActiveFilters != null && request.ActiveFilters.Count > 0
+            ? $" [Active Screen Filters: {JsonSerializer.Serialize(request.ActiveFilters)}]"
+            : "";
+
+        contents.Add(new
+        {
+            role = "user",
+            parts = new[] { new { text = $"[Current Screen: {request.CurrentRoute ?? "/"}{activeFilterSummary}] {request.Prompt}" } }
+        });
+
+        // 5. Agentic Recursive Loop (up to 2 tool execution turns)
+        int maxLoopTurns = 2;
+        while (maxLoopTurns-- > 0)
+        {
+            var requestBody = new
+            {
+                contents,
+                systemInstruction = new
+                {
+                    parts = new[] { new { text = systemInstructions } }
+                },
+                tools = new[]
+                {
+                    new { functionDeclarations }
+                },
+                generationConfig = new
+                {
+                    temperature = 0.2,
+                    maxOutputTokens = 800
+                }
+            };
+
+            var jsonContent = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");
+            var response = await _httpClient.PostAsync(endpoint, jsonContent, cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadAsStringAsync(cancellationToken);
+                _logger.LogError("Gemini API error ({StatusCode}): {Error}", response.StatusCode, error);
+                return FallbackSimpleNavigation(request);
+            }
+
+            var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
+            using var doc = JsonDocument.Parse(responseJson);
+
+            var candidates = doc.RootElement.GetProperty("candidates");
+            if (candidates.GetArrayLength() == 0)
+            {
+                return new AiAssistantResponse { Success = false, ErrorMessage = "No response from Gemini." };
+            }
+
+            var candidate = candidates[0];
+            var parts = candidate.GetProperty("content").GetProperty("parts");
+
+            string? modelText = null;
+            JsonElement? functionCall = null;
+
+            foreach (var part in parts.EnumerateArray())
+            {
+                if (part.TryGetProperty("text", out var textEl))
+                {
+                    modelText = textEl.GetString();
+                }
+
+                if (part.TryGetProperty("functionCall", out var fnEl))
+                {
+                    functionCall = fnEl;
+                }
+            }
+
+            // If Gemini invoked a function call
+            if (functionCall.HasValue)
+            {
+                var fnName = functionCall.Value.GetProperty("name").GetString();
+                var args = functionCall.Value.GetProperty("args");
+
+                // Check if it's a backend read tool
+                if (fnName == "search_vendor")
+                {
+                    var vendorName = args.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "";
+                    var includeBal = args.TryGetProperty("includeBalance", out var ib) && ib.GetBoolean();
+                    var vendors = await SearchVendorsAsync(vendorName, includeBal, cancellationToken);
+
+                    contents.Add(new
+                    {
+                        role = "model",
+                        parts = new object[]
+                        {
+                            new { functionCall = new { name = fnName, args = JsonSerializer.Deserialize<object>(args.GetRawText()) } }
+                        }
+                    });
+
+                    contents.Add(new
+                    {
+                        role = "user",
+                        parts = new object[]
+                        {
+                            new
+                            {
+                                functionResponse = new
+                                {
+                                    name = fnName,
+                                    response = new { results = vendors }
+                                }
+                            }
+                        }
+                    });
+
+                    continue;
+                }
+
+                if (fnName == "search_account")
+                {
+                    var accountName = args.TryGetProperty("name", out var an) ? an.GetString() ?? "" : "";
+                    var includeBal = args.TryGetProperty("includeBalance", out var ib) && ib.GetBoolean();
+                    var accounts = await SearchAccountsAsync(accountName, includeBal, cancellationToken);
+
+                    contents.Add(new
+                    {
+                        role = "model",
+                        parts = new object[]
+                        {
+                            new { functionCall = new { name = fnName, args = JsonSerializer.Deserialize<object>(args.GetRawText()) } }
+                        }
+                    });
+
+                    contents.Add(new
+                    {
+                        role = "user",
+                        parts = new object[]
+                        {
+                            new
+                            {
+                                functionResponse = new
+                                {
+                                    name = fnName,
+                                    response = new { results = accounts }
+                                }
+                            }
+                        }
+                    });
+
+                    continue;
+                }
+
+                // If it's a client action tool:
+                if (fnName == "filter_payment_listing")
+                {
+                    var speech = !string.IsNullOrWhiteSpace(modelText)
+                        ? modelText
+                        : "Navigating to payment listing with your requested filters.";
+
+                    return new AiAssistantResponse
+                    {
+                        ActionType = AiActionType.Navigate,
+                        TargetRoute = "/daily-entries/payment-voucher",
+                        ActionPayload = JsonSerializer.Deserialize<Dictionary<string, object>>(args.GetRawText()),
+                        ReplyText = speech
+                    };
+                }
+
+                if (fnName == "draft_payment_voucher")
+                {
+                    var speech = !string.IsNullOrWhiteSpace(modelText)
+                        ? modelText
+                        : "I've drafted the payment voucher for you. Please review and save.";
+
+                    return new AiAssistantResponse
+                    {
+                        ActionType = AiActionType.DraftVoucher,
+                        TargetRoute = "/daily-entries/payment-voucher/new",
+                        ActionPayload = JsonSerializer.Deserialize<Dictionary<string, object>>(args.GetRawText()),
+                        ReplyText = speech
+                    };
+                }
+
+                if (fnName == "filter_receipt_listing")
+                {
+                    var speech = !string.IsNullOrWhiteSpace(modelText)
+                        ? modelText
+                        : "Navigating to receipt listing with your requested filters.";
+
+                    return new AiAssistantResponse
+                    {
+                        ActionType = AiActionType.Navigate,
+                        TargetRoute = "/daily-entries/receipt-voucher",
+                        ActionPayload = JsonSerializer.Deserialize<Dictionary<string, object>>(args.GetRawText()),
+                        ReplyText = speech
+                    };
+                }
+
+                if (fnName == "draft_receipt_voucher")
+                {
+                    var speech = !string.IsNullOrWhiteSpace(modelText)
+                        ? modelText
+                        : "I've drafted the receipt voucher for you. Please review and save.";
+
+                    return new AiAssistantResponse
+                    {
+                        ActionType = AiActionType.DraftVoucher,
+                        TargetRoute = "/daily-entries/receipt-voucher/new",
+                        ActionPayload = JsonSerializer.Deserialize<Dictionary<string, object>>(args.GetRawText()),
+                        ReplyText = speech
+                    };
+                }
+
+                if (fnName == "filter_sale_listing")
+                {
+                    var speech = !string.IsNullOrWhiteSpace(modelText)
+                        ? modelText
+                        : "Opening sales records.";
+
+                    return new AiAssistantResponse
+                    {
+                        ActionType = AiActionType.Navigate,
+                        TargetRoute = "/daily-entries/sale",
+                        ActionPayload = JsonSerializer.Deserialize<Dictionary<string, object>>(args.GetRawText()),
+                        ReplyText = speech
+                    };
+                }
+            }
+
+            // Normal conversational answer (e.g. balance inquiry answered)
+            return new AiAssistantResponse
+            {
+                ActionType = AiActionType.Answer,
+                ReplyText = modelText ?? "I've processed your request."
+            };
+        }
+
+        return FallbackSimpleNavigation(request);
+    }
+
+    private async Task<List<object>> SearchVendorsAsync(string name, bool includeBalance, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return new List<object>();
+
+        var query = _chartOfAccountRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => x.AccLevel == 5 && (EF.Functions.ILike(x.Title, $"%{name}%") || EF.Functions.ILike(x.Id, $"%{name}%")))
+            .Take(5);
+
+        var list = await query.Select(x => new { id = x.Id, name = x.Title }).ToListAsync(cancellationToken);
+        if (!includeBalance)
+        {
+            return list.Cast<object>().ToList();
+        }
+
+        var results = new List<object>();
+        foreach (var item in list)
+        {
+            var dr = await _glRepository.GetAll()
+                .AsNoTracking()
+                .Where(x => x.DrAccountId == item.id)
+                .SumAsync(x => (decimal?)x.Amount, cancellationToken) ?? 0;
+
+            var cr = await _glRepository.GetAll()
+                .AsNoTracking()
+                .Where(x => x.CrAccountId == item.id)
+                .SumAsync(x => (decimal?)x.Amount, cancellationToken) ?? 0;
+
+            var balance = dr - cr;
+            results.Add(new
+            {
+                id = item.id,
+                name = item.name,
+                currentBalance = balance,
+                balanceType = balance > 0 ? "Debit (Receivable)" : balance < 0 ? "Credit (Payable)" : "Zero Balance"
+            });
+        }
+        return results;
+    }
+
+    private async Task<List<object>> SearchAccountsAsync(string name, bool includeBalance, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return new List<object>();
+
+        var query = _chartOfAccountRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => x.AccLevel == 5 && (EF.Functions.ILike(x.Title, $"%{name}%") || EF.Functions.ILike(x.Id, $"%{name}%")))
+            .Take(5);
+
+        var list = await query.Select(x => new { id = x.Id, name = x.Title }).ToListAsync(cancellationToken);
+        if (!includeBalance)
+        {
+            return list.Cast<object>().ToList();
+        }
+
+        var results = new List<object>();
+        foreach (var item in list)
+        {
+            var dr = await _glRepository.GetAll()
+                .AsNoTracking()
+                .Where(x => x.DrAccountId == item.id)
+                .SumAsync(x => (decimal?)x.Amount, cancellationToken) ?? 0;
+
+            var cr = await _glRepository.GetAll()
+                .AsNoTracking()
+                .Where(x => x.CrAccountId == item.id)
+                .SumAsync(x => (decimal?)x.Amount, cancellationToken) ?? 0;
+
+            var balance = dr - cr;
+            results.Add(new
+            {
+                id = item.id,
+                name = item.name,
+                currentBalance = balance,
+                balanceType = balance > 0 ? "Debit (Receivable)" : balance < 0 ? "Credit (Payable)" : "Zero Balance"
+            });
+        }
+        return results;
+    }
+
+    private static AiAssistantResponse FallbackSimpleNavigation(AiAssistantRequest request)
+    {
+        var lower = request.Prompt.ToLowerInvariant();
+        Dictionary<string, object>? payload = null;
+        string dateSuffix = "";
+
+        if (lower.Contains("yesterday"))
+        {
+            var yesterday = DateTime.Today.AddDays(-1).ToString("yyyy-MM-dd");
+            payload = new Dictionary<string, object>
+            {
+                ["fromDate"] = yesterday,
+                ["toDate"] = yesterday
+            };
+            dateSuffix = " for yesterday";
+        }
+        else if (lower.Contains("today"))
+        {
+            var today = DateTime.Today.ToString("yyyy-MM-dd");
+            payload = new Dictionary<string, object>
+            {
+                ["fromDate"] = today,
+                ["toDate"] = today
+            };
+            dateSuffix = " for today";
+        }
+        else if (lower.Contains("this month"))
+        {
+            var firstDay = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1).ToString("yyyy-MM-dd");
+            var today = DateTime.Today.ToString("yyyy-MM-dd");
+            payload = new Dictionary<string, object>
+            {
+                ["fromDate"] = firstDay,
+                ["toDate"] = today
+            };
+            dateSuffix = " for this month";
+        }
+        else if (lower.Contains("last month"))
+        {
+            var prevMonth = DateTime.Today.AddMonths(-1);
+            var firstDay = new DateTime(prevMonth.Year, prevMonth.Month, 1).ToString("yyyy-MM-dd");
+            var lastDay = new DateTime(prevMonth.Year, prevMonth.Month, DateTime.DaysInMonth(prevMonth.Year, prevMonth.Month)).ToString("yyyy-MM-dd");
+            payload = new Dictionary<string, object>
+            {
+                ["fromDate"] = firstDay,
+                ["toDate"] = lastDay
+            };
+            dateSuffix = " for last month";
+        }
+
+        if (lower.Contains("receipt"))
+        {
+            return new AiAssistantResponse
+            {
+                ActionType = AiActionType.Navigate,
+                TargetRoute = "/daily-entries/receipt-voucher",
+                ActionPayload = payload,
+                ReplyText = $"Navigating to receipt vouchers{dateSuffix}."
+            };
+        }
+
+        if (lower.Contains("payment") || lower.Contains("voucher"))
+        {
+            return new AiAssistantResponse
+            {
+                ActionType = AiActionType.Navigate,
+                TargetRoute = "/daily-entries/payment-voucher",
+                ActionPayload = payload,
+                ReplyText = $"Navigating to payment vouchers{dateSuffix}."
+            };
+        }
+
+        if (lower.Contains("sale") || lower.Contains("invoice"))
+        {
+            return new AiAssistantResponse
+            {
+                ActionType = AiActionType.Navigate,
+                TargetRoute = "/daily-entries/sale",
+                ActionPayload = payload,
+                ReplyText = $"Navigating to sales listing{dateSuffix}."
+            };
+        }
+
+        return new AiAssistantResponse
+        {
+            ActionType = AiActionType.Answer,
+            ReplyText = "I can help you navigate to vouchers, filter listings by date, check account balances, or draft new vouchers. What would you like to do?"
+        };
+    }
+}
