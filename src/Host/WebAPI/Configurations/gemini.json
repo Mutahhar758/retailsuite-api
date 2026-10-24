@@ -1,6 +1,5 @@
 {
   "GeminiSettings": {
-    "ApiKey": "",
     "Model": "gemini-2.5-flash",
     "EmbeddingModel": "text-embedding-004",
     "Endpoint": "https://generativelanguage.googleapis.com/v1beta/models",
