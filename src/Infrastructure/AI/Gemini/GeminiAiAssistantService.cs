@@ -24,6 +24,7 @@ public class GeminiAiAssistantService : IAiAssistantService
     private readonly IContextPrunerService _contextPrunerService;
     private readonly IRepository<ChartOfAccount> _chartOfAccountRepository;
     private readonly IRepository<GlEntry> _glRepository;
+    private readonly IRepository<ItemDetail> _itemRepository;
     private readonly TenantDbContext _tenantDbContext;
     private readonly ILogger<GeminiAiAssistantService> _logger;
     private static readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(40) };
@@ -36,6 +37,7 @@ public class GeminiAiAssistantService : IAiAssistantService
         IContextPrunerService contextPrunerService,
         IRepository<ChartOfAccount> chartOfAccountRepository,
         IRepository<GlEntry> glRepository,
+        IRepository<ItemDetail> itemRepository,
         TenantDbContext tenantDbContext,
         ILogger<GeminiAiAssistantService> logger)
     {
@@ -46,6 +48,7 @@ public class GeminiAiAssistantService : IAiAssistantService
         _contextPrunerService = contextPrunerService;
         _chartOfAccountRepository = chartOfAccountRepository;
         _glRepository = glRepository;
+        _itemRepository = itemRepository;
         _tenantDbContext = tenantDbContext;
         _logger = logger;
     }
@@ -171,6 +174,14 @@ public class GeminiAiAssistantService : IAiAssistantService
             "Filters and navigates to the sales listing screen by date range, customer, or invoice number.",
             """{"type":"object","properties":{"fromDate":{"type":"string","description":"Start date YYYY-MM-DD"},"toDate":{"type":"string","description":"End date YYYY-MM-DD"},"customerId":{"type":"string","description":"Customer ID"}}}""");
 
+        EnsureToolAvailable(targetedTools, "search_item", "search_item",
+            "Searches inventory products and items by names, keywords, or barcodes to resolve item ID and name.",
+            """{"type":"object","properties":{"names":{"type":"array","items":{"type":"string"},"description":"List of possible item names, keywords, or variations (e.g. ['milk', 'milk pack'])"},"name":{"type":"string","description":"Item name to search"}}}""");
+
+        EnsureToolAvailable(targetedTools, "navigate_to_report", "navigate_to_report",
+            "Navigates to a specific business or accounting report in RetailSuite with pre-filled parameters (dates, accounts, items, filters).",
+            """{"type":"object","properties":{"reportType":{"type":"string","enum":["account_statement","account_statement_with_due","account_balance","trial_balance","stock_balance","item_ledger","income_summary","balance_sheet","customer_balance_recovery","profit_by_customer","profit_by_item","purchase_supply_comparison","customer_bill","manufacturing"],"description":"Type of report to open: 'account_statement' (general ledger/account khata), 'account_statement_with_due', 'account_balance' (schedule of account balances), 'trial_balance', 'stock_balance', 'item_ledger' (product movement), 'income_summary' (P&L/income), 'balance_sheet', 'customer_balance_recovery', 'profit_by_customer', 'profit_by_item', 'purchase_supply_comparison', 'customer_bill', 'manufacturing'"},"account":{"type":"string","description":"Resolved account ID/number for account-based reports (account_statement, account_balance, customer_balance_recovery, customer_bill)"},"accountTitle":{"type":"string","description":"Display name/title of the account"},"item":{"type":"string","description":"Resolved item ID for item-based reports (item_ledger, manufacturing, purchase_supply_comparison)"},"itemTitle":{"type":"string","description":"Display title of the item"},"category":{"type":"string","description":"Category code for stock balance"},"fromDate":{"type":"string","description":"Start date YYYY-MM-DD"},"toDate":{"type":"string","description":"End date YYYY-MM-DD"},"dateBasis":{"type":"string","enum":["VoucherDate","ClearingDate"],"description":"Date basis for filtering (default VoucherDate)"},"stockFilter":{"type":"string","enum":["All","Zero","Negative","Positive"],"description":"Stock balance filter"},"balanceFilter":{"type":"string","enum":["All","HasBalance","ZeroBalance","NegativeBalance"],"description":"Customer recovery filter"}},"required":["reportType"]}""");
+
         // 3. Prune and scrub conversational history
         var prunedHistory = _contextPrunerService.PruneAndScrubHistory(request.History);
 
@@ -201,9 +212,14 @@ Active Tenant ID: {_currentTenant.Id ?? "default"}.
 Current Screen Route: {request.CurrentRoute ?? "/"}.
 
 CAPABILITIES & RULES:
-1. Navigation: When user asks to go to or view a list (e.g. payment listing, receipt listing, sales):
-   - Call the appropriate filter/navigation tool (filter_payment_listing, filter_receipt_listing, filter_sale_listing).
-   - Calculate explicit YYYY-MM-DD dates for relative terms like 'today', 'yesterday', 'this month', 'last week'.
+1. Navigation & Reports:
+   - When user asks to view, open, or navigate to ANY report or statement (e.g. 'show account statement of ABC from 1st Oct', 'open trial balance for this month', 'stock report dikhao', 'item ledger of Milk Pack', 'customer recovery report', 'show balance sheet as of today', 'profit by customer', 'income summary'):
+     a) For Account Statement, Account Balance, or Customer Recovery: If an account/customer/vendor name is mentioned, FIRST call search_account or search_vendor to resolve the exact account ID.
+     b) For Item Ledger or Manufacturing: If an item/product name is mentioned, FIRST call search_item to resolve the exact item ID.
+     c) Then call `navigate_to_report` with the resolved `reportType`, `account`, `item`, explicit YYYY-MM-DD `fromDate`/`toDate` (calculate from 'today', 'yesterday', 'this month', 'last month', 'this year'), and filters.
+   - When user asks to go to or view a list (e.g. payment listing, receipt listing, sales):
+     Call filter_payment_listing, filter_receipt_listing, or filter_sale_listing.
+     Calculate explicit YYYY-MM-DD dates for relative terms like 'today', 'yesterday', 'this month', 'last week'.
 2. Balance Inquiries & Search: When user asks for the balance of any customer, vendor, bank, cash, or expense account (e.g., 'what is the balance of test account?', 'kitna balance hai?'):
    - Call search_account or search_vendor with includeBalance=true.
    - ALWAYS provide multiple possible names/variations in the `names` array (for instance, if user asks for 'test account', pass names: ['test', 'test account']; if user asks for 'ABC vendor', pass names: ['ABC', 'ABC vendor']) so all matching accounts are retrieved in the very first turn!
@@ -213,10 +229,11 @@ CAPABILITIES & RULES:
    - Receipts: When user asks to record received money or create a receipt voucher, FIRST call search_account or search_vendor to resolve customer/account ID, then call draft_receipt_voucher.
 4. Language & Presentation:
    - STRICT LANGUAGE MATCH: You must detect and reply in the EXACT language of the user's latest message.
-   - If user asks in English (e.g. 'what is balance of test account', 'show receipt vouchers'), reply 100% in English. NEVER mix Roman Urdu or Hindi words (such as 'kya aap', 'taake', 'shukriya', 'mazeed').
-   - If user asks in Roman Urdu (e.g. 'test ka balance kitna hai', 'payment voucher dikhao'), reply in Roman Urdu.
+   - If user asks in English (e.g. 'what is balance of test account', 'show receipt vouchers', 'open account statement'), reply 100% in English. NEVER mix Roman Urdu or Hindi words (such as 'kya aap', 'taake', 'shukriya', 'mazeed').
+   - If user asks in Roman Urdu (e.g. 'test ka balance kitna hai', 'payment voucher dikhao', 'khata dikhao'), reply in Roman Urdu.
    - If user asks in Urdu script (e.g. 'بیلنس بتائیں'), reply in Urdu script.
    - Visual presentation: Always format lists using markdown bullet points (- ) and bold account names or key figures (**name**, **Rs. 500**).
+   - When navigating to a report, give a concise confirmation indicating the report opened, the account or item (if any), and the applied date range.
    - Keep spoken replies concise, friendly, and natural for text-to-speech.
 5. Human in the loop: Do not claim you saved vouchers permanently; state that you have drafted it for their review.";
 
@@ -314,6 +331,20 @@ CAPABILITIES & RULES:
             var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
             using var doc = JsonDocument.Parse(responseJson);
 
+            int? inputTokens = null;
+            int? outputTokens = null;
+            int? totalTokens = null;
+
+            if (doc.RootElement.TryGetProperty("usageMetadata", out var usageEl))
+            {
+                if (usageEl.TryGetProperty("promptTokenCount", out var pt) && pt.TryGetInt32(out var ptVal))
+                    inputTokens = ptVal;
+                if (usageEl.TryGetProperty("candidatesTokenCount", out var ct) && ct.TryGetInt32(out var ctVal))
+                    outputTokens = ctVal;
+                if (usageEl.TryGetProperty("totalTokenCount", out var tt) && tt.TryGetInt32(out var ttVal))
+                    totalTokens = ttVal;
+            }
+
             var candidates = doc.RootElement.GetProperty("candidates");
             if (candidates.GetArrayLength() == 0)
             {
@@ -332,6 +363,9 @@ CAPABILITIES & RULES:
                     StatusCode = (int)response.StatusCode,
                     IsSuccess = false,
                     DurationMs = stopwatch.ElapsedMilliseconds,
+                    InputTokens = inputTokens,
+                    OutputTokens = outputTokens,
+                    TotalTokens = totalTokens,
                     ErrorMessage = "No candidates returned by Gemini.",
                     CreatedAt = DateTime.UtcNow
                 }, cancellationToken);
@@ -383,6 +417,9 @@ CAPABILITIES & RULES:
                 IsSuccess = true,
                 DurationMs = stopwatch.ElapsedMilliseconds,
                 ToolCalls = string.IsNullOrEmpty(rawFnName) ? null : rawFnName,
+                InputTokens = inputTokens,
+                OutputTokens = outputTokens,
+                TotalTokens = totalTokens,
                 CreatedAt = DateTime.UtcNow
             }, cancellationToken);
 
@@ -445,6 +482,69 @@ CAPABILITIES & RULES:
                     });
 
                     continue;
+                }
+
+                if (fnName == "search_item")
+                {
+                    var itemNames = ExtractNamesFromArgs(args);
+                    var items = await SearchItemsAsync(itemNames, cancellationToken);
+
+                    contents.Add(modelTurnContent!);
+
+                    contents.Add(new
+                    {
+                        role = "user",
+                        parts = new object[]
+                        {
+                            new
+                            {
+                                functionResponse = new
+                                {
+                                    name = rawFnName,
+                                    response = new { results = items }
+                                }
+                            }
+                        }
+                    });
+
+                    continue;
+                }
+
+                if (fnName == "navigate_to_report")
+                {
+                    var reportType = args.TryGetProperty("reportType", out var rt) ? rt.GetString() : "";
+                    var targetRoute = reportType switch
+                    {
+                        "account_statement" => "/reports/account-statement",
+                        "account_statement_with_due" => "/reports/account-statement-with-due",
+                        "account_balance" => "/reports/account-balance",
+                        "trial_balance" => "/reports/trial-balance",
+                        "stock_balance" => "/reports/stock-balance",
+                        "item_ledger" => "/reports/item-ledger",
+                        "income_summary" => "/reports/income-summary",
+                        "balance_sheet" => "/reports/balance-sheet",
+                        "customer_balance_recovery" => "/reports/customer-balance-recovery",
+                        "profit_by_customer" => "/reports/profit-by-customer",
+                        "profit_by_item" => "/reports/profit-by-item",
+                        "purchase_supply_comparison" => "/reports/purchase-supply-comparison",
+                        "customer_bill" => "/reports/customer-bill",
+                        "manufacturing" => "/reports/manufacturing",
+                        _ => "/reports/account-statement"
+                    };
+
+                    var payload = JsonSerializer.Deserialize<Dictionary<string, object>>(args.GetRawText()) ?? new();
+
+                    var speech = !string.IsNullOrWhiteSpace(modelText)
+                        ? modelText
+                        : "Navigating to your requested report.";
+
+                    return new AiAssistantResponse
+                    {
+                        ActionType = AiActionType.Navigate,
+                        TargetRoute = targetRoute,
+                        ActionPayload = payload,
+                        ReplyText = speech
+                    };
                 }
 
                 // If it's a client action tool:
@@ -705,6 +805,43 @@ CAPABILITIES & RULES:
             });
         }
         return results;
+    }
+
+    private async Task<List<object>> SearchItemsAsync(List<string> names, CancellationToken cancellationToken)
+    {
+        if (names == null || names.Count == 0) return new List<object>();
+
+        var foundItems = new Dictionary<string, (string title, decimal price)>();
+
+        foreach (var rawName in names)
+        {
+            var keyword = rawName.Trim().ToLowerInvariant();
+            if (string.IsNullOrEmpty(keyword)) continue;
+
+            var matches = await _itemRepository.GetAll()
+                .AsNoTracking()
+                .Where(x => x.Title.ToLower().Contains(keyword) || (x.Barcode != null && x.Barcode.ToLower().Contains(keyword)) || (x.ItemKey != null && x.ItemKey.ToLower().Contains(keyword)))
+                .Take(6)
+                .Select(x => new { id = x.Id, title = x.Title, price = x.PriRate })
+                .ToListAsync(cancellationToken);
+
+            foreach (var m in matches)
+            {
+                if (!foundItems.ContainsKey(m.id))
+                {
+                    foundItems[m.id] = (m.title, m.price);
+                }
+            }
+
+            if (foundItems.Count >= 10) break;
+        }
+
+        return foundItems.Select(x => (object)new
+        {
+            id = x.Key,
+            title = x.Value.title,
+            price = x.Value.price
+        }).Take(10).ToList();
     }
 
     private static void EnsureToolAvailable(List<AiTool> tools, string id, string name, string description, string schema)

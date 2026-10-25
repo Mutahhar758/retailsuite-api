@@ -77,6 +77,9 @@ public class TenantDbContext : EFCoreStoreDbContext<Domain.Multitenancy.TenantIn
             entity.Property(t => t.RequestBody).HasColumnType("text").IsRequired();
             entity.Property(t => t.ResponseBody).HasColumnType("text");
             entity.Property(t => t.ToolCalls).HasMaxLength(512);
+            entity.Property(t => t.InputTokens);
+            entity.Property(t => t.OutputTokens);
+            entity.Property(t => t.TotalTokens);
             entity.Property(t => t.ErrorMessage).HasColumnType("text");
             entity.HasIndex(t => t.CorrelationId);
             entity.HasIndex(t => t.CreatedAt);

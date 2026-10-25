@@ -134,6 +134,10 @@ namespace Migrators.PostgreSQL.Migrations.Tenant
                         .HasColumnType("text")
                         .HasColumnName("error_message");
 
+                    b.Property<int?>("InputTokens")
+                        .HasColumnType("integer")
+                        .HasColumnName("input_tokens");
+
                     b.Property<bool>("IsSuccess")
                         .HasColumnType("boolean")
                         .HasColumnName("is_success");
@@ -143,6 +147,10 @@ namespace Migrators.PostgreSQL.Migrations.Tenant
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)")
                         .HasColumnName("model");
+
+                    b.Property<int?>("OutputTokens")
+                        .HasColumnType("integer")
+                        .HasColumnName("output_tokens");
 
                     b.Property<string>("Prompt")
                         .HasMaxLength(2048)
@@ -177,6 +185,10 @@ namespace Migrators.PostgreSQL.Migrations.Tenant
                         .HasMaxLength(512)
                         .HasColumnType("character varying(512)")
                         .HasColumnName("tool_calls");
+
+                    b.Property<int?>("TotalTokens")
+                        .HasColumnType("integer")
+                        .HasColumnName("total_tokens");
 
                     b.Property<int>("TurnIndex")
                         .HasColumnType("integer")

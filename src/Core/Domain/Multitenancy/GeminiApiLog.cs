@@ -18,6 +18,9 @@ public class GeminiApiLog
     public bool IsSuccess { get; set; }
     public long DurationMs { get; set; }
     public string? ToolCalls { get; set; }
+    public int? InputTokens { get; set; }
+    public int? OutputTokens { get; set; }
+    public int? TotalTokens { get; set; }
     public string? ErrorMessage { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
