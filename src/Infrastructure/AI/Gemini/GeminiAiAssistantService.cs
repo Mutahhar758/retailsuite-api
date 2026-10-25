@@ -468,9 +468,10 @@ CAPABILITIES & RULES:
     {
         if (string.IsNullOrWhiteSpace(name)) return new List<object>();
 
+        var pattern = name.Trim().ToLower();
         var query = _chartOfAccountRepository.GetAll()
             .AsNoTracking()
-            .Where(x => x.AccLevel == 5 && (EF.Functions.ILike(x.Title, $"%{name}%") || EF.Functions.ILike(x.Id, $"%{name}%")))
+            .Where(x => x.AccLevel == 5 && (x.Title!.ToLower().Contains(pattern) || x.Id.ToLower().Contains(pattern)))
             .Take(5);
 
         var list = await query.Select(x => new { id = x.Id, name = x.Title }).ToListAsync(cancellationToken);
@@ -508,9 +509,10 @@ CAPABILITIES & RULES:
     {
         if (string.IsNullOrWhiteSpace(name)) return new List<object>();
 
+        var pattern = name.Trim().ToLower();
         var query = _chartOfAccountRepository.GetAll()
             .AsNoTracking()
-            .Where(x => x.AccLevel == 5 && (EF.Functions.ILike(x.Title, $"%{name}%") || EF.Functions.ILike(x.Id, $"%{name}%")))
+            .Where(x => x.AccLevel == 5 && (x.Title!.ToLower().Contains(pattern) || x.Id.ToLower().Contains(pattern)))
             .Take(5);
 
         var list = await query.Select(x => new { id = x.Id, name = x.Title }).ToListAsync(cancellationToken);
