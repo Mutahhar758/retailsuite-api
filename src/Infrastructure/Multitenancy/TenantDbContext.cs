@@ -8,6 +8,7 @@ namespace Retailer.Infrastructure.Multitenancy;
 public class TenantDbContext : EFCoreStoreDbContext<Domain.Multitenancy.TenantInfo>
 {
     public DbSet<AiTool> AiTools => Set<AiTool>();
+    public DbSet<GeminiApiLog> GeminiApiLogs => Set<GeminiApiLog>();
 
     public TenantDbContext(DbContextOptions<TenantDbContext> options)
         : base(options)
@@ -59,6 +60,27 @@ public class TenantDbContext : EFCoreStoreDbContext<Domain.Multitenancy.TenantIn
             entity.HasIndex(t => t.Embedding).HasMethod("hnsw").HasOperators("vector_cosine_ops");
             entity.HasIndex(t => t.RouteHint);
             entity.HasIndex(t => t.Category);
+        });
+
+        modelBuilder.Entity<GeminiApiLog>(entity =>
+        {
+            entity.ToTable("GeminiApiLogs");
+            entity.HasKey(t => t.Id);
+            entity.Property(t => t.CorrelationId).HasMaxLength(64).IsRequired();
+            entity.Property(t => t.TenantId).HasMaxLength(64);
+            entity.Property(t => t.UserId).HasMaxLength(64);
+            entity.Property(t => t.Source).HasMaxLength(64).IsRequired();
+            entity.Property(t => t.Model).HasMaxLength(128).IsRequired();
+            entity.Property(t => t.Endpoint).HasMaxLength(512).IsRequired();
+            entity.Property(t => t.Prompt).HasMaxLength(2048);
+            entity.Property(t => t.CurrentRoute).HasMaxLength(256);
+            entity.Property(t => t.RequestBody).HasColumnType("text").IsRequired();
+            entity.Property(t => t.ResponseBody).HasColumnType("text");
+            entity.Property(t => t.ToolCalls).HasMaxLength(512);
+            entity.Property(t => t.ErrorMessage).HasColumnType("text");
+            entity.HasIndex(t => t.CorrelationId);
+            entity.HasIndex(t => t.CreatedAt);
+            entity.HasIndex(t => t.TenantId);
         });
     }
 }

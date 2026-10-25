@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -10,6 +11,7 @@ using Retailer.Domain.Legacy;
 using Retailer.Domain.Multitenancy;
 using Retailer.Infrastructure.AI.ContextPruner;
 using Retailer.Infrastructure.AI.ToolRouter;
+using Retailer.Infrastructure.Multitenancy;
 
 namespace Retailer.Infrastructure.AI.Gemini;
 
@@ -22,6 +24,7 @@ public class GeminiAiAssistantService : IAiAssistantService
     private readonly IContextPrunerService _contextPrunerService;
     private readonly IRepository<ChartOfAccount> _chartOfAccountRepository;
     private readonly IRepository<GlEntry> _glRepository;
+    private readonly TenantDbContext _tenantDbContext;
     private readonly ILogger<GeminiAiAssistantService> _logger;
     private static readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(40) };
 
@@ -33,6 +36,7 @@ public class GeminiAiAssistantService : IAiAssistantService
         IContextPrunerService contextPrunerService,
         IRepository<ChartOfAccount> chartOfAccountRepository,
         IRepository<GlEntry> glRepository,
+        TenantDbContext tenantDbContext,
         ILogger<GeminiAiAssistantService> logger)
     {
         _config = config;
@@ -42,6 +46,7 @@ public class GeminiAiAssistantService : IAiAssistantService
         _contextPrunerService = contextPrunerService;
         _chartOfAccountRepository = chartOfAccountRepository;
         _glRepository = glRepository;
+        _tenantDbContext = tenantDbContext;
         _logger = logger;
     }
 
@@ -52,9 +57,11 @@ public class GeminiAiAssistantService : IAiAssistantService
             return new AiAssistantResponse { Success = false, ErrorMessage = "Prompt cannot be empty.", ReplyText = "Prompt cannot be empty." };
         }
 
+        var correlationId = Guid.NewGuid().ToString("N");
+
         try
         {
-            return await ExecuteAgentLoopAsync(request, cancellationToken);
+            return await ExecuteAgentLoopAsync(request, correlationId, cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -98,7 +105,7 @@ public class GeminiAiAssistantService : IAiAssistantService
         }
     }
 
-    private async Task<AiAssistantResponse> ExecuteAgentLoopAsync(AiAssistantRequest request, CancellationToken cancellationToken)
+    private async Task<AiAssistantResponse> ExecuteAgentLoopAsync(AiAssistantRequest request, string correlationId, CancellationToken cancellationToken)
     {
         var geminiSection = _config.GetSection("GeminiSettings");
         var apiKey = new[]
@@ -130,6 +137,7 @@ public class GeminiAiAssistantService : IAiAssistantService
 
         var baseEndpoint = (geminiSection["Endpoint"] ?? "https://generativelanguage.googleapis.com/v1beta/models").TrimEnd('/');
         var endpoint = $"{baseEndpoint}/{model}:generateContent?key={apiKey}";
+        var cleanEndpoint = $"{baseEndpoint}/{model}:generateContent";
 
         // Fast In-Memory / Database Tool Routing without blocking on slow embedding network calls
         var targetedTools = await _toolRouterService.GetTargetedToolsAsync(request.CurrentRoute, null, request.Prompt, cancellationToken);
@@ -231,10 +239,14 @@ CAPABILITIES & RULES:
             parts = new[] { new { text = $"[Current Screen: {request.CurrentRoute ?? "/"}{activeFilterSummary}] {request.Prompt}" } }
         });
 
-        // 5. Agentic Recursive Loop (up to 2 tool execution turns)
-        int maxLoopTurns = 2;
+        // 5. Agentic Recursive Loop (up to 5 tool execution turns)
+        int maxLoopTurns = 5;
+        int turnIndex = 0;
+        string? lastModelText = null;
+
         while (maxLoopTurns-- > 0)
         {
+            turnIndex++;
             var requestBody = new
             {
                 contents,
@@ -253,13 +265,37 @@ CAPABILITIES & RULES:
                 }
             };
 
-            var jsonContent = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");
+            var requestJson = JsonSerializer.Serialize(requestBody);
+            var jsonContent = new StringContent(requestJson, Encoding.UTF8, "application/json");
+
+            var stopwatch = Stopwatch.StartNew();
             var response = await _httpClient.PostAsync(endpoint, jsonContent, cancellationToken);
+            stopwatch.Stop();
 
             if (!response.IsSuccessStatusCode)
             {
                 var error = await response.Content.ReadAsStringAsync(cancellationToken);
                 _logger.LogError("Gemini API error ({StatusCode}): {Error}", response.StatusCode, error);
+
+                await LogGeminiApiCallAsync(new GeminiApiLog
+                {
+                    CorrelationId = correlationId,
+                    TenantId = _currentTenant?.Id,
+                    Source = "AiAssistant",
+                    TurnIndex = turnIndex,
+                    Model = model,
+                    Endpoint = cleanEndpoint,
+                    Prompt = request.Prompt,
+                    CurrentRoute = request.CurrentRoute,
+                    RequestBody = requestJson,
+                    ResponseBody = error,
+                    StatusCode = (int)response.StatusCode,
+                    IsSuccess = false,
+                    DurationMs = stopwatch.ElapsedMilliseconds,
+                    ErrorMessage = error,
+                    CreatedAt = DateTime.UtcNow
+                }, cancellationToken);
+
                 return new AiAssistantResponse
                 {
                     Success = false,
@@ -274,6 +310,25 @@ CAPABILITIES & RULES:
             var candidates = doc.RootElement.GetProperty("candidates");
             if (candidates.GetArrayLength() == 0)
             {
+                await LogGeminiApiCallAsync(new GeminiApiLog
+                {
+                    CorrelationId = correlationId,
+                    TenantId = _currentTenant?.Id,
+                    Source = "AiAssistant",
+                    TurnIndex = turnIndex,
+                    Model = model,
+                    Endpoint = cleanEndpoint,
+                    Prompt = request.Prompt,
+                    CurrentRoute = request.CurrentRoute,
+                    RequestBody = requestJson,
+                    ResponseBody = responseJson,
+                    StatusCode = (int)response.StatusCode,
+                    IsSuccess = false,
+                    DurationMs = stopwatch.ElapsedMilliseconds,
+                    ErrorMessage = "No candidates returned by Gemini.",
+                    CreatedAt = DateTime.UtcNow
+                }, cancellationToken);
+
                 return new AiAssistantResponse { Success = false, ErrorMessage = "No response from Gemini." };
             }
 
@@ -288,6 +343,10 @@ CAPABILITIES & RULES:
                 if (part.TryGetProperty("text", out var textEl))
                 {
                     modelText = textEl.GetString();
+                    if (!string.IsNullOrWhiteSpace(modelText))
+                    {
+                        lastModelText = modelText;
+                    }
                 }
 
                 if (part.TryGetProperty("functionCall", out var fnEl))
@@ -296,11 +355,34 @@ CAPABILITIES & RULES:
                 }
             }
 
+            var rawFnName = functionCall.HasValue && functionCall.Value.TryGetProperty("name", out var nameProp)
+                ? nameProp.GetString() ?? ""
+                : "";
+            var fnName = rawFnName.Contains(':') ? rawFnName.Split(':').Last() : rawFnName;
+
+            await LogGeminiApiCallAsync(new GeminiApiLog
+            {
+                CorrelationId = correlationId,
+                TenantId = _currentTenant?.Id,
+                Source = "AiAssistant",
+                TurnIndex = turnIndex,
+                Model = model,
+                Endpoint = cleanEndpoint,
+                Prompt = request.Prompt,
+                CurrentRoute = request.CurrentRoute,
+                RequestBody = requestJson,
+                ResponseBody = responseJson,
+                StatusCode = (int)response.StatusCode,
+                IsSuccess = true,
+                DurationMs = stopwatch.ElapsedMilliseconds,
+                ToolCalls = string.IsNullOrEmpty(rawFnName) ? null : rawFnName,
+                CreatedAt = DateTime.UtcNow
+            }, cancellationToken);
+
             // If Gemini invoked a function call
             if (functionCall.HasValue)
             {
                 var modelTurnContent = JsonSerializer.Deserialize<object>(candidate.GetProperty("content").GetRawText());
-                var fnName = functionCall.Value.GetProperty("name").GetString();
                 var args = functionCall.Value.GetProperty("args");
 
                 // Check if it's a backend read tool
@@ -321,7 +403,7 @@ CAPABILITIES & RULES:
                             {
                                 functionResponse = new
                                 {
-                                    name = fnName,
+                                    name = rawFnName,
                                     response = new { results = vendors }
                                 }
                             }
@@ -348,7 +430,7 @@ CAPABILITIES & RULES:
                             {
                                 functionResponse = new
                                 {
-                                    name = fnName,
+                                    name = rawFnName,
                                     response = new { results = accounts }
                                 }
                             }
@@ -436,19 +518,37 @@ CAPABILITIES & RULES:
             }
 
             // Normal conversational answer (e.g. balance inquiry answered)
-            return new AiAssistantResponse
+            if (!string.IsNullOrWhiteSpace(modelText))
             {
-                ActionType = AiActionType.Answer,
-                ReplyText = modelText ?? "I've processed your request."
-            };
+                return new AiAssistantResponse
+                {
+                    ActionType = AiActionType.Answer,
+                    ReplyText = modelText
+                };
+            }
         }
 
         return new AiAssistantResponse
         {
-            Success = false,
+            Success = !string.IsNullOrWhiteSpace(lastModelText),
             ActionType = AiActionType.Answer,
-            ReplyText = "Gemini AI did not return a valid response."
+            ReplyText = !string.IsNullOrWhiteSpace(lastModelText)
+                ? lastModelText
+                : "I've processed your request. Please check your accounts or try rephrasing."
         };
+    }
+
+    private async Task LogGeminiApiCallAsync(GeminiApiLog log, CancellationToken cancellationToken)
+    {
+        try
+        {
+            _tenantDbContext.GeminiApiLogs.Add(log);
+            await _tenantDbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to persist GeminiApiLog (Turn {Turn})", log.TurnIndex);
+        }
     }
 
     private async Task<List<object>> SearchVendorsAsync(string name, bool includeBalance, CancellationToken cancellationToken)

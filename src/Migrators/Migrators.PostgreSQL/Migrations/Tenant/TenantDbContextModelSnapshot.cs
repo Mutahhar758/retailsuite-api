@@ -98,6 +98,110 @@ namespace Migrators.PostgreSQL.Migrations.Tenant
                     b.ToTable("AiTools", (string)null);
                 });
 
+            modelBuilder.Entity("Retailer.Domain.Multitenancy.GeminiApiLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("CorrelationId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("correlation_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CurrentRoute")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("current_route");
+
+                    b.Property<long>("DurationMs")
+                        .HasColumnType("bigint")
+                        .HasColumnName("duration_ms");
+
+                    b.Property<string>("Endpoint")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)")
+                        .HasColumnName("endpoint");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasColumnType("text")
+                        .HasColumnName("error_message");
+
+                    b.Property<bool>("IsSuccess")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_success");
+
+                    b.Property<string>("Model")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("model");
+
+                    b.Property<string>("Prompt")
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)")
+                        .HasColumnName("prompt");
+
+                    b.Property<string>("RequestBody")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("request_body");
+
+                    b.Property<string>("ResponseBody")
+                        .HasColumnType("text")
+                        .HasColumnName("response_body");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("source");
+
+                    b.Property<int>("StatusCode")
+                        .HasColumnType("integer")
+                        .HasColumnName("status_code");
+
+                    b.Property<string>("TenantId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("ToolCalls")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)")
+                        .HasColumnName("tool_calls");
+
+                    b.Property<int>("TurnIndex")
+                        .HasColumnType("integer")
+                        .HasColumnName("turn_index");
+
+                    b.Property<string>("UserId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_gemini_api_logs");
+
+                    b.HasIndex("CorrelationId")
+                        .HasDatabaseName("ix_gemini_api_logs_correlation_id");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("ix_gemini_api_logs_created_at");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_gemini_api_logs_tenant_id");
+
+                    b.ToTable("GeminiApiLogs", (string)null);
+                });
+
             modelBuilder.Entity("Retailer.Domain.Multitenancy.TenantInfo", b =>
                 {
                     b.Property<string>("Id")
