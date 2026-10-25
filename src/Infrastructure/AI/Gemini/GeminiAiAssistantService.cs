@@ -75,27 +75,27 @@ public class GeminiAiAssistantService : IAiAssistantService
         }
         catch (TaskCanceledException ex)
         {
-            _logger.LogError(ex, "Gemini API request timed out after {Timeout} seconds.", _httpClient.Timeout.TotalSeconds);
+            _logger.LogError(ex, "AI request timed out after {Timeout} seconds.", _httpClient.Timeout.TotalSeconds);
             return new AiAssistantResponse
             {
                 Success = false,
-                ErrorMessage = $"Gemini AI request timed out after {_httpClient.Timeout.TotalSeconds} seconds.",
-                ReplyText = "Gemini AI service timed out. Please try again."
+                ErrorMessage = $"AI request timed out after {_httpClient.Timeout.TotalSeconds} seconds.",
+                ReplyText = "AI service timed out. Please try again."
             };
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogError(ex, "HTTP connection error while communicating with Gemini API: {Message}", ex.Message);
+            _logger.LogError(ex, "HTTP connection error while communicating with AI service: {Message}", ex.Message);
             return new AiAssistantResponse
             {
                 Success = false,
-                ErrorMessage = $"Gemini API connection error: {ex.Message}",
-                ReplyText = "Could not connect to Gemini AI service. Please check network connection."
+                ErrorMessage = $"AI service connection error: {ex.Message}",
+                ReplyText = "Could not connect to AI service. Please check network connection."
             };
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unexpected error in Gemini AI assistant: {Message}", ex.Message);
+            _logger.LogError(ex, "Unexpected error in AI assistant: {Message}", ex.Message);
             return new AiAssistantResponse
             {
                 Success = false,
@@ -122,12 +122,12 @@ public class GeminiAiAssistantService : IAiAssistantService
 
         if (string.IsNullOrWhiteSpace(apiKey))
         {
-            _logger.LogError("Gemini API key is not configured.");
+            _logger.LogError("AI API key is not configured.");
             return new AiAssistantResponse
             {
                 Success = false,
-                ErrorMessage = "Gemini API key is not configured.",
-                ReplyText = "Gemini API key is not configured. Please set the API key in the server configuration."
+                ErrorMessage = "AI API key is not configured.",
+                ReplyText = "AI service key is not configured. Please set the API key in the server configuration."
             };
         }
 
@@ -144,12 +144,12 @@ public class GeminiAiAssistantService : IAiAssistantService
 
         // Always ensure all core ERP tools are available to Gemini
         EnsureToolAvailable(targetedTools, "search_vendor", "search_vendor",
-            "Searches for vendors/suppliers in database by name. Set includeBalance=true to retrieve their current balance.",
-            """{"type":"object","properties":{"name":{"type":"string","description":"Vendor name to search"},"includeBalance":{"type":"boolean","description":"Include ledger balance"}},"required":["name"]}""");
+            "Searches for vendors/suppliers in database by possible names or keywords. Set includeBalance=true to retrieve their current balance.",
+            """{"type":"object","properties":{"names":{"type":"array","items":{"type":"string"},"description":"List of possible vendor names, search keywords, or variations (e.g. ['test', 'test vendor'])"},"name":{"type":"string","description":"Vendor name or search keyword"},"includeBalance":{"type":"boolean","description":"Include ledger balance"}}}""");
 
         EnsureToolAvailable(targetedTools, "search_account", "search_account",
             "Searches accounts in the Chart of Accounts (customers, vendors, cash, bank). Set includeBalance=true to retrieve current balance.",
-            """{"type":"object","properties":{"name":{"type":"string","description":"Account or customer name to search"},"includeBalance":{"type":"boolean","description":"Include ledger balance"}},"required":["name"]}""");
+            """{"type":"object","properties":{"names":{"type":"array","items":{"type":"string"},"description":"List of possible account names, search keywords, or variations (e.g. ['test', 'test account'])"},"name":{"type":"string","description":"Account or customer name to search"},"includeBalance":{"type":"boolean","description":"Include ledger balance"}}}""");
 
         EnsureToolAvailable(targetedTools, "filter_payment_listing", "filter_payment_listing",
             "Filters and navigates to the payment voucher listing screen by date range, cash/bank account, or voucher number.",
@@ -204,13 +204,20 @@ CAPABILITIES & RULES:
 1. Navigation: When user asks to go to or view a list (e.g. payment listing, receipt listing, sales):
    - Call the appropriate filter/navigation tool (filter_payment_listing, filter_receipt_listing, filter_sale_listing).
    - Calculate explicit YYYY-MM-DD dates for relative terms like 'today', 'yesterday', 'this month', 'last week'.
-2. Balance Inquiries: When user asks for the balance of any customer, vendor, bank, cash, or expense account (e.g., 'what is the balance of X?', 'kitna balance hai?'):
+2. Balance Inquiries & Search: When user asks for the balance of any customer, vendor, bank, cash, or expense account (e.g., 'what is the balance of test account?', 'kitna balance hai?'):
    - Call search_account or search_vendor with includeBalance=true.
+   - ALWAYS provide multiple possible names/variations in the `names` array (for instance, if user asks for 'test account', pass names: ['test', 'test account']; if user asks for 'ABC vendor', pass names: ['ABC', 'ABC vendor']) so all matching accounts are retrieved in the very first turn!
    - Reply directly to the user with the exact account title and balance formatted clearly (e.g., 'The current balance of ABC is Rs. 15,000 (Receivable)').
 3. Data Entry & Drafting:
    - Payments: When user asks to pay or create a payment voucher, FIRST call search_vendor to resolve their ID, then call draft_payment_voucher.
    - Receipts: When user asks to record received money or create a receipt voucher, FIRST call search_account or search_vendor to resolve customer/account ID, then call draft_receipt_voucher.
-4. Language: Seamlessly understand English, Urdu (اردو), and Roman Urdu. Reply in the user's spoken language. Keep spoken replies concise, friendly, and natural for text-to-speech.
+4. Language & Presentation:
+   - STRICT LANGUAGE MATCH: You must detect and reply in the EXACT language of the user's latest message.
+   - If user asks in English (e.g. 'what is balance of test account', 'show receipt vouchers'), reply 100% in English. NEVER mix Roman Urdu or Hindi words (such as 'kya aap', 'taake', 'shukriya', 'mazeed').
+   - If user asks in Roman Urdu (e.g. 'test ka balance kitna hai', 'payment voucher dikhao'), reply in Roman Urdu.
+   - If user asks in Urdu script (e.g. 'بیلنس بتائیں'), reply in Urdu script.
+   - Visual presentation: Always format lists using markdown bullet points (- ) and bold account names or key figures (**name**, **Rs. 500**).
+   - Keep spoken replies concise, friendly, and natural for text-to-speech.
 5. Human in the loop: Do not claim you saved vouchers permanently; state that you have drafted it for their review.";
 
         // Build Contents array
@@ -299,8 +306,8 @@ CAPABILITIES & RULES:
                 return new AiAssistantResponse
                 {
                     Success = false,
-                    ErrorMessage = $"Gemini API error ({response.StatusCode}): {error}",
-                    ReplyText = $"Gemini AI request failed ({response.StatusCode})."
+                    ErrorMessage = $"AI API error ({response.StatusCode}): {error}",
+                    ReplyText = $"AI request failed ({response.StatusCode})."
                 };
             }
 
@@ -388,9 +395,9 @@ CAPABILITIES & RULES:
                 // Check if it's a backend read tool
                 if (fnName == "search_vendor")
                 {
-                    var vendorName = args.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "";
+                    var vendorNames = ExtractNamesFromArgs(args);
                     var includeBal = args.TryGetProperty("includeBalance", out var ib) && ib.GetBoolean();
-                    var vendors = await SearchVendorsAsync(vendorName, includeBal, cancellationToken);
+                    var vendors = await SearchVendorsAsync(vendorNames, includeBal, cancellationToken);
 
                     contents.Add(modelTurnContent!);
 
@@ -415,9 +422,9 @@ CAPABILITIES & RULES:
 
                 if (fnName == "search_account")
                 {
-                    var accountName = args.TryGetProperty("name", out var an) ? an.GetString() ?? "" : "";
+                    var accountNames = ExtractNamesFromArgs(args);
                     var includeBal = args.TryGetProperty("includeBalance", out var ib) && ib.GetBoolean();
-                    var accounts = await SearchAccountsAsync(accountName, includeBal, cancellationToken);
+                    var accounts = await SearchAccountsAsync(accountNames, includeBal, cancellationToken);
 
                     contents.Add(modelTurnContent!);
 
@@ -551,17 +558,65 @@ CAPABILITIES & RULES:
         }
     }
 
-    private async Task<List<object>> SearchVendorsAsync(string name, bool includeBalance, CancellationToken cancellationToken)
+    private static List<string> ExtractNamesFromArgs(JsonElement args)
     {
-        if (string.IsNullOrWhiteSpace(name)) return new List<object>();
+        var names = new List<string>();
+        if (args.TryGetProperty("names", out var namesArray) && namesArray.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var el in namesArray.EnumerateArray())
+            {
+                var s = el.GetString();
+                if (!string.IsNullOrWhiteSpace(s))
+                {
+                    var trimmed = s.Trim();
+                    if (!names.Contains(trimmed)) names.Add(trimmed);
+                }
+            }
+        }
 
-        var pattern = name.Trim().ToLower();
-        var query = _chartOfAccountRepository.GetAll()
-            .AsNoTracking()
-            .Where(x => x.AccLevel == 5 && (x.Title!.ToLower().Contains(pattern) || x.Id.ToLower().Contains(pattern)))
-            .Take(5);
+        if (args.TryGetProperty("name", out var singleName))
+        {
+            var s = singleName.GetString();
+            if (!string.IsNullOrWhiteSpace(s))
+            {
+                var trimmed = s.Trim();
+                if (!names.Contains(trimmed)) names.Add(trimmed);
+            }
+        }
 
-        var list = await query.Select(x => new { id = x.Id, name = x.Title }).ToListAsync(cancellationToken);
+        return names;
+    }
+
+    private async Task<List<object>> SearchVendorsAsync(List<string> names, bool includeBalance, CancellationToken cancellationToken)
+    {
+        if (names == null || names.Count == 0) return new List<object>();
+
+        var foundItems = new Dictionary<string, string>(); // Id -> Title
+
+        foreach (var rawName in names)
+        {
+            var keyword = rawName.Trim().ToLowerInvariant();
+            if (string.IsNullOrEmpty(keyword)) continue;
+
+            var matches = await _chartOfAccountRepository.GetAll()
+                .AsNoTracking()
+                .Where(x => x.AccLevel == 5 && (x.Title!.ToLower().Contains(keyword) || x.Id.ToLower().Contains(keyword)))
+                .Take(6)
+                .Select(x => new { id = x.Id, name = x.Title })
+                .ToListAsync(cancellationToken);
+
+            foreach (var m in matches)
+            {
+                if (!foundItems.ContainsKey(m.id))
+                {
+                    foundItems[m.id] = m.name;
+                }
+            }
+
+            if (foundItems.Count >= 10) break;
+        }
+
+        var list = foundItems.Select(x => new { id = x.Key, name = x.Value }).Take(10).ToList();
         if (!includeBalance)
         {
             return list.Cast<object>().ToList();
@@ -592,17 +647,36 @@ CAPABILITIES & RULES:
         return results;
     }
 
-    private async Task<List<object>> SearchAccountsAsync(string name, bool includeBalance, CancellationToken cancellationToken)
+    private async Task<List<object>> SearchAccountsAsync(List<string> names, bool includeBalance, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(name)) return new List<object>();
+        if (names == null || names.Count == 0) return new List<object>();
 
-        var pattern = name.Trim().ToLower();
-        var query = _chartOfAccountRepository.GetAll()
-            .AsNoTracking()
-            .Where(x => x.AccLevel == 5 && (x.Title!.ToLower().Contains(pattern) || x.Id.ToLower().Contains(pattern)))
-            .Take(5);
+        var foundItems = new Dictionary<string, string>(); // Id -> Title
 
-        var list = await query.Select(x => new { id = x.Id, name = x.Title }).ToListAsync(cancellationToken);
+        foreach (var rawName in names)
+        {
+            var keyword = rawName.Trim().ToLowerInvariant();
+            if (string.IsNullOrEmpty(keyword)) continue;
+
+            var matches = await _chartOfAccountRepository.GetAll()
+                .AsNoTracking()
+                .Where(x => x.AccLevel == 5 && (x.Title!.ToLower().Contains(keyword) || x.Id.ToLower().Contains(keyword)))
+                .Take(6)
+                .Select(x => new { id = x.Id, name = x.Title })
+                .ToListAsync(cancellationToken);
+
+            foreach (var m in matches)
+            {
+                if (!foundItems.ContainsKey(m.id))
+                {
+                    foundItems[m.id] = m.name;
+                }
+            }
+
+            if (foundItems.Count >= 10) break;
+        }
+
+        var list = foundItems.Select(x => new { id = x.Key, name = x.Value }).Take(10).ToList();
         if (!includeBalance)
         {
             return list.Cast<object>().ToList();
