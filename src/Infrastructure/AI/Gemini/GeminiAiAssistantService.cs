@@ -299,6 +299,7 @@ CAPABILITIES & RULES:
             // If Gemini invoked a function call
             if (functionCall.HasValue)
             {
+                var modelTurnContent = JsonSerializer.Deserialize<object>(candidate.GetProperty("content").GetRawText());
                 var fnName = functionCall.Value.GetProperty("name").GetString();
                 var args = functionCall.Value.GetProperty("args");
 
@@ -309,14 +310,7 @@ CAPABILITIES & RULES:
                     var includeBal = args.TryGetProperty("includeBalance", out var ib) && ib.GetBoolean();
                     var vendors = await SearchVendorsAsync(vendorName, includeBal, cancellationToken);
 
-                    contents.Add(new
-                    {
-                        role = "model",
-                        parts = new object[]
-                        {
-                            new { functionCall = new { name = fnName, args = JsonSerializer.Deserialize<object>(args.GetRawText()) } }
-                        }
-                    });
+                    contents.Add(modelTurnContent!);
 
                     contents.Add(new
                     {
@@ -343,14 +337,7 @@ CAPABILITIES & RULES:
                     var includeBal = args.TryGetProperty("includeBalance", out var ib) && ib.GetBoolean();
                     var accounts = await SearchAccountsAsync(accountName, includeBal, cancellationToken);
 
-                    contents.Add(new
-                    {
-                        role = "model",
-                        parts = new object[]
-                        {
-                            new { functionCall = new { name = fnName, args = JsonSerializer.Deserialize<object>(args.GetRawText()) } }
-                        }
-                    });
+                    contents.Add(modelTurnContent!);
 
                     contents.Add(new
                     {
