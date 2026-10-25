@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Retailer.Application.Common.Interfaces;
 
@@ -6,7 +7,6 @@ namespace Retailer.Infrastructure.AI.ContextPruner;
 public class ContextPrunerService : IContextPrunerService
 {
     private static readonly Regex JsonCodeBlockRegex = new(@"```(?:json)?\s*[\{\[][\s\S]*?[\}\]]\s*```", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-    private static readonly Regex FunctionCallBlobsRegex = new(@"\""(?:functionCall|functionResponse)\""\s*:\s*\{[\s\S]*?\}\s*\}", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     public List<AiChatMessage> PruneAndScrubHistory(List<AiChatMessage>? history, int maxTurns = 6)
     {
@@ -21,36 +21,30 @@ public class ContextPrunerService : IContextPrunerService
             .TakeLast(maxTurns)
             .ToList();
 
-        // 2. JSON Scrubbing: remove raw database JSON blobs, functionCall dumps, and JSON code blocks from older turns
+        // 2. Condense previous turns: strip bloated json blocks but preserve short tool execution info
         var result = new List<AiChatMessage>(pruned.Count);
         for (int i = 0; i < pruned.Count; i++)
         {
             var msg = pruned[i];
 
-            // Scrub completed previous turns to retain only natural language conversation
             if (i < pruned.Count - 1)
             {
                 var content = msg.Content;
 
-                // Scrub markdown JSON code blocks: ```json { ... } ```
+                // Scrub large markdown JSON code blocks
                 content = JsonCodeBlockRegex.Replace(content, string.Empty);
 
-                // Scrub functionCall / functionResponse JSON blocks
-                content = FunctionCallBlobsRegex.Replace(content, string.Empty);
-
                 var trimmed = content.Trim();
-                // If content is a raw standalone JSON object or array
+                // If content is a raw JSON payload, summarize key properties compactly instead of wiping it
                 if ((trimmed.StartsWith("{") && trimmed.EndsWith("}")) || (trimmed.StartsWith("[") && trimmed.EndsWith("]")))
                 {
-                    trimmed = "Action processed.";
+                    trimmed = SummarizeJsonShort(trimmed);
                 }
 
-                if (string.IsNullOrWhiteSpace(trimmed))
+                if (!string.IsNullOrWhiteSpace(trimmed))
                 {
-                    trimmed = "Action processed.";
+                    result.Add(new AiChatMessage { Role = msg.Role, Content = trimmed });
                 }
-
-                result.Add(new AiChatMessage { Role = msg.Role, Content = trimmed });
             }
             else
             {
@@ -59,5 +53,38 @@ public class ContextPrunerService : IContextPrunerService
         }
 
         return result;
+    }
+
+    private static string SummarizeJsonShort(string json)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+            if (root.ValueKind == JsonValueKind.Object)
+            {
+                var pairs = new List<string>();
+                foreach (var prop in root.EnumerateObject())
+                {
+                    if (prop.Value.ValueKind is JsonValueKind.String or JsonValueKind.Number or JsonValueKind.True or JsonValueKind.False)
+                    {
+                        var val = prop.Value.ToString();
+                        if (val.Length <= 40)
+                        {
+                            pairs.Add($"{prop.Name}={val}");
+                        }
+                    }
+                    if (pairs.Count >= 4) break;
+                }
+
+                if (pairs.Count > 0)
+                {
+                    return $"[Tool Result: {string.Join(", ", pairs)}]";
+                }
+            }
+        }
+        catch { }
+
+        return "[Tool Executed]";
     }
 }

@@ -125,7 +125,7 @@ public class ToolRouterService : IToolRouterService
         }
 
         // 5. Dependent Helper Tool: If navigate_to_report or draft voucher is selected, ensure search_account or search_vendor is available
-        if (resultTools.ContainsKey("navigate_to_report") && !resultTools.ContainsKey("search_account") && resultTools.Count < 3)
+        if ((resultTools.ContainsKey("navigate_to_report") || resultTools.ContainsKey("draft_receipt_voucher")) && !resultTools.ContainsKey("search_account") && resultTools.Count < 3)
         {
             var searchTool = await _tenantDbContext.AiTools
                 .AsNoTracking()

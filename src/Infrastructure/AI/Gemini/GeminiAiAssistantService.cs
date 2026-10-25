@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -207,7 +208,7 @@ public class GeminiAiAssistantService : IAiAssistantService
 
         if (activeToolNames.Contains("draft_payment_voucher") || activeToolNames.Contains("draft_receipt_voucher"))
         {
-            promptBuilder.AppendLine("- Voucher Drafting: Resolve vendor/customer first, then call draft_payment_voucher or draft_receipt_voucher. Clarify that vouchers are drafted for human review.");
+            promptBuilder.AppendLine("- Voucher Drafting: Resolve vendor/customer first, then call draft_payment_voucher or draft_receipt_voucher.");
         }
 
         if (activeToolNames.Contains("filter_payment_listing") || activeToolNames.Contains("filter_receipt_listing") || activeToolNames.Contains("filter_sale_listing"))
@@ -252,6 +253,9 @@ public class GeminiAiAssistantService : IAiAssistantService
         int maxLoopTurns = 5;
         int turnIndex = 0;
         string? lastModelText = null;
+        AiActionType? pendingActionType = null;
+        string? pendingTargetRoute = null;
+        Dictionary<string, object>? pendingActionPayload = null;
 
         while (maxLoopTurns-- > 0)
         {
@@ -518,103 +522,186 @@ public class GeminiAiAssistantService : IAiAssistantService
                     };
 
                     var payload = JsonSerializer.Deserialize<Dictionary<string, object>>(args.GetRawText()) ?? new();
+                    pendingActionType = AiActionType.Navigate;
+                    pendingTargetRoute = targetRoute;
+                    pendingActionPayload = payload;
 
-                    var speech = !string.IsNullOrWhiteSpace(modelText)
-                        ? modelText
-                        : "Navigating to your requested report.";
-
-                    return new AiAssistantResponse
+                    contents.Add(modelTurnContent!);
+                    contents.Add(new
                     {
-                        ActionType = AiActionType.Navigate,
-                        TargetRoute = targetRoute,
-                        ActionPayload = payload,
-                        ReplyText = speech
-                    };
+                        role = "user",
+                        parts = new object[]
+                        {
+                            new
+                            {
+                                functionResponse = new
+                                {
+                                    name = rawFnName,
+                                    response = new { status = "success", report = reportType, target = targetRoute }
+                                }
+                            }
+                        }
+                    });
+
+                    continue;
                 }
 
                 // If it's a client action tool:
                 if (fnName == "filter_payment_listing")
                 {
-                    var speech = !string.IsNullOrWhiteSpace(modelText)
-                        ? modelText
-                        : "Navigating to payment listing with your requested filters.";
+                    var payload = JsonSerializer.Deserialize<Dictionary<string, object>>(args.GetRawText()) ?? new();
+                    pendingActionType = AiActionType.Navigate;
+                    pendingTargetRoute = "/daily-entries/payment-voucher";
+                    pendingActionPayload = payload;
 
-                    return new AiAssistantResponse
+                    contents.Add(modelTurnContent!);
+                    contents.Add(new
                     {
-                        ActionType = AiActionType.Navigate,
-                        TargetRoute = "/daily-entries/payment-voucher",
-                        ActionPayload = JsonSerializer.Deserialize<Dictionary<string, object>>(args.GetRawText()),
-                        ReplyText = speech
-                    };
+                        role = "user",
+                        parts = new object[]
+                        {
+                            new
+                            {
+                                functionResponse = new
+                                {
+                                    name = rawFnName,
+                                    response = new { status = "success", target = pendingTargetRoute }
+                                }
+                            }
+                        }
+                    });
+
+                    continue;
                 }
 
                 if (fnName == "draft_payment_voucher")
                 {
-                    var speech = !string.IsNullOrWhiteSpace(modelText)
-                        ? modelText
-                        : "I've drafted the payment voucher for you. Please review and save.";
+                    var payload = JsonSerializer.Deserialize<Dictionary<string, object>>(args.GetRawText()) ?? new();
+                    pendingActionType = AiActionType.DraftVoucher;
+                    pendingTargetRoute = "/daily-entries/payment-voucher/new";
+                    pendingActionPayload = payload;
 
-                    return new AiAssistantResponse
+                    contents.Add(modelTurnContent!);
+                    contents.Add(new
                     {
-                        ActionType = AiActionType.DraftVoucher,
-                        TargetRoute = "/daily-entries/payment-voucher/new",
-                        ActionPayload = JsonSerializer.Deserialize<Dictionary<string, object>>(args.GetRawText()),
-                        ReplyText = speech
-                    };
+                        role = "user",
+                        parts = new object[]
+                        {
+                            new
+                            {
+                                functionResponse = new
+                                {
+                                    name = rawFnName,
+                                    response = new
+                                    {
+                                        status = "drafted",
+                                        vendor = payload.GetValueOrDefault("vendorName"),
+                                        amount = payload.GetValueOrDefault("amount")
+                                    }
+                                }
+                            }
+                        }
+                    });
+
+                    continue;
                 }
 
                 if (fnName == "filter_receipt_listing")
                 {
-                    var speech = !string.IsNullOrWhiteSpace(modelText)
-                        ? modelText
-                        : "Navigating to receipt listing with your requested filters.";
+                    var payload = JsonSerializer.Deserialize<Dictionary<string, object>>(args.GetRawText()) ?? new();
+                    pendingActionType = AiActionType.Navigate;
+                    pendingTargetRoute = "/daily-entries/receipt-voucher";
+                    pendingActionPayload = payload;
 
-                    return new AiAssistantResponse
+                    contents.Add(modelTurnContent!);
+                    contents.Add(new
                     {
-                        ActionType = AiActionType.Navigate,
-                        TargetRoute = "/daily-entries/receipt-voucher",
-                        ActionPayload = JsonSerializer.Deserialize<Dictionary<string, object>>(args.GetRawText()),
-                        ReplyText = speech
-                    };
+                        role = "user",
+                        parts = new object[]
+                        {
+                            new
+                            {
+                                functionResponse = new
+                                {
+                                    name = rawFnName,
+                                    response = new { status = "success", target = pendingTargetRoute }
+                                }
+                            }
+                        }
+                    });
+
+                    continue;
                 }
 
                 if (fnName == "draft_receipt_voucher")
                 {
-                    var speech = !string.IsNullOrWhiteSpace(modelText)
-                        ? modelText
-                        : "I've drafted the receipt voucher for you. Please review and save.";
+                    var payload = JsonSerializer.Deserialize<Dictionary<string, object>>(args.GetRawText()) ?? new();
+                    pendingActionType = AiActionType.DraftVoucher;
+                    pendingTargetRoute = "/daily-entries/receipt-voucher/new";
+                    pendingActionPayload = payload;
 
-                    return new AiAssistantResponse
+                    contents.Add(modelTurnContent!);
+                    contents.Add(new
                     {
-                        ActionType = AiActionType.DraftVoucher,
-                        TargetRoute = "/daily-entries/receipt-voucher/new",
-                        ActionPayload = JsonSerializer.Deserialize<Dictionary<string, object>>(args.GetRawText()),
-                        ReplyText = speech
-                    };
+                        role = "user",
+                        parts = new object[]
+                        {
+                            new
+                            {
+                                functionResponse = new
+                                {
+                                    name = rawFnName,
+                                    response = new
+                                    {
+                                        status = "drafted",
+                                        customer = payload.GetValueOrDefault("customerName"),
+                                        amount = payload.GetValueOrDefault("amount")
+                                    }
+                                }
+                            }
+                        }
+                    });
+
+                    continue;
                 }
 
                 if (fnName == "filter_sale_listing")
                 {
-                    var speech = !string.IsNullOrWhiteSpace(modelText)
-                        ? modelText
-                        : "Opening sales records.";
+                    var payload = JsonSerializer.Deserialize<Dictionary<string, object>>(args.GetRawText()) ?? new();
+                    pendingActionType = AiActionType.Navigate;
+                    pendingTargetRoute = "/daily-entries/sale";
+                    pendingActionPayload = payload;
 
-                    return new AiAssistantResponse
+                    contents.Add(modelTurnContent!);
+                    contents.Add(new
                     {
-                        ActionType = AiActionType.Navigate,
-                        TargetRoute = "/daily-entries/sale",
-                        ActionPayload = JsonSerializer.Deserialize<Dictionary<string, object>>(args.GetRawText()),
-                        ReplyText = speech
-                    };
+                        role = "user",
+                        parts = new object[]
+                        {
+                            new
+                            {
+                                functionResponse = new
+                                {
+                                    name = rawFnName,
+                                    response = new { status = "success", target = pendingTargetRoute }
+                                }
+                            }
+                        }
+                    });
+
+                    continue;
                 }
             }
 
-            // Normal conversational answer (e.g. balance inquiry answered)
+            // Normal conversational answer or final response after tool execution
             if (!string.IsNullOrWhiteSpace(modelText))
             {
                 return new AiAssistantResponse
                 {
-                    ActionType = AiActionType.Answer,
+                    Success = true,
+                    ActionType = pendingActionType ?? AiActionType.Answer,
+                    TargetRoute = pendingTargetRoute,
+                    ActionPayload = pendingActionPayload,
                     ReplyText = modelText
                 };
             }
@@ -623,10 +710,12 @@ public class GeminiAiAssistantService : IAiAssistantService
         return new AiAssistantResponse
         {
             Success = !string.IsNullOrWhiteSpace(lastModelText),
-            ActionType = AiActionType.Answer,
+            ActionType = pendingActionType ?? AiActionType.Answer,
+            TargetRoute = pendingTargetRoute,
+            ActionPayload = pendingActionPayload,
             ReplyText = !string.IsNullOrWhiteSpace(lastModelText)
                 ? lastModelText
-                : "I've processed your request. Please check your accounts or try rephrasing."
+                : "Command processed."
         };
     }
 
