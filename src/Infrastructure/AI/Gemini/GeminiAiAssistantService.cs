@@ -142,50 +142,25 @@ public class GeminiAiAssistantService : IAiAssistantService
         var endpoint = $"{baseEndpoint}/{model}:generateContent?key={apiKey}";
         var cleanEndpoint = $"{baseEndpoint}/{model}:generateContent";
 
-        // Fast In-Memory / Database Tool Routing without blocking on slow embedding network calls
+        // Fast In-Memory / Database Tool Routing (Vector search on prompt + screen route anchor)
         var targetedTools = await _toolRouterService.GetTargetedToolsAsync(request.CurrentRoute, null, request.Prompt, cancellationToken);
 
-        // Always ensure all core ERP tools are available to Gemini
-        EnsureToolAvailable(targetedTools, "search_vendor", "search_vendor",
-            "Searches for vendors/suppliers in database by possible names or keywords. Set includeBalance=true to retrieve their current balance.",
-            """{"type":"object","properties":{"names":{"type":"array","items":{"type":"string"},"description":"List of possible vendor names, search keywords, or variations (e.g. ['test', 'test vendor'])"},"name":{"type":"string","description":"Vendor name or search keyword"},"includeBalance":{"type":"boolean","description":"Include ledger balance"}}}""");
+        // Fallback safety if no tools were matched
+        if (targetedTools.Count == 0)
+        {
+            EnsureToolAvailable(targetedTools, "search_account", "search_account",
+                "Searches accounts in the Chart of Accounts (customers, vendors, cash, bank). Set includeBalance=true to retrieve current balance.",
+                """{"type":"object","properties":{"names":{"type":"array","items":{"type":"string"},"description":"List of possible account names, search keywords, or variations"},"name":{"type":"string","description":"Account or customer name to search"},"includeBalance":{"type":"boolean","description":"Include ledger balance"}}}""");
 
-        EnsureToolAvailable(targetedTools, "search_account", "search_account",
-            "Searches accounts in the Chart of Accounts (customers, vendors, cash, bank). Set includeBalance=true to retrieve current balance.",
-            """{"type":"object","properties":{"names":{"type":"array","items":{"type":"string"},"description":"List of possible account names, search keywords, or variations (e.g. ['test', 'test account'])"},"name":{"type":"string","description":"Account or customer name to search"},"includeBalance":{"type":"boolean","description":"Include ledger balance"}}}""");
+            EnsureToolAvailable(targetedTools, "navigate_to_report", "navigate_to_report",
+                "Navigates to a specific business or accounting report in RetailSuite with pre-filled parameters (dates, accounts, items, filters).",
+                """{"type":"object","properties":{"reportType":{"type":"string","description":"Type of report to open: 'account_statement', 'trial_balance', 'stock_balance', 'item_ledger'"},"account":{"type":"string","description":"Resolved account ID"},"fromDate":{"type":"string","description":"Start date YYYY-MM-DD"},"toDate":{"type":"string","description":"End date YYYY-MM-DD"}},"required":["reportType"]}""");
+        }
 
-        EnsureToolAvailable(targetedTools, "filter_payment_listing", "filter_payment_listing",
-            "Filters and navigates to the payment voucher listing screen by date range, cash/bank account, or voucher number.",
-            """{"type":"object","properties":{"fromDate":{"type":"string","description":"Start date YYYY-MM-DD"},"toDate":{"type":"string","description":"End date YYYY-MM-DD"},"cashBankAccount":{"type":"string","description":"Cash/Bank account"},"voucherNo":{"type":"string","description":"Voucher number"}}}""");
-
-        EnsureToolAvailable(targetedTools, "draft_payment_voucher", "draft_payment_voucher",
-            "Drafts a new payment voucher for a vendor, supplier, or expense with pre-filled amount and remarks.",
-            """{"type":"object","properties":{"vendorId":{"type":"string","description":"Resolved Vendor ID"},"vendorName":{"type":"string","description":"Vendor name"},"amount":{"type":"number","description":"Payment amount"},"remarks":{"type":"string","description":"Remarks"},"cashBankAccountId":{"type":"string","description":"Account ID to pay from"}},"required":["amount"]}""");
-
-        EnsureToolAvailable(targetedTools, "filter_receipt_listing", "filter_receipt_listing",
-            "Filters and navigates to the receipt voucher listing screen by date range, cash/bank account, or voucher number.",
-            """{"type":"object","properties":{"fromDate":{"type":"string","description":"Start date YYYY-MM-DD"},"toDate":{"type":"string","description":"End date YYYY-MM-DD"},"cashBankAccount":{"type":"string","description":"Cash/Bank account"},"voucherNo":{"type":"string","description":"Voucher number"}}}""");
-
-        EnsureToolAvailable(targetedTools, "draft_receipt_voucher", "draft_receipt_voucher",
-            "Drafts a new receipt voucher from a customer/debtor with pre-filled amount and remarks.",
-            """{"type":"object","properties":{"customerId":{"type":"string","description":"Customer or account ID"},"customerName":{"type":"string","description":"Customer name"},"amount":{"type":"number","description":"Amount received"},"remarks":{"type":"string","description":"Remarks"},"cashBankAccountId":{"type":"string","description":"Cash/Bank receiving account"}},"required":["amount"]}""");
-
-        EnsureToolAvailable(targetedTools, "filter_sale_listing", "filter_sale_listing",
-            "Filters and navigates to the sales listing screen by date range, customer, or invoice number.",
-            """{"type":"object","properties":{"fromDate":{"type":"string","description":"Start date YYYY-MM-DD"},"toDate":{"type":"string","description":"End date YYYY-MM-DD"},"customerId":{"type":"string","description":"Customer ID"}}}""");
-
-        EnsureToolAvailable(targetedTools, "search_item", "search_item",
-            "Searches inventory products and items by names, keywords, or barcodes to resolve item ID and name.",
-            """{"type":"object","properties":{"names":{"type":"array","items":{"type":"string"},"description":"List of possible item names, keywords, or variations (e.g. ['milk', 'milk pack'])"},"name":{"type":"string","description":"Item name to search"}}}""");
-
-        EnsureToolAvailable(targetedTools, "navigate_to_report", "navigate_to_report",
-            "Navigates to a specific business or accounting report in RetailSuite with pre-filled parameters (dates, accounts, items, filters).",
-            """{"type":"object","properties":{"reportType":{"type":"string","enum":["account_statement","account_statement_with_due","account_balance","trial_balance","stock_balance","item_ledger","income_summary","balance_sheet","customer_balance_recovery","profit_by_customer","profit_by_item","purchase_supply_comparison","customer_bill","manufacturing"],"description":"Type of report to open: 'account_statement' (general ledger/account khata), 'account_statement_with_due', 'account_balance' (schedule of account balances), 'trial_balance', 'stock_balance', 'item_ledger' (product movement), 'income_summary' (P&L/income), 'balance_sheet', 'customer_balance_recovery', 'profit_by_customer', 'profit_by_item', 'purchase_supply_comparison', 'customer_bill', 'manufacturing'"},"account":{"type":"string","description":"Resolved account ID/number for account-based reports (account_statement, account_balance, customer_balance_recovery, customer_bill)"},"accountTitle":{"type":"string","description":"Display name/title of the account"},"item":{"type":"string","description":"Resolved item ID for item-based reports (item_ledger, manufacturing, purchase_supply_comparison)"},"itemTitle":{"type":"string","description":"Display title of the item"},"category":{"type":"string","description":"Category code for stock balance"},"fromDate":{"type":"string","description":"Start date YYYY-MM-DD"},"toDate":{"type":"string","description":"End date YYYY-MM-DD"},"dateBasis":{"type":"string","enum":["VoucherDate","ClearingDate"],"description":"Date basis for filtering (default VoucherDate)"},"stockFilter":{"type":"string","enum":["All","Zero","Negative","Positive"],"description":"Stock balance filter"},"balanceFilter":{"type":"string","enum":["All","HasBalance","ZeroBalance","NegativeBalance"],"description":"Customer recovery filter"}},"required":["reportType"]}""");
-
-        // 3. Prune and scrub conversational history
+        // 3. Prune and scrub conversational history (JSON Scrubber)
         var prunedHistory = _contextPrunerService.PruneAndScrubHistory(request.History);
 
-        // 4. Build Gemini Tool Declarations
+        // 4. Build Gemini Tool Declarations (Only the 2-3 targeted tools)
         var functionDeclarations = new List<object>();
         foreach (var tool in targetedTools)
         {
@@ -206,36 +181,46 @@ public class GeminiAiAssistantService : IAiAssistantService
             }
         }
 
-        var systemInstructions = $@"You are the official voice and text AI Assistant for RetailSuite ERP.
-Current UTC Date: {DateTime.UtcNow:yyyy-MM-dd (dddd)}.
-Active Tenant ID: {_currentTenant.Id ?? "default"}.
-Current Screen Route: {request.CurrentRoute ?? "/"}.
+        // 5. Dynamic Modular System Instructions
+        var activeToolNames = targetedTools.Select(t => t.ToolName).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-CAPABILITIES & RULES:
-1. Navigation & Reports:
-   - When user asks to view, open, or navigate to ANY report or statement (e.g. 'show account statement of ABC from 1st Oct', 'open trial balance for this month', 'stock report dikhao', 'item ledger of Milk Pack', 'customer recovery report', 'show balance sheet as of today', 'profit by customer', 'income summary'):
-     a) For Account Statement, Account Balance, or Customer Recovery: If an account/customer/vendor name is mentioned, FIRST call search_account or search_vendor to resolve the exact account ID.
-     b) For Item Ledger or Manufacturing: If an item/product name is mentioned, FIRST call search_item to resolve the exact item ID.
-     c) Then call `navigate_to_report` with the resolved `reportType`, `account`, `item`, explicit YYYY-MM-DD `fromDate`/`toDate` (calculate from 'today', 'yesterday', 'this month', 'last month', 'this year'), and filters.
-   - When user asks to go to or view a list (e.g. payment listing, receipt listing, sales):
-     Call filter_payment_listing, filter_receipt_listing, or filter_sale_listing.
-     Calculate explicit YYYY-MM-DD dates for relative terms like 'today', 'yesterday', 'this month', 'last week'.
-2. Balance Inquiries & Search: When user asks for the balance of any customer, vendor, bank, cash, or expense account (e.g., 'what is the balance of test account?', 'kitna balance hai?'):
-   - Call search_account or search_vendor with includeBalance=true.
-   - ALWAYS provide multiple possible names/variations in the `names` array (for instance, if user asks for 'test account', pass names: ['test', 'test account']; if user asks for 'ABC vendor', pass names: ['ABC', 'ABC vendor']) so all matching accounts are retrieved in the very first turn!
-   - Reply directly to the user with the exact account title and balance formatted clearly (e.g., 'The current balance of ABC is Rs. 15,000 (Receivable)').
-3. Data Entry & Drafting:
-   - Payments: When user asks to pay or create a payment voucher, FIRST call search_vendor to resolve their ID, then call draft_payment_voucher.
-   - Receipts: When user asks to record received money or create a receipt voucher, FIRST call search_account or search_vendor to resolve customer/account ID, then call draft_receipt_voucher.
-4. Language & Presentation:
-   - STRICT LANGUAGE MATCH: You must detect and reply in the EXACT language of the user's latest message.
-   - If user asks in English (e.g. 'what is balance of test account', 'show receipt vouchers', 'open account statement'), reply 100% in English. NEVER mix Roman Urdu or Hindi words (such as 'kya aap', 'taake', 'shukriya', 'mazeed').
-   - If user asks in Roman Urdu (e.g. 'test ka balance kitna hai', 'payment voucher dikhao', 'khata dikhao'), reply in Roman Urdu.
-   - If user asks in Urdu script (e.g. 'بیلنس بتائیں'), reply in Urdu script.
-   - Visual presentation: Always format lists using markdown bullet points (- ) and bold account names or key figures (**name**, **Rs. 500**).
-   - When navigating to a report, give a concise confirmation indicating the report opened, the account or item (if any), and the applied date range.
-   - Keep spoken replies concise, friendly, and natural for text-to-speech.
-5. Human in the loop: Do not claim you saved vouchers permanently; state that you have drafted it for their review.";
+        var promptBuilder = new StringBuilder();
+        promptBuilder.AppendLine("You are the official voice and text AI Assistant for RetailSuite ERP.");
+        promptBuilder.AppendLine($"Current UTC Date: {DateTime.UtcNow:yyyy-MM-dd (dddd)}.");
+        promptBuilder.AppendLine($"Active Tenant ID: {_currentTenant.Id ?? "default"}.");
+        if (!string.IsNullOrWhiteSpace(request.CurrentRoute))
+        {
+            promptBuilder.AppendLine($"Current Screen: {request.CurrentRoute}.");
+        }
+        promptBuilder.AppendLine("Always reply strictly in the exact same language and script used by the user in their prompt (English, Roman Urdu, Urdu, etc.).");
+        promptBuilder.AppendLine("Format responses cleanly using markdown bullet points and bold key figures or names. Keep spoken replies concise and natural for speech.");
+
+        if (activeToolNames.Contains("navigate_to_report"))
+        {
+            promptBuilder.AppendLine("- Reports & Statements: When user asks to view any statement, transactions, khata, or report, resolve account/item ID first if needed, then call `navigate_to_report` with explicit YYYY-MM-DD dates calculated from relative terms (today, this month, etc.).");
+        }
+
+        if (activeToolNames.Contains("search_account") || activeToolNames.Contains("search_vendor"))
+        {
+            promptBuilder.AppendLine("- Balance & Search: When checking balance or searching accounts/vendors, call `search_account` or `search_vendor` with includeBalance=true and provide multiple name variations in the `names` array.");
+        }
+
+        if (activeToolNames.Contains("draft_payment_voucher") || activeToolNames.Contains("draft_receipt_voucher"))
+        {
+            promptBuilder.AppendLine("- Voucher Drafting: Resolve vendor/customer first, then call draft_payment_voucher or draft_receipt_voucher. Clarify that vouchers are drafted for human review.");
+        }
+
+        if (activeToolNames.Contains("filter_payment_listing") || activeToolNames.Contains("filter_receipt_listing") || activeToolNames.Contains("filter_sale_listing"))
+        {
+            promptBuilder.AppendLine("- Listings: Call the listing filter tool with explicit YYYY-MM-DD dates to navigate to voucher/invoice listings.");
+        }
+
+        if (activeToolNames.Contains("search_item"))
+        {
+            promptBuilder.AppendLine("- Items: Call `search_item` with product keywords to resolve inventory items.");
+        }
+
+        var systemInstructions = promptBuilder.ToString();
 
         // Build Contents array
         var contents = new List<object>();
