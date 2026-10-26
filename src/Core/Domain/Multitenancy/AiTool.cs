@@ -15,4 +15,6 @@ public class AiTool
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
+
+    public ICollection<AiTaskTool> TaskTools { get; set; } = new List<AiTaskTool>();
 }

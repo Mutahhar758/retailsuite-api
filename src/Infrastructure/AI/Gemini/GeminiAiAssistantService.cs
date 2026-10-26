@@ -26,6 +26,7 @@ public class GeminiAiAssistantService : IAiAssistantService
     private readonly IRepository<ChartOfAccount> _chartOfAccountRepository;
     private readonly IRepository<GlEntry> _glRepository;
     private readonly IRepository<ItemDetail> _itemRepository;
+    private readonly IRepository<ItemTransaction> _itemTransactionRepository;
     private readonly TenantDbContext _tenantDbContext;
     private readonly ILogger<GeminiAiAssistantService> _logger;
     private static readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(40) };
@@ -39,6 +40,7 @@ public class GeminiAiAssistantService : IAiAssistantService
         IRepository<ChartOfAccount> chartOfAccountRepository,
         IRepository<GlEntry> glRepository,
         IRepository<ItemDetail> itemRepository,
+        IRepository<ItemTransaction> itemTransactionRepository,
         TenantDbContext tenantDbContext,
         ILogger<GeminiAiAssistantService> logger)
     {
@@ -50,6 +52,7 @@ public class GeminiAiAssistantService : IAiAssistantService
         _chartOfAccountRepository = chartOfAccountRepository;
         _glRepository = glRepository;
         _itemRepository = itemRepository;
+        _itemTransactionRepository = itemTransactionRepository;
         _tenantDbContext = tenantDbContext;
         _logger = logger;
     }
@@ -143,11 +146,12 @@ public class GeminiAiAssistantService : IAiAssistantService
         var endpoint = $"{baseEndpoint}/{model}:generateContent?key={apiKey}";
         var cleanEndpoint = $"{baseEndpoint}/{model}:generateContent";
 
-        // Fast In-Memory / Database Tool Routing (Vector search on prompt + screen route anchor)
-        var targetedTools = await _toolRouterService.GetTargetedToolsAsync(request.CurrentRoute, null, request.Prompt, cancellationToken);
+        // Fast In-Memory / Database Task & Tool Routing (Vector search on task intent + screen route anchor)
+        var routedTask = await _toolRouterService.RouteTaskAsync(request.CurrentRoute, null, request.Prompt, cancellationToken);
+        var targetedTools = routedTask.Tools;
 
-        // Fallback safety if no tools were matched
-        if (targetedTools.Count == 0)
+        // Fallback safety if no tools were matched and not explicitly general assistant
+        if (targetedTools.Count == 0 && routedTask.MatchedTask?.Id != "task_general_assistant")
         {
             EnsureToolAvailable(targetedTools, "search_account", "search_account",
                 "Searches accounts in the Chart of Accounts (customers, vendors, cash, bank). Set includeBalance=true to retrieve current balance.",
@@ -161,7 +165,7 @@ public class GeminiAiAssistantService : IAiAssistantService
         // 3. Prune and scrub conversational history (JSON Scrubber)
         var prunedHistory = _contextPrunerService.PruneAndScrubHistory(request.History);
 
-        // 4. Build Gemini Tool Declarations (Only the 2-3 targeted tools)
+        // 4. Build Gemini Tool Declarations (Only the targeted tools for this task)
         var functionDeclarations = new List<object>();
         foreach (var tool in targetedTools)
         {
@@ -182,9 +186,7 @@ public class GeminiAiAssistantService : IAiAssistantService
             }
         }
 
-        // 5. Dynamic Modular System Instructions
-        var activeToolNames = targetedTools.Select(t => t.ToolName).ToHashSet(StringComparer.OrdinalIgnoreCase);
-
+        // 5. Dynamic Task-Specific System Instructions
         var promptBuilder = new StringBuilder();
         promptBuilder.AppendLine("You are the official voice and text AI Assistant for RetailSuite ERP.");
         promptBuilder.AppendLine($"Current UTC Date: {DateTime.UtcNow:yyyy-MM-dd (dddd)}.");
@@ -196,29 +198,9 @@ public class GeminiAiAssistantService : IAiAssistantService
         promptBuilder.AppendLine("Always reply strictly in the exact same language and script used by the user in their prompt (English, Roman Urdu, Urdu, etc.).");
         promptBuilder.AppendLine("Format responses cleanly using markdown bullet points and bold key figures or names. Keep spoken replies concise and natural for speech.");
 
-        if (activeToolNames.Contains("navigate_to_report"))
+        if (!string.IsNullOrWhiteSpace(routedTask.TaskSpecificSystemPrompt))
         {
-            promptBuilder.AppendLine("- Reports & Statements: When user asks to view any statement, transactions, khata, or report, resolve account/item ID first if needed, then call `navigate_to_report` with explicit YYYY-MM-DD dates calculated from relative terms (today, this month, etc.).");
-        }
-
-        if (activeToolNames.Contains("search_account") || activeToolNames.Contains("search_vendor"))
-        {
-            promptBuilder.AppendLine("- Balance & Search: When checking balance or searching accounts/vendors, call `search_account` or `search_vendor` with includeBalance=true and provide multiple name variations in the `names` array.");
-        }
-
-        if (activeToolNames.Contains("draft_payment_voucher") || activeToolNames.Contains("draft_receipt_voucher"))
-        {
-            promptBuilder.AppendLine("- Voucher Drafting: Resolve vendor/customer first, then call draft_payment_voucher or draft_receipt_voucher.");
-        }
-
-        if (activeToolNames.Contains("filter_payment_listing") || activeToolNames.Contains("filter_receipt_listing") || activeToolNames.Contains("filter_sale_listing"))
-        {
-            promptBuilder.AppendLine("- Listings: Call the listing filter tool with explicit YYYY-MM-DD dates to navigate to voucher/invoice listings.");
-        }
-
-        if (activeToolNames.Contains("search_item"))
-        {
-            promptBuilder.AppendLine("- Items: Call `search_item` with product keywords to resolve inventory items.");
+            promptBuilder.AppendLine(routedTask.TaskSpecificSystemPrompt);
         }
 
         var systemInstructions = promptBuilder.ToString();
@@ -419,34 +401,7 @@ public class GeminiAiAssistantService : IAiAssistantService
                 var args = functionCall.Value.GetProperty("args");
 
                 // Check if it's a backend read tool
-                if (fnName == "search_vendor")
-                {
-                    var vendorNames = ExtractNamesFromArgs(args);
-                    var includeBal = args.TryGetProperty("includeBalance", out var ib) && ib.GetBoolean();
-                    var vendors = await SearchVendorsAsync(vendorNames, includeBal, cancellationToken);
-
-                    contents.Add(modelTurnContent!);
-
-                    contents.Add(new
-                    {
-                        role = "user",
-                        parts = new object[]
-                        {
-                            new
-                            {
-                                functionResponse = new
-                                {
-                                    name = rawFnName,
-                                    response = new { results = vendors }
-                                }
-                            }
-                        }
-                    });
-
-                    continue;
-                }
-
-                if (fnName == "search_account")
+                if (fnName == "search_account" || fnName == "search_vendor")
                 {
                     var accountNames = ExtractNamesFromArgs(args);
                     var includeBal = args.TryGetProperty("includeBalance", out var ib) && ib.GetBoolean();
@@ -476,7 +431,8 @@ public class GeminiAiAssistantService : IAiAssistantService
                 if (fnName == "search_item")
                 {
                     var itemNames = ExtractNamesFromArgs(args);
-                    var items = await SearchItemsAsync(itemNames, cancellationToken);
+                    var includeStock = args.TryGetProperty("includeStockBalance", out var isb) && isb.GetBoolean();
+                    var items = await SearchItemsAsync(itemNames, includeStock, cancellationToken);
 
                     contents.Add(modelTurnContent!);
 
@@ -761,66 +717,6 @@ public class GeminiAiAssistantService : IAiAssistantService
         return names;
     }
 
-    private async Task<List<object>> SearchVendorsAsync(List<string> names, bool includeBalance, CancellationToken cancellationToken)
-    {
-        if (names == null || names.Count == 0) return new List<object>();
-
-        var foundItems = new Dictionary<string, string>(); // Id -> Title
-
-        foreach (var rawName in names)
-        {
-            var keyword = rawName.Trim().ToLowerInvariant();
-            if (string.IsNullOrEmpty(keyword)) continue;
-
-            var matches = await _chartOfAccountRepository.GetAll()
-                .AsNoTracking()
-                .Where(x => x.AccLevel == 5 && (x.Title!.ToLower().Contains(keyword) || x.Id.ToLower().Contains(keyword)))
-                .Take(6)
-                .Select(x => new { id = x.Id, name = x.Title })
-                .ToListAsync(cancellationToken);
-
-            foreach (var m in matches)
-            {
-                if (!foundItems.ContainsKey(m.id))
-                {
-                    foundItems[m.id] = m.name;
-                }
-            }
-
-            if (foundItems.Count >= 10) break;
-        }
-
-        var list = foundItems.Select(x => new { id = x.Key, name = x.Value }).Take(10).ToList();
-        if (!includeBalance)
-        {
-            return list.Cast<object>().ToList();
-        }
-
-        var results = new List<object>();
-        foreach (var item in list)
-        {
-            var dr = await _glRepository.GetAll()
-                .AsNoTracking()
-                .Where(x => x.DrAccountId == item.id)
-                .SumAsync(x => (decimal?)x.Amount, cancellationToken) ?? 0;
-
-            var cr = await _glRepository.GetAll()
-                .AsNoTracking()
-                .Where(x => x.CrAccountId == item.id)
-                .SumAsync(x => (decimal?)x.Amount, cancellationToken) ?? 0;
-
-            var balance = dr - cr;
-            results.Add(new
-            {
-                id = item.id,
-                name = item.name,
-                currentBalance = balance,
-                balanceType = balance > 0 ? "Debit (Receivable)" : balance < 0 ? "Credit (Payable)" : "Zero Balance"
-            });
-        }
-        return results;
-    }
-
     private async Task<List<object>> SearchAccountsAsync(List<string> names, bool includeBalance, CancellationToken cancellationToken)
     {
         if (names == null || names.Count == 0) return new List<object>();
@@ -881,11 +777,11 @@ public class GeminiAiAssistantService : IAiAssistantService
         return results;
     }
 
-    private async Task<List<object>> SearchItemsAsync(List<string> names, CancellationToken cancellationToken)
+    private async Task<List<object>> SearchItemsAsync(List<string> names, bool includeStockBalance, CancellationToken cancellationToken)
     {
         if (names == null || names.Count == 0) return new List<object>();
 
-        var foundItems = new Dictionary<string, (string title, decimal price)>();
+        var foundItems = new Dictionary<string, (string title, decimal price, string? unit)>();
 
         foreach (var rawName in names)
         {
@@ -894,28 +790,63 @@ public class GeminiAiAssistantService : IAiAssistantService
 
             var matches = await _itemRepository.GetAll()
                 .AsNoTracking()
+                .Include(x => x.PrimaryUnit)
                 .Where(x => x.Title.ToLower().Contains(keyword) || (x.Barcode != null && x.Barcode.ToLower().Contains(keyword)) || (x.ItemKey != null && x.ItemKey.ToLower().Contains(keyword)))
                 .Take(6)
-                .Select(x => new { id = x.Id, title = x.Title, price = x.PriRate })
+                .Select(x => new { id = x.Id, title = x.Title, price = x.PriRate, unit = x.PrimaryUnit != null ? x.PrimaryUnit.Title : null })
                 .ToListAsync(cancellationToken);
 
             foreach (var m in matches)
             {
                 if (!foundItems.ContainsKey(m.id))
                 {
-                    foundItems[m.id] = (m.title, m.price);
+                    foundItems[m.id] = (m.title, m.price, m.unit);
                 }
             }
 
             if (foundItems.Count >= 10) break;
         }
 
-        return foundItems.Select(x => (object)new
+        var list = foundItems.Select(x => new
         {
             id = x.Key,
             title = x.Value.title,
-            price = x.Value.price
+            price = x.Value.price,
+            unit = x.Value.unit
         }).Take(10).ToList();
+
+        if (!includeStockBalance)
+        {
+            return list.Cast<object>().ToList();
+        }
+
+        var results = new List<object>();
+        foreach (var item in list)
+        {
+            var inQty = await _itemTransactionRepository.GetAll()
+                .AsNoTracking()
+                .Where(x => x.ItemId == item.id)
+                .SumAsync(x => (decimal?)x.QtyIn, cancellationToken) ?? 0;
+
+            var outQty = await _itemTransactionRepository.GetAll()
+                .AsNoTracking()
+                .Where(x => x.ItemId == item.id)
+                .SumAsync(x => (decimal?)x.QtyOut, cancellationToken) ?? 0;
+
+            var stockBalance = inQty - outQty;
+
+            results.Add(new
+            {
+                id = item.id,
+                title = item.title,
+                price = item.price,
+                unit = item.unit,
+                stockBalance = stockBalance,
+                stockStatus = stockBalance <= 0 ? "Out of Stock" : "In Stock"
+            });
+        }
+
+        return results;
     }
 
     private static void EnsureToolAvailable(List<AiTool> tools, string id, string name, string description, string schema)

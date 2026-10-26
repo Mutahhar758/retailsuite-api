@@ -20,8 +20,17 @@ internal class AiToolSeeder
 
     public async Task SeedAiToolsAsync(CancellationToken cancellationToken = default)
     {
+        // 1. Seed or Update AI Tools
         var existingTools = await _tenantDbContext.AiTools
             .ToDictionaryAsync(t => t.Id, cancellationToken);
+
+        // Remove obsolete search_vendor tool if it exists
+        if (existingTools.TryGetValue("search_vendor", out var obsoleteVendorTool))
+        {
+            _logger.LogInformation("Removing obsolete tool 'search_vendor' (replaced by search_account).");
+            _tenantDbContext.AiTools.Remove(obsoleteVendorTool);
+            existingTools.Remove("search_vendor");
+        }
 
         var toolsToSeed = GetInitialTools();
 
@@ -69,10 +78,112 @@ internal class AiToolSeeder
             }
         }
 
+        await _tenantDbContext.SaveChangesAsync(cancellationToken);
+
+        // 2. Seed or Update AI Tasks & Task-Tool Mappings
+        await SeedAiTasksAsync(cancellationToken);
+    }
+
+    private async Task SeedAiTasksAsync(CancellationToken cancellationToken)
+    {
+        var existingTasks = await _tenantDbContext.AiTasks
+            .Include(t => t.TaskTools)
+            .ToDictionaryAsync(t => t.Id, cancellationToken);
+
+        var taskDefinitions = GetInitialTasks();
+
+        foreach (var def in taskDefinitions)
+        {
+            var task = def.Task;
+            if (!existingTasks.TryGetValue(task.Id, out var existing))
+            {
+                if (_embeddingService != null)
+                {
+                    try
+                    {
+                        task.IntentEmbedding = await _embeddingService.GenerateEmbeddingAsync($"{task.TaskName}: {task.Description}", cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to compute intent embedding for new task {TaskId}", task.Id);
+                    }
+                }
+
+                _logger.LogInformation("Seeding AI Task: {TaskId}", task.Id);
+                await _tenantDbContext.AiTasks.AddAsync(task, cancellationToken);
+                await _tenantDbContext.SaveChangesAsync(cancellationToken);
+
+                // Add Task-Tool mappings
+                for (int i = 0; i < def.ToolIds.Count; i++)
+                {
+                    var toolId = def.ToolIds[i];
+                    await _tenantDbContext.AiTaskTools.AddAsync(new AiTaskTool
+                    {
+                        TaskId = task.Id,
+                        ToolId = toolId,
+                        Order = i
+                    }, cancellationToken);
+                }
+            }
+            else
+            {
+                bool descriptionChanged = existing.Description != task.Description;
+                existing.TaskName = task.TaskName;
+                existing.Description = task.Description;
+                existing.RouteHint = task.RouteHint;
+                existing.TaskSpecificSystemPrompt = task.TaskSpecificSystemPrompt;
+                existing.IsActive = task.IsActive;
+
+                if (_embeddingService != null && (existing.IntentEmbedding == null || descriptionChanged))
+                {
+                    try
+                    {
+                        existing.IntentEmbedding = await _embeddingService.GenerateEmbeddingAsync($"{task.TaskName}: {task.Description}", cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to recompute intent embedding for task {TaskId}", task.Id);
+                    }
+                }
+
+                _tenantDbContext.AiTasks.Update(existing);
+
+                // Update TaskTools mappings
+                var currentToolIds = existing.TaskTools.Select(tt => tt.ToolId).ToHashSet();
+                var newToolIds = def.ToolIds.ToHashSet();
+
+                var toRemove = existing.TaskTools.Where(tt => !newToolIds.Contains(tt.ToolId)).ToList();
+                foreach (var rem in toRemove)
+                {
+                    _tenantDbContext.AiTaskTools.Remove(rem);
+                }
+
+                for (int i = 0; i < def.ToolIds.Count; i++)
+                {
+                    var toolId = def.ToolIds[i];
+                    var existingMapping = existing.TaskTools.FirstOrDefault(tt => tt.ToolId == toolId);
+                    if (existingMapping == null)
+                    {
+                        await _tenantDbContext.AiTaskTools.AddAsync(new AiTaskTool
+                        {
+                            TaskId = existing.Id,
+                            ToolId = toolId,
+                            Order = i
+                        }, cancellationToken);
+                    }
+                    else
+                    {
+                        existingMapping.Order = i;
+                        _tenantDbContext.AiTaskTools.Update(existingMapping);
+                    }
+                }
+            }
+        }
+
         if (_tenantDbContext.ChangeTracker.HasChanges())
         {
             await _tenantDbContext.SaveChangesAsync(cancellationToken);
-            _logger.LogInformation("AI Tools successfully seeded/updated in TenantDbContext.");
+            _logger.LogInformation("AI Tasks and TaskTools successfully seeded/updated in TenantDbContext.");
         }
     }
 
@@ -118,7 +229,7 @@ internal class AiToolSeeder
             {
                 Id = "search_account",
                 ToolName = "search_account",
-                Description = "Searches accounts in the Chart of Accounts (customers, vendors, cash in hand, bank accounts, expenses, ledger accounts, Ali, test account) to find account ID, ledger balance, balance inquiry (kitna balance hai, kitne paise bante hain, dena hai ya lena hai, kitna baqi hai).",
+                Description = "Searches accounts in the Chart of Accounts (customers, vendors, suppliers, cash in hand, bank accounts, expenses, ledger accounts, Ali, test account) to find account ID, ledger balance, balance inquiry (kitna balance hai, kitne paise bante hain, dena hai ya lena hai, kitna baqi hai, payables, receivables).",
                 Category = "Accounting",
                 RouteHint = "/setup/chart-of-accounts",
                 RequiredPermission = "Permissions.BankAccounts.View",
@@ -126,29 +237,8 @@ internal class AiToolSeeder
                 {
                   "type": "object",
                   "properties": {
-                    "names": { "type": "array", "items": { "type": "string" }, "description": "List of possible account names, search keywords, or variations (e.g. ['ali', 'ali raza'])" },
-                    "name": { "type": "string", "description": "Account or customer name to search" },
-                    "includeBalance": { "type": "boolean", "description": "Whether to return current balance" }
-                  }
-                }
-                """,
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow
-            },
-            new()
-            {
-                Id = "search_vendor",
-                ToolName = "search_vendor",
-                Description = "Searches vendors and suppliers in database by name or keyword, supplier balance inquiry, vendor balance, vendor ka hisab, supplier ko kitne paise dene hain, vendor ledger balance, payables.",
-                Category = "Vendor",
-                RouteHint = "/setup/vendors",
-                RequiredPermission = "Permissions.Vendors.View",
-                JsonSchema = """
-                {
-                  "type": "object",
-                  "properties": {
-                    "names": { "type": "array", "items": { "type": "string" }, "description": "List of possible vendor names, search keywords, or variations" },
-                    "name": { "type": "string", "description": "Vendor name or search keyword" },
+                    "names": { "type": "array", "items": { "type": "string" }, "description": "List of possible account names, vendor names, search keywords, or variations (e.g. ['ali', 'ali raza'])" },
+                    "name": { "type": "string", "description": "Account, vendor, or customer name to search" },
                     "includeBalance": { "type": "boolean", "description": "Whether to return current balance" }
                   }
                 }
@@ -160,7 +250,7 @@ internal class AiToolSeeder
             {
                 Id = "search_item",
                 ToolName = "search_item",
-                Description = "Searches inventory products and items by title, product name, barcode, item key, milk pack, panadol, mobile, stock item, product movement, item details.",
+                Description = "Searches inventory products and items by title, product name, barcode, item key, milk pack, panadol, mobile, stock item, product movement, item details. Set includeStockBalance=true to retrieve current on-hand stock balance / available quantity (stock kitna hai, maal kitna bacha hai, kitne carton/packets hain).",
                 Category = "Inventory",
                 RouteHint = "/setup/item-details",
                 RequiredPermission = "Permissions.Items.View",
@@ -169,7 +259,8 @@ internal class AiToolSeeder
                   "type": "object",
                   "properties": {
                     "names": { "type": "array", "items": { "type": "string" }, "description": "List of possible item names, keywords, or variations (e.g. ['milk', 'milk pack'])" },
-                    "name": { "type": "string", "description": "Item name to search" }
+                    "name": { "type": "string", "description": "Item name to search" },
+                    "includeStockBalance": { "type": "boolean", "description": "Whether to return current on-hand stock balance / available quantity" }
                   }
                 }
                 """,
@@ -188,8 +279,8 @@ internal class AiToolSeeder
                 {
                   "type": "object",
                   "properties": {
-                    "vendorId": { "type": "string", "description": "The resolved Vendor ID" },
-                    "vendorName": { "type": "string", "description": "Name of the vendor/supplier" },
+                    "vendorId": { "type": "string", "description": "The resolved Vendor ID / Account ID" },
+                    "vendorName": { "type": "string", "description": "Name of the vendor/supplier/payee" },
                     "amount": { "type": "number", "description": "Payment amount" },
                     "remarks": { "type": "string", "description": "Purpose or remarks for the payment" },
                     "cashBankAccountId": { "type": "string", "description": "Account ID to pay from (e.g. Cash, Bank)" }
@@ -289,6 +380,288 @@ internal class AiToolSeeder
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow
             }
+        };
+    }
+
+    private record SeedTaskDefinition(AiTask Task, List<string> ToolIds);
+
+    private static List<SeedTaskDefinition> GetInitialTasks()
+    {
+        return new List<SeedTaskDefinition>
+        {
+            new(
+                new AiTask
+                {
+                    Id = "task_draft_payment_voucher",
+                    TaskName = "Draft Payment Voucher",
+                    Description = "Drafts a payment voucher to pay a vendor, supplier, or business expense. Vendor ko payment karni hai, paise ada karne hain, payment charhana, parchi banana, payment voucher entry, supplier payment.",
+                    RouteHint = "/daily-entries/payment-voucher/new",
+                    TaskSpecificSystemPrompt = "- Task: Draft Payment Voucher. Always resolve the vendor, supplier, or payee account first using `search_account` (vendors and suppliers are level 5 accounts). Once resolved, call `draft_payment_voucher` with vendorId, vendorName, amount, remarks, and cashBankAccountId if specified.",
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new List<string> { "search_account", "draft_payment_voucher" }
+            ),
+            new(
+                new AiTask
+                {
+                    Id = "task_draft_receipt_voucher",
+                    TaskName = "Draft Receipt Voucher",
+                    Description = "Drafts a receipt voucher when receiving money from a customer or debtor. Customer se paise wasool hue, vasooli ki entry, payment receive karna, jama karwana, receipt voucher banana, customer recovery, cash received.",
+                    RouteHint = "/daily-entries/receipt-voucher/new",
+                    TaskSpecificSystemPrompt = "- Task: Draft Receipt Voucher. Always resolve the customer or payer account first using `search_account`. Once resolved, call `draft_receipt_voucher` with customerId, customerName, amount, remarks, and cashBankAccountId if specified.",
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new List<string> { "search_account", "draft_receipt_voucher" }
+            ),
+            new(
+                new AiTask
+                {
+                    Id = "task_report_account_statement",
+                    TaskName = "View Account Statement / Ledger (General Ledger / Khata)",
+                    Description = "Opens account statement, general ledger, khata, parchi dekhna, customer ledger, vendor ledger, bank ledger, cash statement, transactions dekhna, hisab kitab, mahine ki transactions, statement nikalna, khata check karna.",
+                    RouteHint = "/reports/account-statement",
+                    TaskSpecificSystemPrompt = "- Task: View Account Statement (Ledger/Khata). If user specifies an account, customer, or vendor, resolve their account ID first using `search_account`. Calculate explicit YYYY-MM-DD fromDate and toDate based on relative terms (e.g. today, this month, this year). Then call `navigate_to_report` with reportType='account_statement', account, accountTitle, fromDate, and toDate.",
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new List<string> { "search_account", "navigate_to_report" }
+            ),
+            new(
+                new AiTask
+                {
+                    Id = "task_report_account_statement_with_due",
+                    TaskName = "View Account Statement with Due Days (Aging Report)",
+                    Description = "Opens account statement with due days, aging report, due date ledger, hisab kitab with overdue days, payment due statement.",
+                    RouteHint = "/reports/account-statement-with-due",
+                    TaskSpecificSystemPrompt = "- Task: View Account Statement with Due Days. Resolve the account ID using `search_account`. Call `navigate_to_report` with reportType='account_statement_with_due', account, fromDate, toDate.",
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new List<string> { "search_account", "navigate_to_report" }
+            ),
+            new(
+                new AiTask
+                {
+                    Id = "task_report_account_balance",
+                    TaskName = "View Account Balance Report (Schedule of Balances)",
+                    Description = "Opens account balance report, schedule of balances, all control head balances, list of account balances, closing balances summary.",
+                    RouteHint = "/reports/account-balance",
+                    TaskSpecificSystemPrompt = "- Task: View Account Balance Report. Call `navigate_to_report` with reportType='account_balance' and date filters if provided.",
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new List<string> { "navigate_to_report" }
+            ),
+            new(
+                new AiTask
+                {
+                    Id = "task_report_trial_balance",
+                    TaskName = "View Trial Balance Report",
+                    Description = "Opens trial balance report, TB, debit credit totals, trial balance summary, all accounts totals, accounting verification.",
+                    RouteHint = "/reports/trial-balance",
+                    TaskSpecificSystemPrompt = "- Task: View Trial Balance. Call `navigate_to_report` with reportType='trial_balance' with toDate or fromDate/toDate.",
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new List<string> { "navigate_to_report" }
+            ),
+            new(
+                new AiTask
+                {
+                    Id = "task_report_stock_balance",
+                    TaskName = "View Stock Balance Report (Inventory Quantities & Rates)",
+                    Description = "Opens stock balance report, godam ka stock, inventory balance, maal kitna pada hai, item quantities and valuation, current inventory levels, available stock.",
+                    RouteHint = "/reports/stock-balance",
+                    TaskSpecificSystemPrompt = "- Task: View Stock Balance Report. Call `navigate_to_report` with reportType='stock_balance', optional category or stockFilter ('All', 'Positive', 'Zero', 'Negative').",
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new List<string> { "navigate_to_report" }
+            ),
+            new(
+                new AiTask
+                {
+                    Id = "task_report_item_ledger",
+                    TaskName = "View Product / Item Ledger (Inventory Movement)",
+                    Description = "Opens product movement ledger, item ledger, item transactions, maal kahan se aya aur kahan gaya, product dispatch and receipt history, item card.",
+                    RouteHint = "/reports/item-ledger",
+                    TaskSpecificSystemPrompt = "- Task: View Product/Item Ledger. Resolve item ID using `search_item`. Call `navigate_to_report` with reportType='item_ledger', item, itemTitle, fromDate, and toDate.",
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new List<string> { "search_item", "navigate_to_report" }
+            ),
+            new(
+                new AiTask
+                {
+                    Id = "task_report_income_summary",
+                    TaskName = "View Income Summary (Profit & Loss / P&L)",
+                    Description = "Opens income summary, profit and loss report, P&L, munafa report, net income, revenue and expenses, aamdani aur kharcha summary, business profitability.",
+                    RouteHint = "/reports/income-summary",
+                    TaskSpecificSystemPrompt = "- Task: View Income Summary (Profit & Loss). Call `navigate_to_report` with reportType='income_summary', fromDate, and toDate.",
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new List<string> { "navigate_to_report" }
+            ),
+            new(
+                new AiTask
+                {
+                    Id = "task_report_balance_sheet",
+                    TaskName = "View Balance Sheet",
+                    Description = "Opens balance sheet, financial position, assets and liabilities, equity, karobar ki maliyat, asaasay aur wajibaat, financial health statement.",
+                    RouteHint = "/reports/balance-sheet",
+                    TaskSpecificSystemPrompt = "- Task: View Balance Sheet. Call `navigate_to_report` with reportType='balance_sheet' and as-of date (toDate).",
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new List<string> { "navigate_to_report" }
+            ),
+            new(
+                new AiTask
+                {
+                    Id = "task_report_customer_recovery",
+                    TaskName = "View Customer Balance & Recovery Report",
+                    Description = "Opens customer balance and recovery report, wasooli list, recovery report, customer receivables, udhaar wasooli list, pending recovery balances.",
+                    RouteHint = "/reports/customer-balance-recovery",
+                    TaskSpecificSystemPrompt = "- Task: View Customer Balance Recovery. Call `navigate_to_report` with reportType='customer_balance_recovery' and optional balanceFilter ('HasBalance', 'All').",
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new List<string> { "navigate_to_report" }
+            ),
+            new(
+                new AiTask
+                {
+                    Id = "task_report_profit_by_customer",
+                    TaskName = "View Profit by Customer Report",
+                    Description = "Opens profit by customer report, customer wise margins, customer profitability, kis grahak ya customer se kitna nafa munafa hua.",
+                    RouteHint = "/reports/profit-by-customer",
+                    TaskSpecificSystemPrompt = "- Task: View Profit by Customer. Resolve customer if specified via `search_account`. Call `navigate_to_report` with reportType='profit_by_customer', fromDate, toDate.",
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new List<string> { "search_account", "navigate_to_report" }
+            ),
+            new(
+                new AiTask
+                {
+                    Id = "task_report_profit_by_item",
+                    TaskName = "View Profit by Item Report",
+                    Description = "Opens profit by item report, product wise margin, item profitability, kis item par kitna munafa nafa hua, product profit analysis.",
+                    RouteHint = "/reports/profit-by-item",
+                    TaskSpecificSystemPrompt = "- Task: View Profit by Item. Resolve item if specified via `search_item`. Call `navigate_to_report` with reportType='profit_by_item', fromDate, toDate.",
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new List<string> { "search_item", "navigate_to_report" }
+            ),
+            new(
+                new AiTask
+                {
+                    Id = "task_report_purchase_supply_comparison",
+                    TaskName = "View Purchase vs Supply Comparison Report",
+                    Description = "Opens purchase vs supply comparison report, milk supply comparison, khareed aur supply ka farq, procurement vs dispatch variance.",
+                    RouteHint = "/reports/purchase-supply-comparison",
+                    TaskSpecificSystemPrompt = "- Task: View Purchase vs Supply Comparison. Call `navigate_to_report` with reportType='purchase_supply_comparison', fromDate, toDate.",
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new List<string> { "navigate_to_report" }
+            ),
+            new(
+                new AiTask
+                {
+                    Id = "task_report_customer_bill",
+                    TaskName = "View Customer Bill (Thermal Statement)",
+                    Description = "Opens customer bill report, thermal statement, grahak ka bill, customer print receipt, bill nikalna.",
+                    RouteHint = "/reports/customer-bill",
+                    TaskSpecificSystemPrompt = "- Task: View Customer Bill. Resolve customer ID using `search_account`. Call `navigate_to_report` with reportType='customer_bill', account, accountTitle.",
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new List<string> { "search_account", "navigate_to_report" }
+            ),
+            new(
+                new AiTask
+                {
+                    Id = "task_report_manufacturing",
+                    TaskName = "View Manufacturing & Production Report",
+                    Description = "Opens manufacturing report, production report, karkhana report, factory output, BOM and production cost report.",
+                    RouteHint = "/reports/manufacturing",
+                    TaskSpecificSystemPrompt = "- Task: View Manufacturing Report. Call `navigate_to_report` with reportType='manufacturing', fromDate, toDate.",
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new List<string> { "navigate_to_report" }
+            ),
+            new(
+                new AiTask
+                {
+                    Id = "task_view_reports",
+                    TaskName = "View Business & Financial Reports",
+                    Description = "Opens business reports menu or general overview when no specific report is requested.",
+                    RouteHint = "/reports",
+                    TaskSpecificSystemPrompt = "- Task: Reports Menu. Guide user to specific reports or call `navigate_to_report` with reportType='account_statement'.",
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new List<string> { "search_account", "navigate_to_report" }
+            ),
+            new(
+                new AiTask
+                {
+                    Id = "task_check_balance_search",
+                    TaskName = "Check Account Balance & Search",
+                    Description = "Checks balance of customer, vendor, supplier, cash, bank, or ledger account. Balance inquiry (kitna balance hai, kitne paise bante hain, dena hai ya lena hai, kitna baqi hai, payables, receivables, kitne lene hain, kitne dene hain).",
+                    RouteHint = "/setup/chart-of-accounts",
+                    TaskSpecificSystemPrompt = "- Task: Balance Inquiry & Account Search. Call `search_account` with includeBalance=true. Provide multiple name variations in the `names` array. Clearly explain the current balance, indicating whether it is receivable (Debit) or payable (Credit).",
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new List<string> { "search_account" }
+            ),
+            new(
+                new AiTask
+                {
+                    Id = "task_view_voucher_listings",
+                    TaskName = "View Voucher & Sales Listings",
+                    Description = "Views or filters payment listings, receipt listings, or sales invoices. Payment vouchers dekhna, receipt vouchers list, sales bills dekhna, past invoices, transaction history list, voucher search.",
+                    RouteHint = "/daily-entries/payment-voucher",
+                    TaskSpecificSystemPrompt = "- Task: Voucher & Sales Listings. Call the appropriate listing tool (`filter_payment_listing`, `filter_receipt_listing`, or `filter_sale_listing`) with explicit YYYY-MM-DD dates and filter criteria.",
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new List<string> { "filter_payment_listing", "filter_receipt_listing", "filter_sale_listing", "search_account" }
+            ),
+            new(
+                new AiTask
+                {
+                    Id = "task_search_inventory",
+                    TaskName = "Search Inventory & Item Stock",
+                    Description = "Searches inventory products, stock items, prices, barcodes, milk pack, panadol, mobile, stock item, product movement, item details, checking item stock balance (maal kitna bacha hai, stock kitna hai, kitne carton ya packets hain, stock inquiry).",
+                    RouteHint = "/setup/item-details",
+                    TaskSpecificSystemPrompt = "- Task: Search Inventory & Item Stock. Call `search_item` with product keywords. If user asks specifically about available stock quantity, remaining units, or stock balance (stock kitna hai, kitna maal bacha hai), set `includeStockBalance=true` and clearly report the stock balance and status.",
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new List<string> { "search_item" }
+            ),
+            new(
+                new AiTask
+                {
+                    Id = "task_general_assistant",
+                    TaskName = "General Assistant",
+                    Description = "General queries, greetings, how-to questions, help, guidance about RetailSuite, conversational assistance without specialized tools.",
+                    RouteHint = null,
+                    TaskSpecificSystemPrompt = "- Task: General Assistant. Answer conversationally, concisely, and helpfully about RetailSuite capabilities.",
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new List<string>()
+            )
         };
     }
 }

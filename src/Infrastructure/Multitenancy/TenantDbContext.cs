@@ -8,6 +8,8 @@ namespace Retailer.Infrastructure.Multitenancy;
 public class TenantDbContext : EFCoreStoreDbContext<Domain.Multitenancy.TenantInfo>
 {
     public DbSet<AiTool> AiTools => Set<AiTool>();
+    public DbSet<AiTask> AiTasks => Set<AiTask>();
+    public DbSet<AiTaskTool> AiTaskTools => Set<AiTaskTool>();
     public DbSet<GeminiApiLog> GeminiApiLogs => Set<GeminiApiLog>();
 
     public TenantDbContext(DbContextOptions<TenantDbContext> options)
@@ -60,6 +62,38 @@ public class TenantDbContext : EFCoreStoreDbContext<Domain.Multitenancy.TenantIn
             entity.HasIndex(t => t.Embedding).HasMethod("hnsw").HasOperators("vector_cosine_ops");
             entity.HasIndex(t => t.RouteHint);
             entity.HasIndex(t => t.Category);
+        });
+
+        modelBuilder.Entity<AiTask>(entity =>
+        {
+            entity.ToTable("AiTasks");
+            entity.HasKey(t => t.Id);
+            entity.Property(t => t.Id).HasMaxLength(64);
+            entity.Property(t => t.TaskName).HasMaxLength(128).IsRequired();
+            entity.Property(t => t.Description).HasMaxLength(1024).IsRequired();
+            entity.Property(t => t.RouteHint).HasMaxLength(256);
+            entity.Property(t => t.IntentEmbedding).HasColumnType("vector(768)");
+            entity.Property(t => t.TaskSpecificSystemPrompt).HasColumnType("text").IsRequired();
+            entity.HasIndex(t => t.IntentEmbedding).HasMethod("hnsw").HasOperators("vector_cosine_ops");
+            entity.HasIndex(t => t.RouteHint);
+        });
+
+        modelBuilder.Entity<AiTaskTool>(entity =>
+        {
+            entity.ToTable("AiTaskTools");
+            entity.HasKey(tt => new { tt.TaskId, tt.ToolId });
+            entity.Property(tt => tt.TaskId).HasMaxLength(64);
+            entity.Property(tt => tt.ToolId).HasMaxLength(64);
+
+            entity.HasOne(tt => tt.Task)
+                .WithMany(t => t.TaskTools)
+                .HasForeignKey(tt => tt.TaskId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(tt => tt.Tool)
+                .WithMany(t => t.TaskTools)
+                .HasForeignKey(tt => tt.ToolId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<GeminiApiLog>(entity =>

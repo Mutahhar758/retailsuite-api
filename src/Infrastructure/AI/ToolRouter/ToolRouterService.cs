@@ -24,16 +24,13 @@ public class ToolRouterService : IToolRouterService
         _embeddingService = embeddingService;
     }
 
-    public async Task<List<AiTool>> GetTargetedToolsAsync(
+    public async Task<RoutedTaskResult> RouteTaskAsync(
         string? currentRoute,
         Vector? promptEmbedding,
         string? userPrompt,
         CancellationToken cancellationToken = default)
     {
-        var resultTools = new Dictionary<string, AiTool>(StringComparer.OrdinalIgnoreCase);
-
-        // 1. Semantic Intent Anchor: pgvector Cosine Search
-        // If embedding wasn't provided directly, compute it from userPrompt
+        // 1. Vector Search for the TASK, not individual tools
         if (promptEmbedding == null && !string.IsNullOrWhiteSpace(userPrompt) && _embeddingService != null)
         {
             try
@@ -46,106 +43,95 @@ public class ToolRouterService : IToolRouterService
             }
         }
 
+        AiTask? matchedTask = null;
+
         if (promptEmbedding != null)
         {
             try
             {
-                var vectorTools = await _tenantDbContext.AiTools
+                matchedTask = await _tenantDbContext.AiTasks
                     .AsNoTracking()
-                    .Where(t => t.IsActive && t.Embedding != null)
-                    .OrderBy(t => t.Embedding!.CosineDistance(promptEmbedding))
-                    .Take(2)
-                    .ToListAsync(cancellationToken);
+                    .Include(t => t.TaskTools.OrderBy(tt => tt.Order))
+                        .ThenInclude(tt => tt.Tool)
+                    .Where(t => t.IsActive && t.IntentEmbedding != null)
+                    .OrderBy(t => t.IntentEmbedding!.CosineDistance(promptEmbedding))
+                    .FirstOrDefaultAsync(cancellationToken);
 
-                foreach (var tool in vectorTools)
+                if (matchedTask != null)
                 {
-                    resultTools[tool.Id] = tool;
+                    _logger.LogInformation("Task vector search matched task: {TaskId} ({TaskName})", matchedTask.Id, matchedTask.TaskName);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "pgvector cosine search failed, falling back to heuristics.");
+                _logger.LogWarning(ex, "pgvector cosine search on AiTasks failed, falling back to heuristics.");
             }
         }
 
-        // 2. UI Context Anchor: fetch tools mapped to current screen if slots available
-        if (resultTools.Count < 2 && !string.IsNullOrWhiteSpace(currentRoute))
+        // 2. UI Context Fallback: if no task matched via vector search, check current screen route
+        if (matchedTask == null && !string.IsNullOrWhiteSpace(currentRoute))
         {
             var normalizedRoute = currentRoute.TrimEnd('/');
-            var uiTools = await _tenantDbContext.AiTools
+            matchedTask = await _tenantDbContext.AiTasks
                 .AsNoTracking()
+                .Include(t => t.TaskTools.OrderBy(tt => tt.Order))
+                    .ThenInclude(tt => tt.Tool)
                 .Where(t => t.IsActive && t.RouteHint != null && t.RouteHint.TrimEnd('/') == normalizedRoute)
-                .Take(2 - resultTools.Count)
-                .ToListAsync(cancellationToken);
+                .FirstOrDefaultAsync(cancellationToken);
 
-            foreach (var tool in uiTools)
+            if (matchedTask != null)
             {
-                resultTools[tool.Id] = tool;
+                _logger.LogInformation("Task UI route matched task: {TaskId} ({TaskName})", matchedTask.Id, matchedTask.TaskName);
             }
         }
 
-        // 3. Fallback Keyword Heuristic if less than 2 tools were found
-        if (resultTools.Count < 2 && !string.IsNullOrWhiteSpace(userPrompt))
+        // 3. Keyword Heuristic Fallback
+        if (matchedTask == null && !string.IsNullOrWhiteSpace(userPrompt))
         {
             var lower = userPrompt.ToLowerInvariant();
-            var keywords = lower.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-            var fallbackTools = await _tenantDbContext.AiTools
+            var allTasks = await _tenantDbContext.AiTasks
                 .AsNoTracking()
+                .Include(t => t.TaskTools.OrderBy(tt => tt.Order))
+                    .ThenInclude(tt => tt.Tool)
                 .Where(t => t.IsActive)
                 .ToListAsync(cancellationToken);
 
-            foreach (var tool in fallbackTools)
-            {
-                if (resultTools.ContainsKey(tool.Id)) continue;
-
-                if (keywords.Any(k => tool.ToolName.Contains(k, StringComparison.OrdinalIgnoreCase) ||
-                                      tool.Description.Contains(k, StringComparison.OrdinalIgnoreCase) ||
-                                      tool.Category.Contains(k, StringComparison.OrdinalIgnoreCase)))
-                {
-                    resultTools[tool.Id] = tool;
-                    if (resultTools.Count >= 2) break;
-                }
-            }
+            matchedTask = allTasks.FirstOrDefault(t =>
+                lower.Contains(t.Id.Replace("task_", "").Replace("_", " "), StringComparison.OrdinalIgnoreCase) ||
+                lower.Contains(t.TaskName, StringComparison.OrdinalIgnoreCase) ||
+                t.Description.Split(' ', StringSplitOptions.RemoveEmptyEntries).Any(w => w.Length > 3 && lower.Contains(w, StringComparison.OrdinalIgnoreCase)));
         }
 
-        // 4. Default baseline: if still empty, provide general navigational & search tools
-        if (resultTools.Count == 0)
+        // 4. Default Fallback Task (General Assistant)
+        if (matchedTask == null)
         {
-            var defaultTools = await _tenantDbContext.AiTools
+            matchedTask = await _tenantDbContext.AiTasks
                 .AsNoTracking()
-                .Where(t => t.IsActive && (t.Id == "navigate_to_report" || t.Id == "search_account"))
-                .Take(2)
-                .ToListAsync(cancellationToken);
-
-            foreach (var tool in defaultTools)
-            {
-                resultTools[tool.Id] = tool;
-            }
+                .Include(t => t.TaskTools.OrderBy(tt => tt.Order))
+                    .ThenInclude(tt => tt.Tool)
+                .FirstOrDefaultAsync(t => t.IsActive && t.Id == "task_general_assistant", cancellationToken);
         }
 
-        // 5. Dependent Helper Tool: If navigate_to_report or draft voucher is selected, ensure search_account or search_vendor is available
-        if ((resultTools.ContainsKey("navigate_to_report") || resultTools.ContainsKey("draft_receipt_voucher")) && !resultTools.ContainsKey("search_account") && resultTools.Count < 3)
+        var tools = matchedTask?.TaskTools
+            .Where(tt => tt.Tool != null && tt.Tool.IsActive)
+            .Select(tt => tt.Tool)
+            .ToList() ?? new List<AiTool>();
+
+        return new RoutedTaskResult
         {
-            var searchTool = await _tenantDbContext.AiTools
-                .AsNoTracking()
-                .FirstOrDefaultAsync(t => t.IsActive && t.Id == "search_account", cancellationToken);
-            if (searchTool != null)
-            {
-                resultTools[searchTool.Id] = searchTool;
-            }
-        }
-        else if (resultTools.ContainsKey("draft_payment_voucher") && !resultTools.ContainsKey("search_vendor") && resultTools.Count < 3)
-        {
-            var vendorTool = await _tenantDbContext.AiTools
-                .AsNoTracking()
-                .FirstOrDefaultAsync(t => t.IsActive && t.Id == "search_vendor", cancellationToken);
-            if (vendorTool != null)
-            {
-                resultTools[vendorTool.Id] = vendorTool;
-            }
-        }
+            MatchedTask = matchedTask,
+            Tools = tools,
+            TaskSpecificSystemPrompt = matchedTask?.TaskSpecificSystemPrompt ?? string.Empty
+        };
+    }
 
-        return resultTools.Values.Take(3).ToList();
+    public async Task<List<AiTool>> GetTargetedToolsAsync(
+        string? currentRoute,
+        Vector? promptEmbedding,
+        string? userPrompt,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await RouteTaskAsync(currentRoute, promptEmbedding, userPrompt, cancellationToken);
+        return result.Tools;
     }
 }
