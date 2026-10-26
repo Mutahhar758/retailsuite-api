@@ -28,6 +28,7 @@ public class GeminiAiAssistantService : IAiAssistantService
     private readonly IRepository<ItemDetail> _itemRepository;
     private readonly IRepository<ItemTransaction> _itemTransactionRepository;
     private readonly TenantDbContext _tenantDbContext;
+    private readonly ITenantTokenUsageService _tokenUsageService;
     private readonly ILogger<GeminiAiAssistantService> _logger;
     private static readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(40) };
 
@@ -42,6 +43,7 @@ public class GeminiAiAssistantService : IAiAssistantService
         IRepository<ItemDetail> itemRepository,
         IRepository<ItemTransaction> itemTransactionRepository,
         TenantDbContext tenantDbContext,
+        ITenantTokenUsageService tokenUsageService,
         ILogger<GeminiAiAssistantService> logger)
     {
         _config = config;
@@ -54,23 +56,28 @@ public class GeminiAiAssistantService : IAiAssistantService
         _itemRepository = itemRepository;
         _itemTransactionRepository = itemTransactionRepository;
         _tenantDbContext = tenantDbContext;
+        _tokenUsageService = tokenUsageService;
         _logger = logger;
     }
 
     public async Task<AiAssistantResponse> ProcessPromptAsync(AiAssistantRequest request, CancellationToken cancellationToken = default)
     {
+        // Persistent multi-turn ChatId (from client session or generated for new chat)
+        var chatId = !string.IsNullOrWhiteSpace(request.ChatId)
+            ? request.ChatId.Trim()
+            : Guid.CreateVersion7().ToString();
+
         if (string.IsNullOrWhiteSpace(request.Prompt))
         {
-            return new AiAssistantResponse { Success = false, ErrorMessage = "Prompt cannot be empty.", ReplyText = "Prompt cannot be empty." };
+            return new AiAssistantResponse { Success = false, ChatId = chatId, ErrorMessage = "Prompt cannot be empty.", ReplyText = "Prompt cannot be empty." };
         }
 
-        // UUIDv7 (RFC 9562): Time-ordered UUID with millisecond precision timestamp
-        // Standard sortable format: 0192df4b-7013-7186-9032-45e69e2c694a
+        // UUIDv7 (RFC 9562): Time-ordered UUID with millisecond precision timestamp for this specific request
         var correlationId = Guid.CreateVersion7().ToString();
 
         try
         {
-            return await ExecuteAgentLoopAsync(request, correlationId, cancellationToken);
+            return await ExecuteAgentLoopAsync(request, correlationId, chatId, cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -78,6 +85,7 @@ public class GeminiAiAssistantService : IAiAssistantService
             return new AiAssistantResponse
             {
                 Success = false,
+                ChatId = chatId,
                 ErrorMessage = "Request was canceled by client.",
                 ReplyText = "Request was canceled."
             };
@@ -88,6 +96,7 @@ public class GeminiAiAssistantService : IAiAssistantService
             return new AiAssistantResponse
             {
                 Success = false,
+                ChatId = chatId,
                 ErrorMessage = $"AI request timed out after {_httpClient.Timeout.TotalSeconds} seconds.",
                 ReplyText = "AI service timed out. Please try again."
             };
@@ -98,6 +107,7 @@ public class GeminiAiAssistantService : IAiAssistantService
             return new AiAssistantResponse
             {
                 Success = false,
+                ChatId = chatId,
                 ErrorMessage = $"AI service connection error: {ex.Message}",
                 ReplyText = "Could not connect to AI service. Please check network connection."
             };
@@ -108,13 +118,14 @@ public class GeminiAiAssistantService : IAiAssistantService
             return new AiAssistantResponse
             {
                 Success = false,
+                ChatId = chatId,
                 ErrorMessage = ex.Message,
                 ReplyText = $"AI assistant error: {ex.Message}"
             };
         }
     }
 
-    private async Task<AiAssistantResponse> ExecuteAgentLoopAsync(AiAssistantRequest request, string correlationId, CancellationToken cancellationToken)
+    private async Task<AiAssistantResponse> ExecuteAgentLoopAsync(AiAssistantRequest request, string correlationId, string chatId, CancellationToken cancellationToken)
     {
         var geminiSection = _config.GetSection("GeminiSettings");
         var apiKey = new[]
@@ -278,6 +289,7 @@ public class GeminiAiAssistantService : IAiAssistantService
                 await LogGeminiApiCallAsync(new GeminiApiLog
                 {
                     CorrelationId = correlationId,
+                    ChatId = chatId,
                     TenantId = _currentTenant?.Id,
                     Source = "AiAssistant",
                     TurnIndex = turnIndex,
@@ -297,6 +309,7 @@ public class GeminiAiAssistantService : IAiAssistantService
                 return new AiAssistantResponse
                 {
                     Success = false,
+                    ChatId = chatId,
                     ErrorMessage = $"AI API error ({response.StatusCode}): {error}",
                     ReplyText = $"AI request failed ({response.StatusCode})."
                 };
@@ -325,6 +338,7 @@ public class GeminiAiAssistantService : IAiAssistantService
                 await LogGeminiApiCallAsync(new GeminiApiLog
                 {
                     CorrelationId = correlationId,
+                    ChatId = chatId,
                     TenantId = _currentTenant?.Id,
                     Source = "AiAssistant",
                     TurnIndex = turnIndex,
@@ -344,7 +358,7 @@ public class GeminiAiAssistantService : IAiAssistantService
                     CreatedAt = DateTime.UtcNow
                 }, cancellationToken);
 
-                return new AiAssistantResponse { Success = false, ErrorMessage = "No response from Gemini." };
+                return new AiAssistantResponse { Success = false, ChatId = chatId, ErrorMessage = "No response from Gemini." };
             }
 
             var candidate = candidates[0];
@@ -378,6 +392,7 @@ public class GeminiAiAssistantService : IAiAssistantService
             await LogGeminiApiCallAsync(new GeminiApiLog
             {
                 CorrelationId = correlationId,
+                ChatId = chatId,
                 TenantId = _currentTenant?.Id,
                 Source = "AiAssistant",
                 TurnIndex = turnIndex,
@@ -658,6 +673,7 @@ public class GeminiAiAssistantService : IAiAssistantService
                 return new AiAssistantResponse
                 {
                     Success = true,
+                    ChatId = chatId,
                     ActionType = pendingActionType ?? AiActionType.Answer,
                     TargetRoute = pendingTargetRoute,
                     ActionPayload = pendingActionPayload,
@@ -669,6 +685,7 @@ public class GeminiAiAssistantService : IAiAssistantService
         return new AiAssistantResponse
         {
             Success = !string.IsNullOrWhiteSpace(lastModelText),
+            ChatId = chatId,
             ActionType = pendingActionType ?? AiActionType.Answer,
             TargetRoute = pendingTargetRoute,
             ActionPayload = pendingActionPayload,
@@ -684,10 +701,22 @@ public class GeminiAiAssistantService : IAiAssistantService
         {
             _tenantDbContext.GeminiApiLogs.Add(log);
             await _tenantDbContext.SaveChangesAsync(cancellationToken);
+
+            // Record cumulative token consumption per tenant per model with atomic row locking
+            if (log.TotalTokens.HasValue || log.InputTokens.HasValue || log.OutputTokens.HasValue)
+            {
+                await _tokenUsageService.RecordUsageAsync(
+                    tenantId: log.TenantId ?? _currentTenant?.Id ?? "GLOBAL",
+                    model: log.Model,
+                    inputTokens: log.InputTokens ?? 0,
+                    outputTokens: log.OutputTokens ?? 0,
+                    totalTokens: log.TotalTokens ?? ((log.InputTokens ?? 0) + (log.OutputTokens ?? 0)),
+                    cancellationToken: cancellationToken);
+            }
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to persist GeminiApiLog (Turn {Turn})", log.TurnIndex);
+            _logger.LogWarning(ex, "Failed to persist GeminiApiLog or record token usage (Turn {Turn})", log.TurnIndex);
         }
     }
 

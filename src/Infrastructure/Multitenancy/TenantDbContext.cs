@@ -11,6 +11,7 @@ public class TenantDbContext : EFCoreStoreDbContext<Domain.Multitenancy.TenantIn
     public DbSet<AiTask> AiTasks => Set<AiTask>();
     public DbSet<AiTaskTool> AiTaskTools => Set<AiTaskTool>();
     public DbSet<GeminiApiLog> GeminiApiLogs => Set<GeminiApiLog>();
+    public DbSet<TenantAiTokenUsage> TenantAiTokenUsages => Set<TenantAiTokenUsage>();
 
     public TenantDbContext(DbContextOptions<TenantDbContext> options)
         : base(options)
@@ -101,6 +102,7 @@ public class TenantDbContext : EFCoreStoreDbContext<Domain.Multitenancy.TenantIn
             entity.ToTable("GeminiApiLogs");
             entity.HasKey(t => t.Id);
             entity.Property(t => t.CorrelationId).HasMaxLength(64).IsRequired();
+            entity.Property(t => t.ChatId).HasMaxLength(64);
             entity.Property(t => t.TenantId).HasMaxLength(64);
             entity.Property(t => t.UserId).HasMaxLength(64);
             entity.Property(t => t.Source).HasMaxLength(64).IsRequired();
@@ -115,9 +117,23 @@ public class TenantDbContext : EFCoreStoreDbContext<Domain.Multitenancy.TenantIn
             entity.Property(t => t.OutputTokens);
             entity.Property(t => t.TotalTokens);
             entity.Property(t => t.ErrorMessage).HasColumnType("text");
+            entity.HasIndex(t => t.ChatId);
             entity.HasIndex(t => t.CorrelationId);
             entity.HasIndex(t => t.CreatedAt);
             entity.HasIndex(t => t.TenantId);
+        });
+
+        modelBuilder.Entity<TenantAiTokenUsage>(entity =>
+        {
+            entity.ToTable("TenantAiTokenUsages");
+            entity.HasKey(t => t.Id);
+            entity.Property(t => t.TenantId).HasMaxLength(64).IsRequired();
+            entity.Property(t => t.Model).HasMaxLength(128).IsRequired();
+            entity.Property(t => t.InputTokens).HasDefaultValue(0L);
+            entity.Property(t => t.OutputTokens).HasDefaultValue(0L);
+            entity.Property(t => t.TotalTokens).HasDefaultValue(0L);
+            entity.Property(t => t.CallCount).HasDefaultValue(0);
+            entity.HasIndex(t => new { t.TenantId, t.Model }).IsUnique();
         });
     }
 }

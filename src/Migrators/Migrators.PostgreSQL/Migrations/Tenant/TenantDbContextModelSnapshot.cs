@@ -195,6 +195,11 @@ namespace Migrators.PostgreSQL.Migrations.Tenant
                         .HasColumnType("character varying(64)")
                         .HasColumnName("correlation_id");
 
+                    b.Property<string>("ChatId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("chat_id");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -279,6 +284,9 @@ namespace Migrators.PostgreSQL.Migrations.Tenant
 
                     b.HasKey("Id")
                         .HasName("pk_gemini_api_logs");
+
+                    b.HasIndex("ChatId")
+                        .HasDatabaseName("ix_gemini_api_logs_chat_id");
 
                     b.HasIndex("CorrelationId")
                         .HasDatabaseName("ix_gemini_api_logs_correlation_id");
@@ -408,6 +416,63 @@ namespace Migrators.PostgreSQL.Migrations.Tenant
                         .HasDatabaseName("ix_tenants_identifier");
 
                     b.ToTable("Tenants", (string)null);
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Multitenancy.TenantAiTokenUsage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("CallCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("call_count");
+
+                    b.Property<long>("InputTokens")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasDefaultValue(0L)
+                        .HasColumnName("input_tokens");
+
+                    b.Property<DateTime>("LastUsedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_used_at");
+
+                    b.Property<string>("Model")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("model");
+
+                    b.Property<long>("OutputTokens")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasDefaultValue(0L)
+                        .HasColumnName("output_tokens");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<long>("TotalTokens")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasDefaultValue(0L)
+                        .HasColumnName("total_tokens");
+
+                    b.HasKey("Id")
+                        .HasName("pk_tenant_ai_token_usages");
+
+                    b.HasIndex("TenantId", "Model")
+                        .IsUnique()
+                        .HasDatabaseName("ix_tenant_ai_token_usages_tenant_id_model");
+
+                    b.ToTable("TenantAiTokenUsages", (string)null);
                 });
 
             modelBuilder.Entity("Retailer.Domain.Multitenancy.AiTaskTool", b =>

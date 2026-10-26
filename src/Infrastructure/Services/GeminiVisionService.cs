@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
@@ -9,6 +10,7 @@ using Retailer.Application.Common.Exceptions;
 using Retailer.Application.Common.Interfaces;
 using Retailer.Application.Legacy.ChartOfAccounts;
 using Retailer.Application.Legacy.SaleSupplies;
+using Retailer.Domain.Multitenancy;
 using Retailer.Infrastructure.Multitenancy;
 
 namespace Retailer.Infrastructure.Services;
@@ -19,6 +21,7 @@ public class GeminiVisionService : IAiScanService
     private readonly ICurrentTenant _currentTenant;
     private readonly TenantDbContext _tenantDbContext;
     private readonly IChartOfAccountService _chartOfAccountService;
+    private readonly ITenantTokenUsageService _tokenUsageService;
     private static readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(120) };
     private readonly ILogger<GeminiVisionService> _logger;
 
@@ -27,12 +30,14 @@ public class GeminiVisionService : IAiScanService
         ICurrentTenant currentTenant,
         TenantDbContext tenantDbContext,
         IChartOfAccountService chartOfAccountService,
+        ITenantTokenUsageService tokenUsageService,
         ILogger<GeminiVisionService> logger)
     {
         _config = config;
         _currentTenant = currentTenant;
         _tenantDbContext = tenantDbContext;
         _chartOfAccountService = chartOfAccountService;
+        _tokenUsageService = tokenUsageService;
         _logger = logger;
     }
 
@@ -206,7 +211,10 @@ Return strictly valid JSON with this schema:
 
         var jsonContent = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
 
+        var stopwatch = Stopwatch.StartNew();
         var response = await _httpClient.PostAsync(endpoint, jsonContent, cancellationToken);
+        stopwatch.Stop();
+
         if (!response.IsSuccessStatusCode)
         {
             var err = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -231,6 +239,71 @@ Return strictly valid JSON with this schema:
         }
 
         var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
+
+        // Extract usageMetadata tokens (input / prompt, output / candidates, total)
+        int? inputTokens = null;
+        int? outputTokens = null;
+        int? totalTokens = null;
+        try
+        {
+            using var doc = JsonDocument.Parse(responseJson);
+            if (doc.RootElement.TryGetProperty("usageMetadata", out var usageEl))
+            {
+                if (usageEl.TryGetProperty("promptTokenCount", out var pt) && pt.TryGetInt32(out var ptVal))
+                    inputTokens = ptVal;
+                if (usageEl.TryGetProperty("candidatesTokenCount", out var ct) && ct.TryGetInt32(out var ctVal))
+                    outputTokens = ctVal;
+                if (usageEl.TryGetProperty("totalTokenCount", out var tt) && tt.TryGetInt32(out var ttVal))
+                    totalTokens = ttVal;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to parse usageMetadata from Gemini Vision response.");
+        }
+
+        // Record consumed tokens per tenant per model with atomic row lock
+        if (inputTokens.HasValue || outputTokens.HasValue || totalTokens.HasValue)
+        {
+            await _tokenUsageService.RecordUsageAsync(
+                tenantId: tenant.Id,
+                model: model,
+                inputTokens: inputTokens ?? 0,
+                outputTokens: outputTokens ?? 0,
+                totalTokens: totalTokens ?? ((inputTokens ?? 0) + (outputTokens ?? 0)),
+                cancellationToken: cancellationToken);
+        }
+
+        // Audit log in GeminiApiLogs
+        try
+        {
+            _tenantDbContext.GeminiApiLogs.Add(new GeminiApiLog
+            {
+                CorrelationId = Guid.CreateVersion7().ToString(),
+                ChatId = "AiScanSaleSupply",
+                TenantId = tenant.Id,
+                Source = "AiScanSaleSupply",
+                TurnIndex = 1,
+                Model = model,
+                Endpoint = baseEndpoint,
+                Prompt = $"ScanSaleSupplySheet ({images.Count} images, TargetDate: '{targetDate}')",
+                RequestBody = $"[Image parts: {images.Count}]",
+                ResponseBody = responseJson.Length > 2000 ? responseJson[..2000] + "...[truncated]" : responseJson,
+                StatusCode = (int)response.StatusCode,
+                IsSuccess = true,
+                DurationMs = stopwatch.ElapsedMilliseconds,
+                InputTokens = inputTokens,
+                OutputTokens = outputTokens,
+                TotalTokens = totalTokens,
+                CreatedAt = DateTime.UtcNow
+            });
+            await _tenantDbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to persist GeminiApiLog for AI Sale Supply scan.");
+        }
+
         var parsedText = ExtractTextFromGeminiResponse(responseJson);
 
         // 4. Parse Extracted Lines

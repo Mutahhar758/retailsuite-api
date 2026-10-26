@@ -12,10 +12,17 @@ namespace Retailer.Host.Controllers.AI;
 public class AiAssistantController : VersionNeutralApiController
 {
     private readonly IAiAssistantService _aiAssistantService;
+    private readonly ITenantTokenUsageService _tokenUsageService;
+    private readonly ICurrentTenant _currentTenant;
 
-    public AiAssistantController(IAiAssistantService aiAssistantService)
+    public AiAssistantController(
+        IAiAssistantService aiAssistantService,
+        ITenantTokenUsageService tokenUsageService,
+        ICurrentTenant currentTenant)
     {
         _aiAssistantService = aiAssistantService;
+        _tokenUsageService = tokenUsageService;
+        _currentTenant = currentTenant;
     }
 
     [HttpPost("chat")]
@@ -24,5 +31,14 @@ public class AiAssistantController : VersionNeutralApiController
     {
         var response = await _aiAssistantService.ProcessPromptAsync(request, cancellationToken);
         return response.ToInformationResponse();
+    }
+
+    [HttpGet("token-usage")]
+    [OpenApiOperation("Get cumulative AI consumed token usage per model for the current tenant.", "")]
+    public async Task<HttpResponseDto<List<TenantAiTokenUsageDto>>> GetTokenUsageAsync(CancellationToken cancellationToken)
+    {
+        var tenantId = _currentTenant?.Id ?? "GLOBAL";
+        var usages = await _tokenUsageService.GetTenantTokenUsagesAsync(tenantId, cancellationToken);
+        return usages.ToInformationResponse();
     }
 }

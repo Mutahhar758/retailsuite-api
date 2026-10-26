@@ -16,6 +16,7 @@ public class AiChatMessage
 public class AiAssistantRequest
 {
     public string Prompt { get; set; } = default!;
+    public string? ChatId { get; set; }
     public string? CurrentRoute { get; set; }
     public Dictionary<string, string>? ActiveFilters { get; set; }
     public List<AiChatMessage>? History { get; set; }
@@ -24,6 +25,7 @@ public class AiAssistantRequest
 public class AiAssistantResponse
 {
     public string ReplyText { get; set; } = default!;
+    public string? ChatId { get; set; }
     public AiActionType ActionType { get; set; } = AiActionType.Answer;
     public string? TargetRoute { get; set; }
     public object? ActionPayload { get; set; }

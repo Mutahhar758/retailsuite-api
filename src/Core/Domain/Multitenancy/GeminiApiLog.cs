@@ -4,6 +4,7 @@ public class GeminiApiLog
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public string CorrelationId { get; set; } = default!;
+    public string? ChatId { get; set; }
     public string? TenantId { get; set; }
     public string? UserId { get; set; }
     public string Source { get; set; } = "AiAssistant";

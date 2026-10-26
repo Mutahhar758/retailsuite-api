@@ -126,6 +126,19 @@ public class ToolRouterService : IToolRouterService
                         if (accountTask != null && !matchedTasks.Any(t => t.Id == accountTask.Id)) matchedTasks.Add(accountTask);
                         if (itemTask != null && !matchedTasks.Any(t => t.Id == itemTask.Id)) matchedTasks.Add(itemTask);
                     }
+                    else
+                    {
+                        // If multiple tasks have strong semantic affinity (e.g. top candidates with complementary tools),
+                        // bundle tools from top matching non-conflicting tasks so Gemini has all necessary execution tools.
+                        for (int i = 1; i < candidateTasks.Count && matchedTasks.Count < 2; i++)
+                        {
+                            var secondary = candidateTasks[i];
+                            if (secondary.Id == primary.Id) continue;
+                            if (!isExplicitReportRequest && secondary.Id.StartsWith("task_report_")) continue;
+
+                            matchedTasks.Add(secondary);
+                        }
+                    }
                 }
             }
             catch (Exception ex)
@@ -210,7 +223,7 @@ public class ToolRouterService : IToolRouterService
         return new RoutedTaskResult
         {
             MatchedTask = primaryTask,
-            Tools = toolsDict.Values.Take(3).ToList(),
+            Tools = toolsDict.Values.Take(5).ToList(),
             TaskSpecificSystemPrompt = combinedPrompt
         };
     }
