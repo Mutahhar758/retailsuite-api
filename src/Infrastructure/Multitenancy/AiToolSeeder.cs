@@ -471,14 +471,14 @@ internal class AiToolSeeder
                 new AiTask
                 {
                     Id = "task_report_stock_balance",
-                    TaskName = "View Stock Balance Report (Inventory Quantities & Rates)",
-                    Description = "Opens stock balance report, godam ka stock, inventory balance, maal kitna pada hai, item quantities and valuation, current inventory levels, available stock.",
+                    TaskName = "View Stock Balance Report Screen / PDF",
+                    Description = "Explicit request to open, view, or navigate to the full Stock Balance report screen or PDF (stock balance report kholo, stock report dikhao, open stock report, view stock balance, inventory report nikalna). MUST ONLY be used when user explicitly asks to view/open the report. Do NOT use for checking a single item's stock in chat.",
                     RouteHint = "/reports/stock-balance",
-                    TaskSpecificSystemPrompt = "- Task: View Stock Balance Report. Call `navigate_to_report` with reportType='stock_balance', optional category or stockFilter ('All', 'Positive', 'Zero', 'Negative').",
+                    TaskSpecificSystemPrompt = "- Task: View Stock Balance Report. ONLY call `navigate_to_report` if the user explicitly asked to open, show, or navigate to the stock balance report/screen. If the user only asked about stock quantity of a specific item, do NOT navigate; provide the answer directly in chat using search_item.",
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow
                 },
-                new List<string> { "navigate_to_report" }
+                new List<string> { "navigate_to_report", "search_item" }
             ),
             new(
                 new AiTask
@@ -615,9 +615,9 @@ internal class AiToolSeeder
                 {
                     Id = "task_check_balance_search",
                     TaskName = "Check Account Balance & Search",
-                    Description = "Checks balance of customer, vendor, supplier, cash, bank, or ledger account. Balance inquiry (kitna balance hai, kitne paise bante hain, dena hai ya lena hai, kitna baqi hai, payables, receivables, kitne lene hain, kitne dene hain).",
+                    Description = "Checks balance of customer, vendor, supplier, cash, bank, or ledger account in chat (kitna balance hai, kitne paise bante hain, dena hai ya lena hai, kitna baqi hai, payables, receivables, kitne lene hain, kitne dene hain, test ka balance). Replies directly in chat without opening any report.",
                     RouteHint = "/setup/chart-of-accounts",
-                    TaskSpecificSystemPrompt = "- Task: Balance Inquiry & Account Search. Call `search_account` with includeBalance=true. Provide multiple name variations in the `names` array. Clearly explain the current balance, indicating whether it is receivable (Debit) or payable (Credit).",
+                    TaskSpecificSystemPrompt = "- Task: Balance Inquiry & Account Search. Call `search_account` with includeBalance=true. Provide multiple name variations in the `names` array. Clearly explain the current balance in chat, indicating whether it is receivable (Debit) or payable (Credit). Do NOT open any report screen.",
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow
                 },
@@ -640,10 +640,10 @@ internal class AiToolSeeder
                 new AiTask
                 {
                     Id = "task_search_inventory",
-                    TaskName = "Search Inventory & Item Stock",
-                    Description = "Searches inventory products, stock items, prices, barcodes, milk pack, panadol, mobile, stock item, product movement, item details, checking item stock balance (maal kitna bacha hai, stock kitna hai, kitne carton ya packets hain, stock inquiry).",
+                    TaskName = "Search Inventory & Item Stock Balance",
+                    Description = "Checking item stock quantity, available inventory balance, asking how much stock is left for an item, product price, item inquiry in chat (daal chana ka stock kitna hai, tikka masala kitna pada hai, maal kitna bacha hai, stock kitna hai, kitne carton ya packets hain, item stock inquiry). Replies directly in chat without opening any report.",
                     RouteHint = "/setup/item-details",
-                    TaskSpecificSystemPrompt = "- Task: Search Inventory & Item Stock. Call `search_item` with product keywords. If user asks specifically about available stock quantity, remaining units, or stock balance (stock kitna hai, kitna maal bacha hai), set `includeStockBalance=true` and clearly report the stock balance and status.",
+                    TaskSpecificSystemPrompt = "- Task: Search Inventory & Item Stock Balance. Always call `search_item` with product keywords and set `includeStockBalance=true` when asked about stock/quantity/units. Always answer directly in chat with the item name, available stock quantity, unit, and whether in stock or out of stock. NEVER call navigate_to_report or open any screen unless the user explicitly said 'report kholo' or 'open report'.",
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow
                 },

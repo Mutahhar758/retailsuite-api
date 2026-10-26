@@ -197,6 +197,7 @@ public class GeminiAiAssistantService : IAiAssistantService
         }
         promptBuilder.AppendLine("Always reply strictly in the exact same language and script used by the user in their prompt (English, Roman Urdu, Urdu, etc.).");
         promptBuilder.AppendLine("Format responses cleanly using markdown bullet points and bold key figures or names. Keep spoken replies concise and natural for speech.");
+        promptBuilder.AppendLine("IMPORTANT: When a user asks a question about an account balance or item stock quantity (e.g. 'kitna balance hai?', 'stock kitna hai?', 'daal chana ka stock kitna hai?'), reply directly in chat using search_account or search_item(includeStockBalance=true). NEVER call navigate_to_report unless the user explicitly used words like 'report', 'statement', 'ledger', 'kholo', 'open', 'dikhao', 'show report', or 'print'.");
 
         if (!string.IsNullOrWhiteSpace(routedTask.TaskSpecificSystemPrompt))
         {
