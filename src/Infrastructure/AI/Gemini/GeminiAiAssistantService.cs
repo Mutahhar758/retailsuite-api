@@ -64,7 +64,9 @@ public class GeminiAiAssistantService : IAiAssistantService
             return new AiAssistantResponse { Success = false, ErrorMessage = "Prompt cannot be empty.", ReplyText = "Prompt cannot be empty." };
         }
 
-        var correlationId = Guid.NewGuid().ToString("N");
+        // UUIDv7 (RFC 9562): Time-ordered UUID with millisecond precision timestamp
+        // Standard sortable format: 0192df4b-7013-7186-9032-45e69e2c694a
+        var correlationId = Guid.CreateVersion7().ToString();
 
         try
         {
