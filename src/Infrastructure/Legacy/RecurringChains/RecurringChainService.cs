@@ -6,6 +6,8 @@ using Retailer.Application.Legacy.JournalVouchers;
 using Retailer.Application.Legacy.RecurringChains;
 using Retailer.Application.Legacy.SaleSupplies;
 using Retailer.Domain.Legacy;
+using Retailer.Infrastructure.Persistence.Context;
+using Retailer.Infrastructure.Persistence.Transactions;
 
 namespace Retailer.Infrastructure.Legacy.RecurringChains;
 
@@ -17,6 +19,8 @@ internal class RecurringChainService : IRecurringChainService
     private readonly ISaleSupplyService _saleSupplyService;
     private readonly IRepository<GlEntry> _glRepo;
     private readonly IJournalVoucherService _journalVoucherService;
+    private readonly EfTransactionManager _transactionManager;
+    private readonly ApplicationDbContext _dbContext;
     private readonly ILogger<RecurringChainService> _logger;
 
     public RecurringChainService(
@@ -26,6 +30,8 @@ internal class RecurringChainService : IRecurringChainService
         ISaleSupplyService saleSupplyService,
         IRepository<GlEntry> glRepo,
         IJournalVoucherService journalVoucherService,
+        EfTransactionManager transactionManager,
+        ApplicationDbContext dbContext,
         ILogger<RecurringChainService> logger)
     {
         _chainRepo = chainRepo;
@@ -34,6 +40,8 @@ internal class RecurringChainService : IRecurringChainService
         _saleSupplyService = saleSupplyService;
         _glRepo = glRepo;
         _journalVoucherService = journalVoucherService;
+        _transactionManager = transactionManager;
+        _dbContext = dbContext;
         _logger = logger;
     }
 
@@ -211,11 +219,31 @@ internal class RecurringChainService : IRecurringChainService
             try
             {
                 _logger.LogInformation("Processing recurring chain '{Name}' (ID: {ChainId}) for date {Date}.", chain.Name, chain.Id, runDate);
-                await RunChainForTodayAsync(chain.Id, runDate, cancellationToken);
+                var voucherNo = await RunChainForTodayAsync(chain.Id, runDate, cancellationToken);
+
+                // Commit the transaction started by EfTransactionManager for this chain.
+                // In HTTP requests, EfTransactionMiddleware handles this, but background jobs run outside the HTTP pipeline.
+                if (_transactionManager.Transaction != null)
+                {
+                    await _transactionManager.Transaction.CommitAsync(cancellationToken);
+                    await _transactionManager.Transaction.DisposeAsync();
+                    _transactionManager.Transaction = null;
+                }
+
+                _logger.LogInformation("Successfully processed recurring chain '{Name}' (ID: {ChainId}), Voucher '{VoucherNo}'.", chain.Name, chain.Id, voucherNo);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to execute recurring chain '{Name}' (ID: {ChainId}) on {Date}.", chain.Name, chain.Id, runDate);
+
+                if (_transactionManager.Transaction != null)
+                {
+                    await _transactionManager.Transaction.RollbackAsync(cancellationToken);
+                    await _transactionManager.Transaction.DisposeAsync();
+                    _transactionManager.Transaction = null;
+                }
+
+                _dbContext.ChangeTracker.Clear();
             }
         }
     }

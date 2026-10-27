@@ -4,7 +4,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Retailer.Application.Legacy.RecurringChains;
+using Retailer.Infrastructure.Auth;
 using Retailer.Infrastructure.Multitenancy;
+using Retailer.Infrastructure.Persistence.Transactions;
 using AppTenantInfo = Retailer.Domain.Multitenancy.TenantInfo;
 
 namespace Retailer.Infrastructure.BackgroundJobs;
@@ -47,7 +49,35 @@ public class DailyRecurringVouchersJob : IDailyRecurringVouchersJob
                 }
 
                 var recurringService = scope.ServiceProvider.GetRequiredService<IRecurringChainService>();
-                await recurringService.ProcessTenantDueChainsAsync(today, cancellationToken);
+                var currentUserInitializer = scope.ServiceProvider.GetService<ICurrentUserInitializer>();
+                currentUserInitializer?.SetCurrentUserId("system");
+
+                var txManager = scope.ServiceProvider.GetService<EfTransactionManager>();
+
+                try
+                {
+                    await recurringService.ProcessTenantDueChainsAsync(today, cancellationToken);
+
+                    // Commit any open transaction started by EfTransactionManager during processing.
+                    // Normally EfTransactionMiddleware handles this, but Hangfire jobs run outside the HTTP pipeline.
+                    if (txManager?.Transaction != null)
+                    {
+                        await txManager.Transaction.CommitAsync(cancellationToken);
+                        await txManager.Transaction.DisposeAsync();
+                        txManager.Transaction = null;
+                    }
+                }
+                catch
+                {
+                    if (txManager?.Transaction != null)
+                    {
+                        await txManager.Transaction.RollbackAsync(cancellationToken);
+                        await txManager.Transaction.DisposeAsync();
+                        txManager.Transaction = null;
+                    }
+
+                    throw;
+                }
             }
             catch (Exception ex)
             {
