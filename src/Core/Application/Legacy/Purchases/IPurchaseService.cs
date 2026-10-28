@@ -2,7 +2,9 @@ namespace Retailer.Application.Legacy.Purchases;
 
 public interface IPurchaseService : ITransientService
 {
+    [Obsolete("Unpaginated list. Use GetPagedListAsync instead; this will be removed.")]
     Task<List<PurchaseResponse>> GetListAsync(PurchaseListFilter filter, CancellationToken cancellationToken);
+    Task<PaginationResponse<PurchaseResponse>> GetPagedListAsync(PurchasePagedListFilter filter, CancellationToken cancellationToken);
     Task<List<PurchaseLineResponse>> GetDetailAsync(string voucherNo, CancellationToken cancellationToken);
     Task<string> CreateAsync(PurchaseCreateRequest request, CancellationToken cancellationToken);
     Task UpdateAsync(string voucherNo, PurchaseUpdateRequest request, CancellationToken cancellationToken);

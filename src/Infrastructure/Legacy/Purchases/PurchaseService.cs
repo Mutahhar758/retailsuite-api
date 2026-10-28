@@ -4,6 +4,7 @@ using Retailer.Application.Common.Exceptions;
 using Retailer.Application.Common.Interfaces;
 using Retailer.Application.Common.Persistence;
 using Retailer.Application.Legacy.Inventory;
+using Retailer.Application.Common.Models;
 using Retailer.Application.Legacy.Purchases;
 using Retailer.Domain.Legacy;
 using Retailer.Shared.Common.Constants;
@@ -47,6 +48,7 @@ internal class PurchaseService : IPurchaseService
         _currentTenant = currentTenant;
     }
 
+    [Obsolete("Unpaginated list. Use GetPagedListAsync instead; this will be removed.")]
     public async Task<List<PurchaseResponse>> GetListAsync(PurchaseListFilter filter, CancellationToken cancellationToken)
     {
         var query = _purchaseMasterRepository.GetAll()
@@ -87,6 +89,61 @@ internal class PurchaseService : IPurchaseService
             .OrderByDescending(x => x.Date)
             .ThenByDescending(x => x.VoucherNo)
             .ToListAsync(cancellationToken);
+    }
+
+    public async Task<PaginationResponse<PurchaseResponse>> GetPagedListAsync(PurchasePagedListFilter filter, CancellationToken cancellationToken)
+    {
+        var query = _purchaseMasterRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => x.VType == VType);
+
+        if (filter.FromDate.HasValue)
+            query = query.Where(x => x.VDate >= filter.FromDate.Value);
+
+        if (filter.ToDate.HasValue)
+            query = query.Where(x => x.VDate <= filter.ToDate.Value);
+
+        if (!string.IsNullOrWhiteSpace(filter.Account))
+            query = query.Where(x => x.AccountId == filter.Account);
+
+        if (!string.IsNullOrWhiteSpace(filter.VoucherNo))
+            query = query.Where(x => x.VNo == filter.VoucherNo);
+
+        var projected = query
+            .GroupJoin(
+                _chartOfAccountRepository.GetAll().AsNoTracking(),
+                m => m.AccountId,
+                a => a.Id,
+                (m, a) => new { Master = m, Account = a.FirstOrDefault() })
+            .Select(x => new PurchaseResponse
+            {
+                Date = x.Master.VDate,
+                VoucherNo = x.Master.VNo,
+                Account = x.Account != null ? x.Account.Title : x.Master.AccountId,
+                Amount = x.Master.Amount ?? 0,
+                SellerCnic = x.Master.SellerCnic,
+                SellerContact = x.Master.SellerContact,
+                CreatedBy = x.Master.CreatedBy,
+                CreatedOn = x.Master.CreatedOn,
+                LastModifiedBy = x.Master.LastModifiedBy,
+                LastModifiedOn = x.Master.LastModifiedOn
+            });
+
+        var pageNumber = filter.PageNumber <= 0 ? 1 : filter.PageNumber;
+        var pageSize = filter.PageSize <= 0
+            ? PurchasePagedListFilter.DefaultPageSize
+            : Math.Min(filter.PageSize, PurchasePagedListFilter.MaxPageSize);
+
+        var totalCount = await projected.CountAsync(cancellationToken);
+
+        var items = await projected
+            .OrderByDescending(x => x.Date)
+            .ThenByDescending(x => x.VoucherNo)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return new PaginationResponse<PurchaseResponse>(items, totalCount, pageNumber, pageSize);
     }
 
     public async Task<List<PurchaseLineResponse>> GetDetailAsync(string voucherNo, CancellationToken cancellationToken)

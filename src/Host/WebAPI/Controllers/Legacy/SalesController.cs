@@ -15,6 +15,7 @@ public class SalesController : VersionNeutralApiController
     }
 
     [HttpGet]
+    [Obsolete("Unpaginated list endpoint. Use /paged instead; this will be removed.")]
     [MustHavePermission(AppAction.View, AppResource.Sales)]
     [OpenApiOperation("Get sale voucher list.", "")]
     public async Task<HttpResponseDto<List<SaleResponse>>> GetListAsync(
@@ -22,6 +23,17 @@ public class SalesController : VersionNeutralApiController
         CancellationToken cancellationToken)
     {
         var result = await _saleService.GetListAsync(filter, cancellationToken);
+        return result.ToInformationResponse();
+    }
+
+    [HttpGet("paged")]
+    [MustHavePermission(AppAction.View, AppResource.Sales)]
+    [OpenApiOperation("Get sale voucher list (paginated).", "Server-side pagination. Supports pageNumber, pageSize, fromDate, toDate, account, voucherNo.")]
+    public async Task<HttpResponseDto<PaginationResponse<SaleResponse>>> GetPagedListAsync(
+        [FromQuery] SalePagedListFilter filter,
+        CancellationToken cancellationToken)
+    {
+        var result = await _saleService.GetPagedListAsync(filter, cancellationToken);
         return result.ToInformationResponse();
     }
 
