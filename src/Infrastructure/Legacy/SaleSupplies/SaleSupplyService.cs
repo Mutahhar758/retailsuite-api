@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Retailer.Application.Common.Exceptions;
 using Retailer.Application.Common.Interfaces;
+using Retailer.Application.Common.Models;
 using Retailer.Application.Common.Persistence;
 using Retailer.Application.Legacy.Inventory;
 using Retailer.Application.Legacy.SaleSupplies;
@@ -90,6 +91,54 @@ internal class SaleSupplyService : ISaleSupplyService
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<PaginationResponse<SaleSupplyResponse>> GetPagedListAsync(SaleSupplyPagedListFilter filter, CancellationToken cancellationToken)
+    {
+        var query = _saleSupplyMasterRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => x.VType == VType);
+
+        if (filter.FromDate.HasValue)
+            query = query.Where(x => x.VDate >= filter.FromDate.Value);
+
+        if (filter.ToDate.HasValue)
+            query = query.Where(x => x.VDate <= filter.ToDate.Value);
+
+        if (!string.IsNullOrWhiteSpace(filter.ItemId))
+            query = query.Where(x => x.ItemId == filter.ItemId);
+
+        if (!string.IsNullOrWhiteSpace(filter.VoucherNo))
+            query = query.Where(x => x.VNo == filter.VoucherNo);
+
+        var projected = query
+            .Select(x => new SaleSupplyResponse
+            {
+                Date = x.VDate,
+                VoucherNo = x.VNo,
+                Item = x.Item != null ? x.Item.Title : x.ItemId!,
+                CreatedBy = x.CreatedBy,
+                CreatedOn = x.CreatedOn,
+                LastModifiedBy = x.LastModifiedBy,
+                LastModifiedOn = x.LastModifiedOn,
+                SupplyOrderMasterId = x.SupplyOrderMasterId,
+                SupplyOrderTitle = x.SupplyOrderMaster != null ? x.SupplyOrderMaster.Title : null
+            });
+
+        var pageNumber = filter.PageNumber <= 0 ? 1 : filter.PageNumber;
+        var pageSize = filter.PageSize <= 0
+            ? SaleSupplyPagedListFilter.DefaultPageSize
+            : Math.Min(filter.PageSize, SaleSupplyPagedListFilter.MaxPageSize);
+
+        var totalCount = await projected.CountAsync(cancellationToken);
+
+        var items = await projected
+            .OrderByDescending(x => x.Date)
+            .ThenByDescending(x => x.VoucherNo)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return new PaginationResponse<SaleSupplyResponse>(items, totalCount, pageNumber, pageSize);
+    }
     public async Task<List<SaleSupplyLineResponse>> GetDetailAsync(string voucherNo, CancellationToken cancellationToken)
     {
         return await (

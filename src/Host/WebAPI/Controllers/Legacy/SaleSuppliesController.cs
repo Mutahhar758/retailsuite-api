@@ -34,6 +34,16 @@ public class SaleSuppliesController : VersionNeutralApiController
         return result.ToInformationResponse();
     }
 
+    [HttpGet("paged")]
+    [MustHavePermission(AppAction.View, AppResource.SaleSupplies)]
+    [OpenApiOperation("Get sale supply voucher list (paginated).", "Server-side pagination. Supports pageNumber, pageSize, fromDate, toDate, itemId, voucherNo.")]
+    public async Task<HttpResponseDto<PaginationResponse<SaleSupplyResponse>>> GetPagedListAsync(
+        [FromQuery] SaleSupplyPagedListFilter filter,
+        CancellationToken cancellationToken)
+    {
+        var result = await _saleSupplyService.GetPagedListAsync(filter, cancellationToken);
+        return result.ToInformationResponse();
+    }
     [HttpGet("{voucherNo}")]
     [MustHavePermission(AppAction.View, AppResource.SaleSupplies)]
     [OpenApiOperation("Get sale supply voucher detail.", "")]

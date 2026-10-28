@@ -4,7 +4,9 @@ namespace Retailer.Application.Legacy.SaleSupplies;
 
 public interface ISaleSupplyService : ITransientService
 {
+    [Obsolete("Unpaginated list. Use GetPagedListAsync instead; this will be removed.")]
     Task<List<SaleSupplyResponse>> GetListAsync(SaleSupplyListFilter filter, CancellationToken cancellationToken);
+    Task<PaginationResponse<SaleSupplyResponse>> GetPagedListAsync(SaleSupplyPagedListFilter filter, CancellationToken cancellationToken);
     Task<List<SaleSupplyLineResponse>> GetDetailAsync(string voucherNo, CancellationToken cancellationToken);
     Task<string> CreateAsync(SaleSupplyCreateRequest request, CancellationToken cancellationToken);
     Task UpdateAsync(string voucherNo, SaleSupplyUpdateRequest request, CancellationToken cancellationToken);
