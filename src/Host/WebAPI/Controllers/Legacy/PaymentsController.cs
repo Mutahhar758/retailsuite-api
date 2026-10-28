@@ -16,12 +16,24 @@ public class PaymentsController : VersionNeutralApiController
 
     [HttpGet]
     [MustHavePermission(AppAction.View, AppResource.PaymentVouchers)]
-    [OpenApiOperation("Get payment voucher list.", "")]
+    [OpenApiOperation("Get payment voucher list (obsolete).", "Obsolete: returns the full unpaginated list. Use GET api/payments/paged instead. Will be removed.")]
+    [Obsolete("Use GET api/payments/paged. This endpoint will be removed.")]
     public async Task<HttpResponseDto<List<PaymentResponse>>> GetListAsync(
         [FromQuery] PaymentListFilter filter,
         CancellationToken cancellationToken)
     {
         var result = await _paymentService.GetListAsync(filter, cancellationToken);
+        return result.ToInformationResponse();
+    }
+
+    [HttpGet("paged")]
+    [MustHavePermission(AppAction.View, AppResource.PaymentVouchers)]
+    [OpenApiOperation("Get payment voucher list (paginated).", "Server-side pagination. Supports pageNumber, pageSize, fromDate, toDate, cashBankAccount, account, narration, voucherNo.")]
+    public async Task<HttpResponseDto<PaginationResponse<PaymentResponse>>> GetPagedListAsync(
+        [FromQuery] PaymentPagedListFilter filter,
+        CancellationToken cancellationToken)
+    {
+        var result = await _paymentService.GetPagedListAsync(filter, cancellationToken);
         return result.ToInformationResponse();
     }
 

@@ -16,12 +16,24 @@ public class JournalVouchersController : VersionNeutralApiController
 
     [HttpGet]
     [MustHavePermission(AppAction.View, AppResource.JournalVouchers)]
-    [OpenApiOperation("Get journal voucher list.", "")]
+    [OpenApiOperation("Get journal voucher list (obsolete).", "Obsolete: returns the full unpaginated list. Use GET api/journalvouchers/paged instead. Will be removed.")]
+    [Obsolete("Use GET api/journalvouchers/paged. This endpoint will be removed.")]
     public async Task<HttpResponseDto<List<JournalVoucherResponse>>> GetListAsync(
         [FromQuery] JournalVoucherListFilter filter,
         CancellationToken cancellationToken)
     {
         var result = await _journalVoucherService.GetListAsync(filter, cancellationToken);
+        return result.ToInformationResponse();
+    }
+
+    [HttpGet("paged")]
+    [MustHavePermission(AppAction.View, AppResource.JournalVouchers)]
+    [OpenApiOperation("Get journal voucher list (paginated).", "Server-side pagination. Supports pageNumber, pageSize, fromDate, toDate, account, narration, voucherNo.")]
+    public async Task<HttpResponseDto<PaginationResponse<JournalVoucherResponse>>> GetPagedListAsync(
+        [FromQuery] JournalVoucherPagedListFilter filter,
+        CancellationToken cancellationToken)
+    {
+        var result = await _journalVoucherService.GetPagedListAsync(filter, cancellationToken);
         return result.ToInformationResponse();
     }
 

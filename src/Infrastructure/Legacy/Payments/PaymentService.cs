@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Retailer.Application.Common.Exceptions;
+using Retailer.Application.Common.Models;
 using Retailer.Application.Common.Persistence;
 using Retailer.Application.Legacy.Payments;
 using Retailer.Domain.Legacy;
@@ -64,6 +65,70 @@ internal class PaymentService : IPaymentService
             .OrderByDescending(x => x.Date)
             .ThenByDescending(x => x.VoucherNo)
             .ToListAsync(cancellationToken);
+    }
+
+    public async Task<PaginationResponse<PaymentResponse>> GetPagedListAsync(PaymentPagedListFilter filter, CancellationToken cancellationToken)
+    {
+        var query = _glRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => x.VType == VType);
+
+        if (filter.FromDate.HasValue)
+            query = query.Where(x => x.VDate >= filter.FromDate.Value);
+
+        if (filter.ToDate.HasValue)
+            query = query.Where(x => x.VDate <= filter.ToDate.Value);
+
+        if (!string.IsNullOrWhiteSpace(filter.CashBankAccount))
+            query = query.Where(x => x.CrAccountId == filter.CashBankAccount);
+
+        if (!string.IsNullOrWhiteSpace(filter.Account))
+            query = query.Where(x => x.DrAccountId == filter.Account);
+
+        if (!string.IsNullOrWhiteSpace(filter.Narration))
+            query = query.Where(x => x.NarrationId == filter.Narration);
+
+        if (!string.IsNullOrWhiteSpace(filter.VoucherNo))
+            query = query.Where(x => x.VoucherNo == filter.VoucherNo);
+
+        var grouped = query
+            .GroupBy(x => new
+            {
+                x.VoucherNo,
+                x.VDate,
+                x.ClearingDate,
+                Narration = x.Narration != null ? x.Narration.Title : x.NarrationId,
+                NarrationId = x.NarrationId
+            })
+            .Select(g => new PaymentResponse
+            {
+                VoucherNo = g.Key.VoucherNo,
+                Date = g.Key.VDate,
+                ClearingDate = g.Key.ClearingDate,
+                Amount = g.Sum(x => x.Amount),
+                Narration = g.Key.Narration,
+                NarrationId = g.Key.NarrationId,
+                CreatedBy = g.Max(x => x.CreatedBy),
+                CreatedOn = g.Min(x => x.CreatedOn),
+                LastModifiedBy = g.Max(x => x.LastModifiedBy),
+                LastModifiedOn = g.Max(x => x.LastModifiedOn)
+            });
+
+        var pageNumber = filter.PageNumber <= 0 ? 1 : filter.PageNumber;
+        var pageSize = filter.PageSize <= 0
+            ? PaymentPagedListFilter.DefaultPageSize
+            : Math.Min(filter.PageSize, PaymentPagedListFilter.MaxPageSize);
+
+        var totalCount = await grouped.CountAsync(cancellationToken);
+
+        var items = await grouped
+            .OrderByDescending(x => x.Date)
+            .ThenByDescending(x => x.VoucherNo)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return new PaginationResponse<PaymentResponse>(items, totalCount, pageNumber, pageSize);
     }
 
     public async Task<List<PaymentLineResponse>> GetDetailAsync(string voucherNo, string? cashBankAccount, CancellationToken cancellationToken)
