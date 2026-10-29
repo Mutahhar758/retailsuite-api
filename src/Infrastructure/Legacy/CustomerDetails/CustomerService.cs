@@ -156,6 +156,173 @@ internal class CustomerService : ICustomerService
         return mappedCustomers;
     }
 
+    public async Task<PaginationResponse<CustomerResponse>> GetPagedListAsync(CustomerPagedListFilter filter, CancellationToken cancellationToken)
+    {
+        var customerAccountPrefix = await GetCustomerAccountPrefixAsync(cancellationToken);
+
+        var query = _chartOfAccountRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => x.AccLevel == 5 && x.Id.StartsWith(customerAccountPrefix));
+
+        var joinedQuery = from coa in query
+                          join cd in _customerDetailRepository.GetAll().AsNoTracking() on coa.Id equals cd.Id into cdGroup
+                          from cd in cdGroup.DefaultIfEmpty()
+                          select new { coa, cd };
+
+        if (filter.Active.HasValue)
+        {
+            bool act = filter.Active.Value;
+            joinedQuery = joinedQuery.Where(x => (x.cd != null && x.cd.Active == act) || (x.cd == null && act));
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter.CustomerCategoryId))
+        {
+            joinedQuery = joinedQuery.Where(x => x.cd != null && x.cd.CustomerCategoryId == filter.CustomerCategoryId);
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter.ParentCustomerAccountId))
+        {
+            joinedQuery = joinedQuery.Where(x => x.cd != null && x.cd.ParentCustomerAccountId == filter.ParentCustomerAccountId);
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter.Search))
+        {
+            var s = filter.Search.Trim();
+            joinedQuery = joinedQuery.Where(x =>
+                x.coa.Title.Contains(s) ||
+                x.coa.Id.Contains(s) ||
+                (x.cd != null && (
+                    (x.cd.Phone1 != null && x.cd.Phone1.Contains(s)) ||
+                    (x.cd.Phone2 != null && x.cd.Phone2.Contains(s)) ||
+                    (x.cd.Email != null && x.cd.Email.Contains(s)) ||
+                    (x.cd.Cnic != null && x.cd.Cnic.Contains(s)) ||
+                    (x.cd.Address != null && x.cd.Address.Contains(s))
+                )));
+        }
+
+        var totalCount = await joinedQuery.CountAsync(cancellationToken);
+
+        int pageNumber = filter.PageNumber < 1 ? 1 : filter.PageNumber;
+        int pageSize = filter.PageSize < 1 ? CustomerPagedListFilter.DefaultPageSize : Math.Min(filter.PageSize, CustomerPagedListFilter.MaxPageSize);
+
+        var pagedAccounts = await joinedQuery
+            .OrderBy(x => x.coa.Id)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .Select(x => new { x.coa.Id, x.coa.Title })
+            .ToListAsync(cancellationToken);
+
+        if (pagedAccounts.Count == 0)
+        {
+            return new PaginationResponse<CustomerResponse>([], totalCount, pageNumber, pageSize);
+        }
+
+        var accountIds = pagedAccounts.Select(x => x.Id).ToList();
+
+        var detailMap = await _customerDetailRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => accountIds.Contains(x.Id))
+            .Select(x => new
+            {
+                x.Id,
+                x.Email,
+                x.Fax,
+                x.Cnic,
+                x.Address,
+                x.Qualification,
+                x.Phone1,
+                x.Phone2,
+                x.SmsNumber,
+                x.Iban,
+                x.SmsAlert,
+                x.EmailAlert,
+                x.Active,
+                x.MediaId,
+                x.CustomerCategoryId,
+                CustomerCategoryTitle = x.CustomerCategory != null ? x.CustomerCategory.Title : null,
+                x.ParentCustomerAccountId,
+                ParentCustomerTitle = x.ParentCustomerAccount != null ? x.ParentCustomerAccount.Title : null,
+                x.CreatedBy,
+                x.CreatedOn,
+                x.LastModifiedBy,
+                x.LastModifiedOn
+            })
+            .ToDictionaryAsync(x => x.Id, cancellationToken);
+
+        var supplyItems = await _customerSupplyItemRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => accountIds.Contains(x.CustomerAccountId))
+            .Join(_itemDetailRepository.GetAll().AsNoTracking(),
+                cs => cs.ItemId,
+                item => item.Id,
+                (cs, item) => new
+                {
+                    cs.CustomerAccountId,
+                    cs.ItemId,
+                    ItemTitle = item.Title,
+                    cs.Qty,
+                    cs.SecQty,
+                    cs.Rate,
+                    cs.AddLess,
+                    cs.Carriage,
+                    cs.Discount
+                })
+            .ToListAsync(cancellationToken);
+
+        var supplyItemMap = supplyItems
+            .GroupBy(x => x.CustomerAccountId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.Select(i => new CustomerSupplyItemDto
+                {
+                    ItemId = i.ItemId,
+                    ItemTitle = i.ItemTitle,
+                    Qty = i.Qty,
+                    SecQty = i.SecQty,
+                    Rate = i.Rate,
+                    AddLess = i.AddLess,
+                    Carriage = i.Carriage,
+                    Discount = i.Discount
+                }).ToList());
+
+        var mappedCustomers = pagedAccounts.Select(x =>
+        {
+            detailMap.TryGetValue(x.Id, out var detail);
+            supplyItemMap.TryGetValue(x.Id, out var items);
+            return new CustomerResponse
+            {
+                Account = x.Id,
+                Title = x.Title,
+                Email = detail?.Email,
+                Fax = detail?.Fax,
+                Cnic = detail?.Cnic,
+                Address = detail?.Address,
+                Qualification = detail?.Qualification,
+                Phone1 = detail?.Phone1,
+                Phone2 = detail?.Phone2,
+                SmsNumber = detail?.SmsNumber,
+                Iban = detail?.Iban,
+                SmsAlert = detail?.SmsAlert ?? false,
+                EmailAlert = detail?.EmailAlert ?? false,
+                Active = detail?.Active ?? true,
+                MediaId = detail?.MediaId,
+                CustomerCategoryId = detail?.CustomerCategoryId,
+                CustomerCategoryTitle = detail?.CustomerCategoryTitle,
+                ParentCustomerAccountId = detail?.ParentCustomerAccountId,
+                ParentCustomerTitle = detail?.ParentCustomerTitle,
+                CreatedBy = detail?.CreatedBy,
+                CreatedOn = detail?.CreatedOn,
+                LastModifiedBy = detail?.LastModifiedBy,
+                LastModifiedOn = detail?.LastModifiedOn,
+                SupplyItems = items ?? new()
+            };
+        }).ToList();
+
+        await PopulateMediaUrlsAsync(mappedCustomers, cancellationToken);
+
+        return new PaginationResponse<CustomerResponse>(mappedCustomers, totalCount, pageNumber, pageSize);
+    }
+
     public async Task<string> CreateAsync(CustomerCreateRequest request, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.Title))

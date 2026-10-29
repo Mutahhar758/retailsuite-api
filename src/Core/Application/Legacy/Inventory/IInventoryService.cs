@@ -5,6 +5,7 @@ namespace Retailer.Application.Legacy.Inventory;
 public interface IInventoryService : ITransientService
 {
     Task<List<InventoryItemResponse>> GetItemsAsync(string? itemCategoryCode, CancellationToken cancellationToken);
+    Task<Retailer.Application.Common.Models.PaginationResponse<InventoryItemResponse>> GetPagedItemsAsync(InventoryItemPagedListFilter filter, CancellationToken cancellationToken);
     Task<List<InventoryItemLookupResponse>> GetItemsLookupAsync(string? itemCategoryCode, bool includeLastPurchaseRate, CancellationToken cancellationToken);
     Task<InventoryItemResponse?> GetItemAsync(string id, CancellationToken cancellationToken);
     Task<string> UpsertItemAsync(InventoryItemUpsertRequest request, CancellationToken cancellationToken);

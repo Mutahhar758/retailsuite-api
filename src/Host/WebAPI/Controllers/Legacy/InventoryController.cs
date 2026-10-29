@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Retailer.Application.Legacy.Inventory;
 using Retailer.Application.Common.Interfaces;
+using Retailer.Application.Common.Models;
 using Retailer.Infrastructure.Common.Extensions;
 using Retailer.Infrastructure.Auth.Permissions;
 using Retailer.Shared.Authorization;
@@ -26,12 +27,22 @@ public class InventoryController : VersionNeutralApiController
     }
 
     [HttpGet("items")]
+    [Obsolete("Use GET /api/inventory/items/paged instead.")]
     [MustHavePermission(AppAction.View, AppResource.InventoryItems)]
     [OpenApiOperation("Get inventory items.", "")]
     public async Task<HttpResponseDto<List<InventoryItemResponse>>> GetItemsAsync([FromQuery] string? itemCategoryCode, CancellationToken cancellationToken)
     {
         var items = await _inventoryService.GetItemsAsync(itemCategoryCode, cancellationToken);
         return items.ToInformationResponse();
+    }
+
+    [HttpGet("items/paged")]
+    [MustHavePermission(AppAction.View, AppResource.InventoryItems)]
+    [OpenApiOperation("Get inventory items paged.", "")]
+    public async Task<HttpResponseDto<PaginationResponse<InventoryItemResponse>>> GetPagedItemsAsync([FromQuery] InventoryItemPagedListFilter filter, CancellationToken cancellationToken)
+    {
+        var response = await _inventoryService.GetPagedItemsAsync(filter, cancellationToken);
+        return response.ToInformationResponse();
     }
 
     [HttpGet("items/lookup")]

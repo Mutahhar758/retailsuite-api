@@ -5,6 +5,7 @@ namespace Retailer.Application.Legacy.CustomerDetails;
 public interface ICustomerService : ITransientService
 {
     Task<List<CustomerResponse>> GetAsync(CancellationToken cancellationToken);
+    Task<Retailer.Application.Common.Models.PaginationResponse<CustomerResponse>> GetPagedListAsync(CustomerPagedListFilter filter, CancellationToken cancellationToken);
     Task<string> CreateAsync(CustomerCreateRequest request, CancellationToken cancellationToken);
     Task UpdateAsync(string account, CustomerUpdateRequest request, CancellationToken cancellationToken);
     Task<PresignedUploadUrlResponse?> GetPresignedUploadUrlAsync(string fileName, CancellationToken cancellationToken);

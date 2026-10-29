@@ -1,5 +1,6 @@
 using Retailer.Application.Legacy.Vendors;
 using Retailer.Application.Common.Interfaces;
+using Retailer.Application.Common.Models;
 using Retailer.Infrastructure.Common.Extensions;
 using Retailer.Infrastructure.Auth.Permissions;
 using Retailer.Shared.Authorization;
@@ -16,12 +17,22 @@ public class VendorsController : VersionNeutralApiController
     }
 
     [HttpGet]
+    [Obsolete("Use GET /api/vendors/paged instead.")]
     [MustHavePermission(AppAction.View, AppResource.Vendors)]
     [OpenApiOperation("Get vendors.", "")]
     public async Task<HttpResponseDto<List<VendorResponse>>> GetAsync(CancellationToken cancellationToken)
     {
         var vendors = await _vendorService.GetAsync(cancellationToken);
         return vendors.ToInformationResponse();
+    }
+
+    [HttpGet("paged")]
+    [MustHavePermission(AppAction.View, AppResource.Vendors)]
+    [OpenApiOperation("Get vendors paged.", "")]
+    public async Task<HttpResponseDto<PaginationResponse<VendorResponse>>> GetPagedAsync([FromQuery] VendorPagedListFilter filter, CancellationToken cancellationToken)
+    {
+        var response = await _vendorService.GetPagedListAsync(filter, cancellationToken);
+        return response.ToInformationResponse();
     }
 
     [HttpPost]

@@ -106,6 +106,125 @@ internal class VendorService : IVendorService
         return mappedVendors;
     }
 
+    public async Task<PaginationResponse<VendorResponse>> GetPagedListAsync(VendorPagedListFilter filter, CancellationToken cancellationToken)
+    {
+        var vendorAccountPrefix = await GetVendorAccountPrefixAsync(cancellationToken);
+
+        var query = _chartOfAccountRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => x.AccLevel == 5 && x.Id.StartsWith(vendorAccountPrefix));
+
+        var joinedQuery = from coa in query
+                          join vd in _vendorDetailRepository.GetAll().AsNoTracking() on coa.Id equals vd.Id into vdGroup
+                          from vd in vdGroup.DefaultIfEmpty()
+                          select new { coa, vd };
+
+        if (filter.Active.HasValue)
+        {
+            bool act = filter.Active.Value;
+            joinedQuery = joinedQuery.Where(x => (x.vd != null && x.vd.Active == act) || (x.vd == null && act));
+        }
+
+        if (filter.ShowInSales.HasValue)
+        {
+            bool sis = filter.ShowInSales.Value;
+            joinedQuery = joinedQuery.Where(x => (x.vd != null && x.vd.ShowInSales == sis) || (x.vd == null && !sis));
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter.Search))
+        {
+            var s = filter.Search.Trim();
+            joinedQuery = joinedQuery.Where(x =>
+                x.coa.Title.Contains(s) ||
+                x.coa.Id.Contains(s) ||
+                (x.vd != null && (
+                    (x.vd.Phone1 != null && x.vd.Phone1.Contains(s)) ||
+                    (x.vd.Phone2 != null && x.vd.Phone2.Contains(s)) ||
+                    (x.vd.Email != null && x.vd.Email.Contains(s)) ||
+                    (x.vd.Cnic != null && x.vd.Cnic.Contains(s)) ||
+                    (x.vd.Address != null && x.vd.Address.Contains(s))
+                )));
+        }
+
+        var totalCount = await joinedQuery.CountAsync(cancellationToken);
+
+        int pageNumber = filter.PageNumber < 1 ? 1 : filter.PageNumber;
+        int pageSize = filter.PageSize < 1 ? VendorPagedListFilter.DefaultPageSize : Math.Min(filter.PageSize, VendorPagedListFilter.MaxPageSize);
+
+        var pagedAccounts = await joinedQuery
+            .OrderBy(x => x.coa.Id)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .Select(x => new { x.coa.Id, x.coa.Title })
+            .ToListAsync(cancellationToken);
+
+        if (pagedAccounts.Count == 0)
+        {
+            return new PaginationResponse<VendorResponse>([], totalCount, pageNumber, pageSize);
+        }
+
+        var accountIds = pagedAccounts.Select(x => x.Id).ToList();
+
+        var detailMap = await _vendorDetailRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => accountIds.Contains(x.Id))
+            .Select(x => new
+            {
+                x.Id,
+                x.Email,
+                x.Fax,
+                x.Cnic,
+                x.Address,
+                x.Qualification,
+                x.Phone1,
+                x.Phone2,
+                x.SmsNumber,
+                x.Iban,
+                x.SmsAlert,
+                x.EmailAlert,
+                x.Active,
+                x.ShowInSales,
+                x.MediaId,
+                x.CreatedBy,
+                x.CreatedOn,
+                x.LastModifiedBy,
+                x.LastModifiedOn
+            })
+            .ToDictionaryAsync(x => x.Id, cancellationToken);
+
+        var mappedVendors = pagedAccounts.Select(x =>
+        {
+            detailMap.TryGetValue(x.Id, out var detail);
+            return new VendorResponse
+            {
+                Account = x.Id,
+                Title = x.Title,
+                Email = detail?.Email,
+                Fax = detail?.Fax,
+                Cnic = detail?.Cnic,
+                Address = detail?.Address,
+                Qualification = detail?.Qualification,
+                Phone1 = detail?.Phone1,
+                Phone2 = detail?.Phone2,
+                SmsNumber = detail?.SmsNumber,
+                Iban = detail?.Iban,
+                SmsAlert = detail?.SmsAlert ?? false,
+                EmailAlert = detail?.EmailAlert ?? false,
+                Active = detail?.Active ?? true,
+                ShowInSales = detail?.ShowInSales ?? false,
+                MediaId = detail?.MediaId,
+                CreatedBy = detail?.CreatedBy,
+                CreatedOn = detail?.CreatedOn,
+                LastModifiedBy = detail?.LastModifiedBy,
+                LastModifiedOn = detail?.LastModifiedOn
+            };
+        }).ToList();
+
+        await PopulateMediaUrlsAsync(mappedVendors, cancellationToken);
+
+        return new PaginationResponse<VendorResponse>(mappedVendors, totalCount, pageNumber, pageSize);
+    }
+
     public async Task UpsertAsync(string account, VendorUpsertRequest request, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(account))

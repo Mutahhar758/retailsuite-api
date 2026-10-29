@@ -223,6 +223,87 @@ internal class InventoryService : IInventoryService
         return mappedItems;
     }
 
+    public async Task<PaginationResponse<InventoryItemResponse>> GetPagedItemsAsync(InventoryItemPagedListFilter filter, CancellationToken cancellationToken)
+    {
+        var query = _itemRepository.GetAll().AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(filter.ItemCategoryCode))
+            query = query.Where(x => x.ItemCategoryId == filter.ItemCategoryCode);
+
+        if (!string.IsNullOrWhiteSpace(filter.BrandId))
+            query = query.Where(x => x.BrandId == filter.BrandId);
+
+        if (!string.IsNullOrWhiteSpace(filter.ItemType) && Enum.TryParse<ItemType>(filter.ItemType, true, out var itemTypeEnum))
+            query = query.Where(x => x.ItemType == itemTypeEnum);
+
+        if (!string.IsNullOrWhiteSpace(filter.Search))
+        {
+            var s = filter.Search.Trim();
+            query = query.Where(x =>
+                x.Title.Contains(s) ||
+                (x.Barcode != null && x.Barcode.Contains(s)) ||
+                (x.ItemKey != null && x.ItemKey.Contains(s)) ||
+                x.Id.Contains(s));
+        }
+
+        var totalCount = await query.CountAsync(cancellationToken);
+
+        int pageNumber = filter.PageNumber < 1 ? 1 : filter.PageNumber;
+        int pageSize = filter.PageSize < 1 ? InventoryItemPagedListFilter.DefaultPageSize : Math.Min(filter.PageSize, InventoryItemPagedListFilter.MaxPageSize);
+
+        var items = await query
+            .Include(x => x.ItemCategory)
+            .Include(x => x.Brand)
+            .Include(x => x.PrimaryUnit)
+            .Include(x => x.SecondaryUnit)
+            .Include(x => x.DefaultUnit)
+            .OrderBy(x => x.ItemCategoryId)
+            .ThenBy(x => x.Title)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        var mappedItems = items.Select(x => new InventoryItemResponse
+        {
+            Id = x.Id,
+            Barcode = x.Barcode,
+            ItemCategoryCode = x.ItemCategoryId,
+            ItemCategoryTitle = x.ItemCategory?.Title,
+            Title = x.Title,
+            ItemKey = x.ItemKey,
+            PriRate = x.PriRate,
+            SecRate = x.SecRate,
+            PrimaryUnit = x.PrimaryUnitId,
+            PrimaryUnitTitle = x.PrimaryUnit?.Title,
+            SecondaryUnit = x.SecondaryUnitId,
+            SecondaryUnitTitle = x.SecondaryUnit?.Title,
+            DefaultUnit = x.DefaultUnitId,
+            DefaultUnitTitle = x.DefaultUnit?.Title,
+            QtyInPack = x.QtyInPack,
+            Alert = x.Alert ?? false,
+            LowStockAlert = x.LowStockAlert,
+            LowStockQty = x.LowStockQty,
+            MinSalePrice = x.MinSalePrice,
+            OpnStock = x.OpnStock,
+            OpnRate = x.OpnRate,
+            ItemType = x.ItemType,
+            MediaId = x.MediaId,
+            QuickQtyPresets = x.QuickQtyPresets,
+            AdditionalUnits = x.AdditionalUnits,
+            RequireImei = x.RequireImei,
+            BrandId = x.BrandId,
+            BrandTitle = x.Brand?.Title,
+            ModelName = x.ModelName,
+            Storage = x.Storage,
+            Ram = x.Ram,
+            Color = x.Color
+        }).ToList();
+
+        await PopulateMediaUrlsAsync(mappedItems, cancellationToken);
+
+        return new PaginationResponse<InventoryItemResponse>(mappedItems, totalCount, pageNumber, pageSize);
+    }
+
     public async Task<InventoryItemResponse?> GetItemAsync(string id, CancellationToken cancellationToken)
     {
         var item = await _itemRepository.GetAll()

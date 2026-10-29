@@ -1,5 +1,6 @@
 using Retailer.Application.Legacy.CustomerDetails;
 using Retailer.Application.Common.Interfaces;
+using Retailer.Application.Common.Models;
 using Retailer.Infrastructure.Common.Extensions;
 using Retailer.Infrastructure.Auth.Permissions;
 using Retailer.Shared.Authorization;
@@ -16,12 +17,22 @@ public class CustomersController : VersionNeutralApiController
     }
 
     [HttpGet]
+    [Obsolete("Use GET /api/customers/paged instead.")]
     [MustHavePermission(AppAction.View, AppResource.Customers)]
     [OpenApiOperation("Get customers.", "")]
     public async Task<HttpResponseDto<List<CustomerResponse>>> GetAsync(CancellationToken cancellationToken)
     {
         var customers = await _customerService.GetAsync(cancellationToken);
         return customers.ToInformationResponse();
+    }
+
+    [HttpGet("paged")]
+    [MustHavePermission(AppAction.View, AppResource.Customers)]
+    [OpenApiOperation("Get customers paged.", "")]
+    public async Task<HttpResponseDto<PaginationResponse<CustomerResponse>>> GetPagedAsync([FromQuery] CustomerPagedListFilter filter, CancellationToken cancellationToken)
+    {
+        var response = await _customerService.GetPagedListAsync(filter, cancellationToken);
+        return response.ToInformationResponse();
     }
 
     [HttpPost]
