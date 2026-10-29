@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Retailer.Application.Common.Exceptions;
 using Retailer.Application.Common.Interfaces;
+using Retailer.Application.Common.Models;
 using Retailer.Application.Common.Persistence;
 using Retailer.Application.Legacy.Inventory;
 using Retailer.Application.Legacy.Manufacturing;
@@ -44,6 +45,86 @@ internal class ManufacturingService : IManufacturingService
         _defaultAccountRepository = defaultAccountRepository;
         _balanceService = balanceService;
         _currentTenant = currentTenant;
+    }
+
+    public async Task<PaginationResponse<ProductionResponse>> GetPagedListAsync(ProductionPagedListFilter filter, CancellationToken cancellationToken)
+    {
+        var query = _productionMasterRepository.GetAll()
+            .AsNoTracking()
+            .Include(x => x.FinishedItem)
+                .ThenInclude(f => f.DefaultUnit)
+            .Include(x => x.FinishedItem)
+                .ThenInclude(f => f.PrimaryUnit)
+            .Include(x => x.Unit)
+            .Include(x => x.BomMaster)
+            .Include(x => x.Narration)
+            .Where(x => x.VType == (filter.VType ?? VType));
+
+        if (filter.FromDate.HasValue)
+            query = query.Where(x => x.VDate >= filter.FromDate.Value);
+
+        if (filter.ToDate.HasValue)
+            query = query.Where(x => x.VDate <= filter.ToDate.Value);
+
+        if (!string.IsNullOrWhiteSpace(filter.VoucherNo))
+            query = query.Where(x => x.VNo == filter.VoucherNo);
+
+        if (!string.IsNullOrWhiteSpace(filter.FinishedItemId))
+            query = query.Where(x => x.FinishedItemId == filter.FinishedItemId);
+
+        if (filter.Status.HasValue)
+            query = query.Where(x => x.Status == filter.Status.Value);
+
+        var pageNumber = filter.PageNumber <= 0 ? 1 : filter.PageNumber;
+        var pageSize = filter.PageSize <= 0
+            ? ProductionPagedListFilter.DefaultPageSize
+            : Math.Min(filter.PageSize, ProductionPagedListFilter.MaxPageSize);
+
+        var totalCount = await query.CountAsync(cancellationToken);
+
+        var list = await query
+            .OrderByDescending(x => x.VDate)
+            .ThenByDescending(x => x.VNo)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        var items = list.Select(m => new ProductionResponse
+        {
+            Id = m.Id,
+            Date = m.VDate,
+            Time = m.VTime,
+            VType = m.VType,
+            VoucherNo = m.VNo,
+            BomMasterId = m.BomMasterId,
+            BomTitle = m.BomMaster?.Title,
+            FinishedItemId = m.FinishedItemId,
+            FinishedItemTitle = m.FinishedItem?.Title ?? m.FinishedItemId,
+            FinishedItemBarcode = m.FinishedItem?.Barcode,
+            TargetQty = m.TargetQty,
+            ProducedQty = m.ProducedQty,
+            UnitId = m.UnitId,
+            UnitTitle = m.Unit?.Title ?? m.FinishedItem?.DefaultUnit?.Title ?? m.FinishedItem?.PrimaryUnit?.Title,
+            BatchNo = m.BatchNo,
+            ExpiryDate = m.ExpiryDate,
+            TotalMaterialCost = m.TotalMaterialCost,
+            TotalOverheadCost = m.TotalOverheadCost,
+            TotalProductionCost = m.TotalProductionCost,
+            UnitProductionCost = m.UnitProductionCost,
+            NarrationId = m.NarrationId,
+            Narration = m.Narration?.Title,
+            Remarks = m.Remarks,
+            Status = m.Status,
+            CurrentStage = m.CurrentStage,
+            IssuedDate = m.IssuedDate,
+            CompletedDate = m.CompletedDate,
+            CreatedBy = m.CreatedBy,
+            CreatedOn = m.CreatedOn,
+            LastModifiedBy = m.LastModifiedBy,
+            LastModifiedOn = m.LastModifiedOn
+        }).ToList();
+
+        return new PaginationResponse<ProductionResponse>(items, totalCount, pageNumber, pageSize);
     }
 
     public async Task<List<ProductionResponse>> GetListAsync(ProductionListFilter filter, CancellationToken cancellationToken)

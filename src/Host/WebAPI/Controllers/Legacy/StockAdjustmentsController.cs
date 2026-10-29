@@ -14,7 +14,19 @@ public class StockAdjustmentsController : VersionNeutralApiController
         _stockAdjustmentService = stockAdjustmentService;
     }
 
+    [HttpGet("paged")]
+    [MustHavePermission(AppAction.View, AppResource.StockAdjustments)]
+    [OpenApiOperation("Get paginated stock adjustment voucher list.", "")]
+    public async Task<HttpResponseDto<PaginationResponse<StockAdjustmentResponse>>> GetPagedListAsync(
+        [FromQuery] StockAdjustmentPagedListFilter filter,
+        CancellationToken cancellationToken)
+    {
+        var result = await _stockAdjustmentService.GetPagedListAsync(filter, cancellationToken);
+        return result.ToInformationResponse();
+    }
+
     [HttpGet]
+    [Obsolete("Unpaginated list. Use GetPagedListAsync instead; this will be removed.")]
     [MustHavePermission(AppAction.View, AppResource.StockAdjustments)]
     [OpenApiOperation("Get stock adjustment voucher list.", "")]
     public async Task<HttpResponseDto<List<StockAdjustmentResponse>>> GetListAsync(

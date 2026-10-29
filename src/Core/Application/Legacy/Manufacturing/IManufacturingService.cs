@@ -5,6 +5,7 @@ namespace Retailer.Application.Legacy.Manufacturing;
 
 public interface IManufacturingService : ITransientService
 {
+    Task<PaginationResponse<ProductionResponse>> GetPagedListAsync(ProductionPagedListFilter filter, CancellationToken cancellationToken);
     Task<List<ProductionResponse>> GetListAsync(ProductionListFilter filter, CancellationToken cancellationToken);
     Task<ProductionResponse> GetDetailAsync(string voucherNo, CancellationToken cancellationToken);
     Task<ProductionEstimateResponse> CalculateEstimateAsync(ProductionEstimateRequest request, CancellationToken cancellationToken);

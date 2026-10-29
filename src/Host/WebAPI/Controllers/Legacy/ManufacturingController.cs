@@ -15,7 +15,19 @@ public class ManufacturingController : VersionNeutralApiController
         _manufacturingService = manufacturingService;
     }
 
+    [HttpGet("paged")]
+    [MustHavePermission(AppAction.View, AppResource.Manufacturing)]
+    [OpenApiOperation("Get paginated manufacturing voucher list.", "")]
+    public async Task<HttpResponseDto<PaginationResponse<ProductionResponse>>> GetPagedListAsync(
+        [FromQuery] ProductionPagedListFilter filter,
+        CancellationToken cancellationToken)
+    {
+        var result = await _manufacturingService.GetPagedListAsync(filter, cancellationToken);
+        return result.ToInformationResponse();
+    }
+
     [HttpGet]
+    [Obsolete("Unpaginated list. Use GetPagedListAsync instead; this will be removed.")]
     [MustHavePermission(AppAction.View, AppResource.Manufacturing)]
     [OpenApiOperation("Get manufacturing voucher list.", "")]
     public async Task<HttpResponseDto<List<ProductionResponse>>> GetListAsync(

@@ -2,6 +2,7 @@ namespace Retailer.Application.Legacy.StockAdjustments;
 
 public interface IStockAdjustmentService : ITransientService
 {
+    Task<PaginationResponse<StockAdjustmentResponse>> GetPagedListAsync(StockAdjustmentPagedListFilter filter, CancellationToken cancellationToken);
     Task<List<StockAdjustmentResponse>> GetListAsync(StockAdjustmentListFilter filter, CancellationToken cancellationToken);
     Task<List<StockAdjustmentLineResponse>> GetDetailAsync(string voucherNo, CancellationToken cancellationToken);
     Task<string> CreateAsync(StockAdjustmentCreateRequest request, CancellationToken cancellationToken);

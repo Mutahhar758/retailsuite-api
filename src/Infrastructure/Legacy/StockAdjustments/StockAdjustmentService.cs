@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Retailer.Application.Common.Exceptions;
 using Retailer.Application.Common.Interfaces;
+using Retailer.Application.Common.Models;
 using Retailer.Application.Common.Persistence;
 using Retailer.Application.Legacy.Inventory;
 using Retailer.Application.Legacy.StockAdjustments;
@@ -34,6 +35,65 @@ internal class StockAdjustmentService : IStockAdjustmentService
         _itemRepository = itemRepository;
         _balanceService = balanceService;
         _currentTenant = currentTenant;
+    }
+
+    public async Task<PaginationResponse<StockAdjustmentResponse>> GetPagedListAsync(StockAdjustmentPagedListFilter filter, CancellationToken cancellationToken)
+    {
+        var query = _stockAdjMasterRepository.GetAll()
+            .AsNoTracking()
+            .Include(x => x.Narration)
+            .Where(x => x.VType == VType);
+
+        if (filter.FromDate.HasValue)
+            query = query.Where(x => x.VDate >= filter.FromDate.Value);
+
+        if (filter.ToDate.HasValue)
+            query = query.Where(x => x.VDate <= filter.ToDate.Value);
+
+        if (!string.IsNullOrWhiteSpace(filter.VoucherNo))
+            query = query.Where(x => x.VNo == filter.VoucherNo);
+
+        if (!string.IsNullOrWhiteSpace(filter.ItemCategoryCode))
+        {
+            var category = filter.ItemCategoryCode;
+            query = query.Where(x => _stockAdjDetailRepository.GetAll()
+                .Any(d => d.VType == x.VType && d.VNo == x.VNo && d.CategoryId == category));
+        }
+
+        var pageNumber = filter.PageNumber <= 0 ? 1 : filter.PageNumber;
+        var pageSize = filter.PageSize <= 0
+            ? StockAdjustmentPagedListFilter.DefaultPageSize
+            : Math.Min(filter.PageSize, StockAdjustmentPagedListFilter.MaxPageSize);
+
+        var totalCount = await query.CountAsync(cancellationToken);
+
+        var details = _stockAdjDetailRepository.GetAll().AsNoTracking().Where(d => d.VType == VType);
+
+        var projected = from m in query
+                        join d in details on m.VNo equals d.VNo into detailGroup
+                        select new StockAdjustmentResponse
+                        {
+                            Date = m.VDate,
+                            VoucherNo = m.VNo,
+                            Narration = m.Narration != null ? m.Narration.Title : m.NarrationId,
+                            NarrationId = m.NarrationId,
+                            Description = m.Descr ?? string.Empty,
+                            TotalQty = detailGroup.Sum(d => d.QtyIn - d.QtyOut),
+                            TotalAmount = detailGroup.Sum(d => (d.QtyIn - d.QtyOut) * d.Rate),
+                            CreatedBy = m.CreatedBy,
+                            CreatedOn = m.CreatedOn,
+                            LastModifiedBy = m.LastModifiedBy,
+                            LastModifiedOn = m.LastModifiedOn
+                        };
+
+        var items = await projected
+            .OrderByDescending(x => x.Date)
+            .ThenByDescending(x => x.VoucherNo)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return new PaginationResponse<StockAdjustmentResponse>(items, totalCount, pageNumber, pageSize);
     }
 
     public async Task<List<StockAdjustmentResponse>> GetListAsync(StockAdjustmentListFilter filter, CancellationToken cancellationToken)
