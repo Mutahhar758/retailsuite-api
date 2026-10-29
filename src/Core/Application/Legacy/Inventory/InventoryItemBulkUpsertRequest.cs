@@ -35,4 +35,5 @@ public class InventoryItemBulkItemDto
     public string? Storage { get; set; }
     public string? Ram { get; set; }
     public string? Color { get; set; }
+    public List<ItemCustomerCategoryPriceUpsertRequest>? CustomerCategoryPrices { get; set; }
 }

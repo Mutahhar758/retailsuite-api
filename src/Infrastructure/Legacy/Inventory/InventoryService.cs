@@ -665,6 +665,7 @@ internal class InventoryService : IInventoryService
         var itemsToUpdate = new List<ItemDetail>();
         var openingStocksToCreate = new List<(string ItemId, string Unit, decimal Qty, decimal Rate)>();
         var openingStocksToUpsert = new List<(string ItemId, string Unit, decimal Qty, decimal Rate)>();
+        var categoryPricesToSave = new List<(string ItemId, List<ItemCustomerCategoryPriceUpsertRequest> Prices)>();
 
         for (int i = 0; i < request.Items.Count; i++)
         {
@@ -755,6 +756,11 @@ internal class InventoryService : IInventoryService
                     openingStocksToUpsert.Add((existing.Id, existing.PrimaryUnitId ?? item.PrimaryUnit, existing.OpnStock ?? 0, existing.OpnRate ?? 0));
                 }
 
+                if (item.CustomerCategoryPrices != null && item.CustomerCategoryPrices.Count > 0)
+                {
+                    categoryPricesToSave.Add((existing.Id, item.CustomerCategoryPrices));
+                }
+
                 result.UpdatedCount++;
             }
             else
@@ -804,6 +810,11 @@ internal class InventoryService : IInventoryService
                     openingStocksToCreate.Add((newId, item.PrimaryUnit, item.OpnStock.Value, item.OpnRate ?? 0));
                 }
 
+                if (item.CustomerCategoryPrices != null && item.CustomerCategoryPrices.Count > 0)
+                {
+                    categoryPricesToSave.Add((newId, item.CustomerCategoryPrices));
+                }
+
                 result.CreatedCount++;
             }
         }
@@ -824,6 +835,69 @@ internal class InventoryService : IInventoryService
         foreach (var op in openingStocksToUpsert)
         {
             await UpsertOpeningStockTransactionAsync(op.ItemId, op.Unit, op.Qty, op.Rate, cancellationToken);
+        }
+
+        if (categoryPricesToSave.Count > 0)
+        {
+            var itemIds = categoryPricesToSave.Select(x => x.ItemId).Distinct().ToList();
+            var allExistingPrices = await _categoryPriceRepository.GetAll()
+                .Where(x => itemIds.Contains(x.ItemId))
+                .ToListAsync(cancellationToken);
+
+            var existingByItem = allExistingPrices
+                .GroupBy(x => x.ItemId)
+                .ToDictionary(g => g.Key, g => g.ToDictionary(p => p.CustomerCategoryId));
+
+            var pricesToAdd = new List<ItemCustomerCategoryPrice>();
+            var pricesToUpdate = new List<ItemCustomerCategoryPrice>();
+            var pricesToDelete = new List<ItemCustomerCategoryPrice>();
+
+            foreach (var (itemId, incomingPrices) in categoryPricesToSave)
+            {
+                existingByItem.TryGetValue(itemId, out var existingMap);
+                existingMap ??= new Dictionary<string, ItemCustomerCategoryPrice>();
+
+                foreach (var p in incomingPrices.Where(p => !string.IsNullOrWhiteSpace(p.CustomerCategoryId)))
+                {
+                    var catId = p.CustomerCategoryId.Trim();
+                    if (p.PriRate > 0)
+                    {
+                        if (existingMap.TryGetValue(catId, out var existingPrice))
+                        {
+                            if (existingPrice.PriRate != p.PriRate || existingPrice.SecRate != p.SecRate)
+                            {
+                                existingPrice.PriRate = p.PriRate;
+                                existingPrice.SecRate = p.SecRate;
+                                pricesToUpdate.Add(existingPrice);
+                            }
+                        }
+                        else
+                        {
+                            pricesToAdd.Add(new ItemCustomerCategoryPrice
+                            {
+                                ItemId = itemId,
+                                CustomerCategoryId = catId,
+                                PriRate = p.PriRate,
+                                SecRate = p.SecRate
+                            });
+                        }
+                    }
+                    else if (existingMap.TryGetValue(catId, out var existingPrice))
+                    {
+                        pricesToDelete.Add(existingPrice);
+                    }
+                }
+            }
+
+            if (pricesToDelete.Count > 0)
+                await _categoryPriceRepository.DeleteRangeAsync(pricesToDelete, false);
+            if (pricesToAdd.Count > 0)
+                await _categoryPriceRepository.AddRangeAsync(pricesToAdd, false);
+            if (pricesToUpdate.Count > 0)
+                await _categoryPriceRepository.UpdateRangeAsync(pricesToUpdate, false);
+
+            if (pricesToDelete.Count > 0 || pricesToAdd.Count > 0 || pricesToUpdate.Count > 0)
+                await _categoryPriceRepository.SaveChangesAsync(cancellationToken);
         }
 
         return result;
