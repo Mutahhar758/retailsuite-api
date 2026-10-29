@@ -2,7 +2,9 @@ namespace Retailer.Application.Legacy.PurchaseReturns;
 
 public interface IPurchaseReturnService : ITransientService
 {
+    [Obsolete("Use GetPagedListAsync. This method will be removed.")]
     Task<List<PurchaseReturnResponse>> GetListAsync(PurchaseReturnListFilter filter, CancellationToken cancellationToken);
+    Task<PaginationResponse<PurchaseReturnResponse>> GetPagedListAsync(PurchaseReturnPagedListFilter filter, CancellationToken cancellationToken);
     Task<List<PurchaseReturnLineResponse>> GetDetailAsync(string voucherNo, CancellationToken cancellationToken);
     Task<string> CreateAsync(PurchaseReturnCreateRequest request, CancellationToken cancellationToken);
     Task UpdateAsync(string voucherNo, PurchaseReturnUpdateRequest request, CancellationToken cancellationToken);

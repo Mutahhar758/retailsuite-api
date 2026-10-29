@@ -1,0 +1,18 @@
+namespace Retailer.Application.Legacy.PurchaseReturns;
+
+public class PurchaseReturnPagedListFilter : PaginationFilter
+{
+    public const int DefaultPageSize = 20;
+    public const int MaxPageSize = 200;
+
+    public PurchaseReturnPagedListFilter()
+    {
+        PageNumber = 1;
+        PageSize = DefaultPageSize;
+    }
+
+    public DateOnly? FromDate { get; set; }
+    public DateOnly? ToDate { get; set; }
+    public string? Account { get; set; }
+    public string? VoucherNo { get; set; }
+}

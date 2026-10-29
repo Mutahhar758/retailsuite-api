@@ -16,12 +16,24 @@ public class PurchaseReturnsController : VersionNeutralApiController
 
     [HttpGet]
     [MustHavePermission(AppAction.View, AppResource.PurchaseReturns)]
-    [OpenApiOperation("Get purchase return voucher list.", "")]
+    [OpenApiOperation("Get purchase return voucher list (obsolete).", "Obsolete: returns the full unpaginated list. Use GET api/purchasereturns/paged instead. Will be removed.")]
+    [Obsolete("Use GET api/purchasereturns/paged. This endpoint will be removed.")]
     public async Task<HttpResponseDto<List<PurchaseReturnResponse>>> GetListAsync(
         [FromQuery] PurchaseReturnListFilter filter,
         CancellationToken cancellationToken)
     {
         var result = await _purchaseReturnService.GetListAsync(filter, cancellationToken);
+        return result.ToInformationResponse();
+    }
+
+    [HttpGet("paged")]
+    [MustHavePermission(AppAction.View, AppResource.PurchaseReturns)]
+    [OpenApiOperation("Get purchase return voucher list (paginated).", "Server-side pagination. Supports pageNumber, pageSize, fromDate, toDate, account, voucherNo.")]
+    public async Task<HttpResponseDto<PaginationResponse<PurchaseReturnResponse>>> GetPagedListAsync(
+        [FromQuery] PurchaseReturnPagedListFilter filter,
+        CancellationToken cancellationToken)
+    {
+        var result = await _purchaseReturnService.GetPagedListAsync(filter, cancellationToken);
         return result.ToInformationResponse();
     }
 
