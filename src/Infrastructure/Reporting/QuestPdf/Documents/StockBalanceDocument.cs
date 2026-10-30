@@ -95,19 +95,19 @@ public class StockBalanceDocument : IDocument
                 kpiRow.RelativeItem().Text(x =>
                 {
                     x.Span("Total Inward: ").FontSize(8.5f).Bold().FontColor(Colors.Grey.Darken2);
-                    x.Span(totalIn.ToString("#,##0")).FontSize(9.5f).Bold().FontColor(Colors.Blue.Darken2);
+                    x.Span(!string.IsNullOrWhiteSpace(_header.TotalQtyInDisplay) ? _header.TotalQtyInDisplay : totalIn.ToString("#,##0")).FontSize(9.5f).Bold().FontColor(Colors.Blue.Darken2);
                 });
 
                 kpiRow.RelativeItem().Text(x =>
                 {
                     x.Span("Total Outward: ").FontSize(8.5f).Bold().FontColor(Colors.Grey.Darken2);
-                    x.Span(totalOut.ToString("#,##0")).FontSize(9.5f).Bold().FontColor(Colors.Orange.Darken3);
+                    x.Span(!string.IsNullOrWhiteSpace(_header.TotalQtyOutDisplay) ? _header.TotalQtyOutDisplay : totalOut.ToString("#,##0")).FontSize(9.5f).Bold().FontColor(Colors.Orange.Darken3);
                 });
 
                 kpiRow.RelativeItem().Text(x =>
                 {
                     x.Span("Closing Units: ").FontSize(8.5f).Bold().FontColor(Colors.Grey.Darken2);
-                    x.Span(totalQty.ToString("#,##0")).FontSize(9.5f).Bold().FontColor(Colors.Grey.Darken4);
+                    x.Span(!string.IsNullOrWhiteSpace(_header.TotalClosingQtyDisplay) ? _header.TotalClosingQtyDisplay : totalQty.ToString("#,##0")).FontSize(9.5f).Bold().FontColor(Colors.Grey.Darken4);
                 });
 
                 if (_showStockValue)
@@ -222,10 +222,10 @@ public class StockBalanceDocument : IDocument
             decimal sumVal = _items.Sum(x => x.TotalValue);
 
             table.Cell().ColumnSpan(3).Element(TotalCell).Text("TOTAL SUMMARY").Bold();
-            table.Cell().Element(TotalCell).AlignRight().Text(sumOpening.ToString("#,##0.##")).Bold();
-            table.Cell().Element(TotalCell).AlignRight().Text(sumIn.ToString("#,##0.##")).Bold();
-            table.Cell().Element(TotalCell).AlignRight().Text(sumOut.ToString("#,##0.##")).Bold();
-            table.Cell().Element(TotalCell).AlignRight().Text(sumBal.ToString("#,##0.##")).Bold();
+            table.Cell().Element(TotalCell).AlignRight().Text(!string.IsNullOrWhiteSpace(_header.TotalOpeningQtyDisplay) ? _header.TotalOpeningQtyDisplay : sumOpening.ToString("#,##0.##")).Bold();
+            table.Cell().Element(TotalCell).AlignRight().Text(!string.IsNullOrWhiteSpace(_header.TotalQtyInDisplay) ? _header.TotalQtyInDisplay : sumIn.ToString("#,##0.##")).Bold();
+            table.Cell().Element(TotalCell).AlignRight().Text(!string.IsNullOrWhiteSpace(_header.TotalQtyOutDisplay) ? _header.TotalQtyOutDisplay : sumOut.ToString("#,##0.##")).Bold();
+            table.Cell().Element(TotalCell).AlignRight().Text(!string.IsNullOrWhiteSpace(_header.TotalClosingQtyDisplay) ? _header.TotalClosingQtyDisplay : sumBal.ToString("#,##0.##")).Bold();
             if (_showStockValue)
             {
                 table.Cell().Element(TotalCell).AlignRight().Text("-").FontColor(Colors.Grey.Darken1);
