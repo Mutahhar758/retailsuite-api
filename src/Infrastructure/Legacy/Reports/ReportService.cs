@@ -727,6 +727,21 @@ internal class ReportService : IReportService
             .Select(x => (x.SecQtyIn ?? 0) - (x.SecQtyOut ?? 0))
             .SumAsync(cancellationToken);
 
+        // Opening stock vouchers carry no bag count: derive bags from the item's default pack size.
+        if (_currentTenant.HasVariablePackFeature && itemInfo?.QtyInPack is > 0m)
+        {
+            var openingVoucherKg = await _itemTransactionRepository.GetAll()
+                .AsNoTracking()
+                .Where(x => x.ItemId == filter.FkItem
+                    && x.VType == "Op"
+                    && (x.SecQtyIn ?? 0) == 0
+                    && (x.SecQtyOut ?? 0) == 0)
+                .Select(x => x.QtyIn - x.QtyOut)
+                .SumAsync(cancellationToken);
+
+            openingSecStock += Math.Round(openingVoucherKg / itemInfo.QtyInPack.Value, 3);
+        }
+
         var rawMovements = await _itemTransactionRepository.GetAll()
             .AsNoTracking()
             .Where(x => x.ItemId == filter.FkItem
@@ -810,9 +825,23 @@ internal class ReportService : IReportService
         result.AddRange(movement);
 
         decimal runningBal = 0m;
+        decimal runningSecBal = 0m;
+        var isWandaTenant = _currentTenant.HasVariablePackFeature;
         foreach (var line in result)
         {
             runningBal += (line.QtyIn - line.QtyOut);
+            runningSecBal += (line.SecQtyIn - line.SecQtyOut);
+            line.SecQtyBal = runningSecBal;
+
+            if (isWandaTenant)
+            {
+                // Wanda: show stock in bags with the kg equivalent, e.g. "5 bags (250 kg)".
+                line.QtyInDisplay = line.QtyIn > 0 ? FormatBagsWithKg(line.SecQtyIn, line.QtyIn, fallbackUnitTitle) : null;
+                line.QtyOutDisplay = line.QtyOut > 0 ? FormatBagsWithKg(line.SecQtyOut, line.QtyOut, fallbackUnitTitle) : null;
+                line.BalanceDisplay = FormatBagsWithKg(runningSecBal, runningBal, fallbackUnitTitle);
+                continue;
+            }
+
             line.QtyInDisplay = line.QtyIn > 0
                 ? ItemUnitDisplayHelper.FormatQtyWithUnitText(line.QtyIn, primaryUnitId, fallbackUnitTitle, itemAdditionalUnits, subUnits)
                 : null;
@@ -823,6 +852,17 @@ internal class ReportService : IReportService
         }
 
         return result;
+    }
+
+    private static string FormatBagsWithKg(decimal bags, decimal kg, string? unitTitle)
+    {
+        var unit = string.IsNullOrWhiteSpace(unitTitle) ? "kg" : unitTitle.Trim();
+        var kgText = kg % 1m == 0m ? kg.ToString("N0") : kg.ToString("#,##0.###");
+        if (bags == 0m)
+            return kg == 0m ? "0" : $"{kgText} {unit}";
+        var bagText = bags % 1m == 0m ? bags.ToString("N0") : bags.ToString("#,##0.###");
+        var bagLabel = Math.Abs(bags) == 1m ? "bag" : "bags";
+        return $"{bagText} {bagLabel} ({kgText} {unit})";
     }
 
     public async Task<byte[]> GetStockLedgerPdfAsync(StockLedgerFilter filter, CancellationToken cancellationToken)
@@ -856,6 +896,7 @@ internal class ReportService : IReportService
             .Select(x => x.Item!.Title)
             .FirstOrDefaultAsync(cancellationToken) ?? filter.FkItem;
 
+        var isWandaTenant = _currentTenant.HasVariablePackFeature;
         decimal runningBalance = 0m;
         var items = new List<StockLedgerReportItem>();
         for (int i = 0; i < rawLines.Count; i++)
@@ -895,10 +936,18 @@ internal class ReportService : IReportService
             TotalIn = totalIn,
             TotalOut = totalOut,
             ClosingBalance = runningBalance,
-            OpeningBalanceDisplay = ItemUnitDisplayHelper.FormatQtyWithUnitText(openingBal, primaryUnitId, fallbackUnitTitle, itemAdditionalUnits, subUnits),
-            TotalInDisplay = ItemUnitDisplayHelper.FormatQtyWithUnitText(totalIn, primaryUnitId, fallbackUnitTitle, itemAdditionalUnits, subUnits),
-            TotalOutDisplay = ItemUnitDisplayHelper.FormatQtyWithUnitText(totalOut, primaryUnitId, fallbackUnitTitle, itemAdditionalUnits, subUnits),
-            ClosingBalanceDisplay = ItemUnitDisplayHelper.FormatQtyWithUnitText(runningBalance, primaryUnitId, fallbackUnitTitle, itemAdditionalUnits, subUnits),
+            OpeningBalanceDisplay = isWandaTenant
+                ? FormatBagsWithKg(rawLines.Count > 0 ? rawLines[0].SecQtyIn - rawLines[0].SecQtyOut : 0m, openingBal, fallbackUnitTitle)
+                : ItemUnitDisplayHelper.FormatQtyWithUnitText(openingBal, primaryUnitId, fallbackUnitTitle, itemAdditionalUnits, subUnits),
+            TotalInDisplay = isWandaTenant
+                ? FormatBagsWithKg(rawLines.Where(x => x.Vno != null).Sum(x => x.SecQtyIn), totalIn, fallbackUnitTitle)
+                : ItemUnitDisplayHelper.FormatQtyWithUnitText(totalIn, primaryUnitId, fallbackUnitTitle, itemAdditionalUnits, subUnits),
+            TotalOutDisplay = isWandaTenant
+                ? FormatBagsWithKg(rawLines.Where(x => x.Vno != null).Sum(x => x.SecQtyOut), totalOut, fallbackUnitTitle)
+                : ItemUnitDisplayHelper.FormatQtyWithUnitText(totalOut, primaryUnitId, fallbackUnitTitle, itemAdditionalUnits, subUnits),
+            ClosingBalanceDisplay = isWandaTenant
+                ? FormatBagsWithKg(rawLines.Count > 0 ? rawLines[^1].SecQtyBal : 0m, runningBalance, fallbackUnitTitle)
+                : ItemUnitDisplayHelper.FormatQtyWithUnitText(runningBalance, primaryUnitId, fallbackUnitTitle, itemAdditionalUnits, subUnits),
             ShowCostPrice = filter.ShowCostPrice,
             GeneratedAt = DateTime.Now
         };
