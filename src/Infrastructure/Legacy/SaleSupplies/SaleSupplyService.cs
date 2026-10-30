@@ -224,7 +224,7 @@ internal class SaleSupplyService : ISaleSupplyService
         foreach (var line in request.Lines)
         {
             var resolvedUnitId = item?.DefaultUnitId ?? item?.PrimaryUnitId;
-            var resolvedSecUnitId = !string.IsNullOrWhiteSpace(line.SecUnit) ? line.SecUnit : item?.SecondaryUnitId;
+            var resolvedSecUnitId = item?.SecondaryUnitId;
 
             var lineAmount = isWanda
                 ? ((line.Qty * line.Rate) - line.Discount) + ((line.SecQty ?? 0) * (line.Carriage ?? 0)) + line.AddLess
@@ -316,7 +316,7 @@ internal class SaleSupplyService : ISaleSupplyService
         foreach (var line in request.Lines)
         {
             var resolvedUnitId = item?.DefaultUnitId ?? item?.PrimaryUnitId;
-            var resolvedSecUnitId = !string.IsNullOrWhiteSpace(line.SecUnit) ? line.SecUnit : item?.SecondaryUnitId;
+            var resolvedSecUnitId = item?.SecondaryUnitId;
 
             existingDetailMap.TryGetValue(line.Seq, out var existing);
 
@@ -561,7 +561,7 @@ internal class SaleSupplyService : ISaleSupplyService
         foreach (var line in lines)
         {
             var resolvedUnitId = resolvedDefaultUnitId;
-            var resolvedSecUnitId = !string.IsNullOrWhiteSpace(line.SecUnit) ? line.SecUnit : resolvedDefaultSecUnitId;
+            var resolvedSecUnitId = resolvedDefaultSecUnitId;
 
             var lineCarriage = isWanda ? ((line.SecQty ?? 0) * (line.Carriage ?? 0)) : (line.Carriage ?? 0);
             var amount = ((line.Qty * line.Rate) - line.Discount) + lineCarriage + line.AddLess + (isWanda ? 0 : ((line.SecQty ?? 0) * (line.SecRate ?? 0)));
@@ -713,7 +713,7 @@ internal class SaleSupplyService : ISaleSupplyService
             : null;
 
         var resolvedUnitId = item?.DefaultUnitId ?? item?.PrimaryUnitId;
-        var resolvedSecUnitId = !string.IsNullOrWhiteSpace(request.SecUnit) ? request.SecUnit : item?.SecondaryUnitId;
+        var resolvedSecUnitId = item?.SecondaryUnitId;
 
         line.CustomerAccountId = request.CustomerId;
         line.UnitId = resolvedUnitId;
@@ -726,6 +726,7 @@ internal class SaleSupplyService : ISaleSupplyService
         line.SecQty = request.SecQty;
         line.SecRate = request.SecRate;
         line.QtyInPack = request.QtyInPack;
+        line.Packing = request.Packing;
         var isWanda = _currentTenant.HasVariablePackFeature;
         var lineAmount = isWanda
             ? ((request.Qty * request.Rate) - request.Discount) + ((request.SecQty ?? 0) * (request.Carriage ?? 0)) + request.AddLess

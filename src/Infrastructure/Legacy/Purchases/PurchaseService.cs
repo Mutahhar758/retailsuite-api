@@ -245,7 +245,7 @@ internal class PurchaseService : IPurchaseService
             }
 
             var resolvedUnitId = item?.DefaultUnitId ?? item?.PrimaryUnitId;
-            var resolvedSecUnitId = !string.IsNullOrWhiteSpace(line.SecUnit) ? line.SecUnit : item?.SecondaryUnitId;
+            var resolvedSecUnitId = item?.SecondaryUnitId;
 
             var lineAmount = isWanda
                 ? (line.Qty * line.Rate) + line.AddLess
@@ -339,7 +339,7 @@ internal class PurchaseService : IPurchaseService
             }
 
             var resolvedUnitId = item?.DefaultUnitId ?? item?.PrimaryUnitId;
-            var resolvedSecUnitId = !string.IsNullOrWhiteSpace(line.SecUnit) ? line.SecUnit : item?.SecondaryUnitId;
+            var resolvedSecUnitId = item?.SecondaryUnitId;
 
             var existing = await _purchaseDetailRepository.GetAll()
                 .IgnoreQueryFilters([GlobalQueryFilterConstants.SoftDelete])
@@ -519,7 +519,7 @@ internal class PurchaseService : IPurchaseService
         {
             var item = itemMap.GetValueOrDefault(line.ItemId);
             var resolvedUnitId = item?.DefaultUnitId ?? item?.PrimaryUnitId;
-            var resolvedSecUnitId = !string.IsNullOrWhiteSpace(line.SecUnit) ? line.SecUnit : item?.SecondaryUnitId;
+            var resolvedSecUnitId = item?.SecondaryUnitId;
 
             var amount = (line.Qty * line.Rate) + line.AddLess + ((line.SecQty ?? 0) * (line.SecRate ?? 0));
             var tx = await _itemTransactionRepository.GetAll()

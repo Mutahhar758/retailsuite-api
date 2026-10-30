@@ -222,7 +222,7 @@ internal class StockAdjustmentService : IStockAdjustmentService
                 throw new CustomException($"Item '{item.Title}' requires an IMEI / Serial number.");
             }
 
-            var resolvedSecUnitId = !string.IsNullOrWhiteSpace(line.SecUnit) ? line.SecUnit : item?.SecondaryUnitId;
+            var resolvedSecUnitId = item?.SecondaryUnitId;
 
             await _stockAdjDetailRepository.AddAsync(new StockAdjDetail
             {
@@ -279,7 +279,7 @@ internal class StockAdjustmentService : IStockAdjustmentService
                 throw new CustomException($"Item '{item.Title}' requires an IMEI / Serial number.");
             }
 
-            var resolvedSecUnitId = !string.IsNullOrWhiteSpace(line.SecUnit) ? line.SecUnit : item?.SecondaryUnitId;
+            var resolvedSecUnitId = item?.SecondaryUnitId;
 
             var existing = await _stockAdjDetailRepository.GetAll()
                 .IgnoreQueryFilters([GlobalQueryFilterConstants.SoftDelete])
@@ -388,7 +388,7 @@ internal class StockAdjustmentService : IStockAdjustmentService
         {
             var item = itemMap.GetValueOrDefault(line.ItemId);
             var resolvedUnitId = item?.DefaultUnitId ?? item?.PrimaryUnitId;
-            var resolvedSecUnitId = !string.IsNullOrWhiteSpace(line.SecUnit) ? line.SecUnit : item?.SecondaryUnitId;
+            var resolvedSecUnitId = item?.SecondaryUnitId;
 
             var netQty = line.QtyIn - line.QtyOut;
             var amount = (netQty * line.Rate) + (((line.SecQtyIn ?? 0) - (line.SecQtyOut ?? 0)) * (line.SecRate ?? 0));
