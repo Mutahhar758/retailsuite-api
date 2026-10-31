@@ -31,10 +31,6 @@ public class StockBalanceHeader
     public decimal TotalQtyIn { get; set; }
     public decimal TotalQtyOut { get; set; }
     public decimal TotalClosingQty { get; set; }
-    public string? TotalOpeningQtyDisplay { get; set; }
-    public string? TotalQtyInDisplay { get; set; }
-    public string? TotalQtyOutDisplay { get; set; }
-    public string? TotalClosingQtyDisplay { get; set; }
     public decimal TotalStockValue { get; set; }
     public DateTime GeneratedAt { get; set; } = DateTime.Now;
 }
