@@ -9,8 +9,11 @@ public class BarcodePrintItemDto
     public int Copies { get; set; } = 1;
     public decimal? Qty { get; set; }
     public string? Unit { get; set; }
+    public decimal? DisplayQty { get; set; }
+    public string? DisplayUnit { get; set; }
     public decimal? TotalAmount { get; set; }
     public bool IsVariableWeight { get; set; }
+    public string? CompanySubHeader { get; set; }
 }
 
 public class BarcodePrintRequest
@@ -22,4 +25,5 @@ public class BarcodePrintRequest
     public bool IncludeTitle { get; set; } = true;
     public bool IncludeCompanyName { get; set; } = true;
     public string? CompanyName { get; set; }
+    public string? CompanySubHeader { get; set; }
 }
