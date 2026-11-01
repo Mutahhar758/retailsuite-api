@@ -10,4 +10,12 @@ public class CompanyDetailResponse
     public string? Cell { get; set; }
     public string? Cell2 { get; set; }
     public string? ContactHeader { get; set; }
+    public string? Email { get; set; }
+    public string? Website { get; set; }
+    public string? Ntn { get; set; }
+    public string? Strn { get; set; }
+    public string? LogoMediaId { get; set; }
+    public string? LogoUrl { get; set; }
+    public string? LastModifiedBy { get; set; }
+    public DateTime? LastModifiedOn { get; set; }
 }

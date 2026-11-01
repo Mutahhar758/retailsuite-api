@@ -33,6 +33,7 @@ public class LicenseController : BaseApiController
     {
         return Ok(new
         {
+            Name = currentTenant.Name,
             HasSupplyFeature = currentTenant.HasSupplyFeature,
             HasSecondaryQty = currentTenant.HasSecondaryQty,
             HasKotFeature = currentTenant.HasKotFeature,

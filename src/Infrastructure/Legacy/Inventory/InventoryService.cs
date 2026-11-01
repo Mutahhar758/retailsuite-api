@@ -238,12 +238,13 @@ internal class InventoryService : IInventoryService
 
         if (!string.IsNullOrWhiteSpace(filter.Search))
         {
-            var s = filter.Search.Trim();
+            var s = filter.Search.Trim().ToLower();
             query = query.Where(x =>
-                x.Title.Contains(s) ||
-                (x.Barcode != null && x.Barcode.Contains(s)) ||
-                (x.ItemKey != null && x.ItemKey.Contains(s)) ||
-                x.Id.Contains(s));
+                x.Title.ToLower().Contains(s) ||
+                (x.Barcode != null && x.Barcode.ToLower().Contains(s)) ||
+                (x.ItemKey != null && x.ItemKey.ToLower().Contains(s)) ||
+                x.Id.ToLower().Contains(s) ||
+                (x.ItemCategoryId + "-" + x.Id).ToLower().Contains(s));
         }
 
         var totalCount = await query.CountAsync(cancellationToken);
