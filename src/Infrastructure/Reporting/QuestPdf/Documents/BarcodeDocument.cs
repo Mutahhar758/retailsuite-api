@@ -210,28 +210,52 @@ public class BarcodeDocument : IDocument
         string title = item.Title ?? string.Empty;
         if (title.Length > 22) title = title.Substring(0, 20) + "..";
 
+        string? subHead = !string.IsNullOrWhiteSpace(item.CompanySubHeader) ? item.CompanySubHeader : _request.CompanySubHeader;
+        bool hasSubHeader = _request.IncludeCompanyName && !string.IsNullOrWhiteSpace(subHead);
         bool isVariable = item.IsVariableWeight || (item.Qty.HasValue && item.Qty.Value > 0);
-        float effectiveBarcodeHeight = isVariable ? Math.Max(5f, barcodeHeightMm - 1.2f) : barcodeHeightMm;
+        bool hasRate = _request.IncludeRate && item.Rate > 0;
+
+        float effectiveBarcodeHeight;
+        if (maxLabelWidthMm <= 32f)
+        {
+            if (hasSubHeader && hasRate)
+                effectiveBarcodeHeight = 4.5f;
+            else if (hasSubHeader || hasRate)
+                effectiveBarcodeHeight = 5.2f;
+            else
+                effectiveBarcodeHeight = isVariable ? 6.2f : 7.2f;
+        }
+        else
+        {
+            effectiveBarcodeHeight = isVariable ? Math.Max(5.5f, barcodeHeightMm - 1.2f) : barcodeHeightMm;
+        }
+
+        float effectiveCompanyFontSize = hasSubHeader && maxLabelWidthMm <= 32f ? 5.0f : companyFontSize;
+        float subFontSize = 4.0f;
+        float effectiveTitleFontSize = hasSubHeader && maxLabelWidthMm <= 32f ? 5.8f : titleFontSize;
+        float effectivePriceFontSize = hasSubHeader && maxLabelWidthMm <= 32f ? 6.2f : priceFontSize;
+        float rateFontSize = hasSubHeader && maxLabelWidthMm <= 32f ? 4.8f : companyFontSize;
 
         container
             .PaddingLeft(leftPaddingMm, Unit.Millimetre)
             .PaddingRight(rightPaddingMm, Unit.Millimetre)
-            .PaddingVertical(0.5f, Unit.Millimetre)
+            .PaddingVertical(0.2f, Unit.Millimetre)
             .Column(col =>
             {
+                col.Spacing(0);
+
                 if (_request.IncludeCompanyName)
                 {
                     col.Item().AlignCenter().Text(company)
-                        .FontSize(companyFontSize)
+                        .FontSize(effectiveCompanyFontSize)
                         .Bold()
                         .FontColor(Colors.Black);
 
-                    string? subHead = !string.IsNullOrWhiteSpace(item.CompanySubHeader) ? item.CompanySubHeader : _request.CompanySubHeader;
-                    if (!string.IsNullOrWhiteSpace(subHead))
+                    if (hasSubHeader)
                     {
-                        string displaySub = subHead.Length > 28 ? subHead.Substring(0, 26) + ".." : subHead;
+                        string displaySub = subHead!.Length > 28 ? subHead.Substring(0, 26) + ".." : subHead;
                         col.Item().AlignCenter().Text(displaySub)
-                            .FontSize(companyFontSize - 1.0f)
+                            .FontSize(subFontSize)
                             .FontColor(Colors.Black);
                     }
                 }
@@ -239,15 +263,13 @@ public class BarcodeDocument : IDocument
                 if (_request.IncludeTitle)
                 {
                     col.Item().AlignCenter().Text(title)
-                        .FontSize(titleFontSize)
+                        .FontSize(effectiveTitleFontSize)
                         .Bold()
                         .FontColor(Colors.Black);
                 }
 
                 // Vector barcode bars via QuestPDF Row - no SVG aspect-ratio wrapping or scaling conflicts!
                 col.Item()
-                    .PaddingTop(0.4f)
-                    .PaddingBottom(0.4f)
                     .AlignCenter()
                     .Width(maxLabelWidthMm - 3, Unit.Millimetre)
                     .Height(effectiveBarcodeHeight, Unit.Millimetre)
@@ -263,7 +285,7 @@ public class BarcodeDocument : IDocument
                     });
 
                 float barcodeFontSize = maxLabelWidthMm <= 32f
-                    ? (barcode.Length > 22 ? 3.6f : (barcode.Length > 18 ? 4.8f : (barcode.Length > 12 ? 5.8f : 6.8f)))
+                    ? (barcode.Length > 22 ? 3.6f : (barcode.Length > 18 ? 4.5f : (barcode.Length > 12 ? 5.2f : 6.0f)))
                     : (barcode.Length > 22 ? 4.2f : (barcode.Length > 18 ? 5.5f : (barcode.Length > 12 ? 6.5f : 7.5f)));
 
                 col.Item().AlignCenter().Text(text =>
@@ -275,32 +297,49 @@ public class BarcodeDocument : IDocument
                         .FontColor(Colors.Black);
                 });
 
-                if (_request.IncludePrice)
+                if (isVariable)
                 {
-                    if (isVariable)
+                    decimal total = Math.Round(item.TotalAmount ?? ((item.Qty ?? 1) * item.Rate));
+                    string unitStr = !string.IsNullOrWhiteSpace(item.Unit) && !decimal.TryParse(item.Unit, out _) ? item.Unit : "kg";
+
+                    decimal dispQty = item.DisplayQty.HasValue ? item.DisplayQty.Value : (item.Qty ?? 1m);
+                    string dispUnit = !string.IsNullOrWhiteSpace(item.DisplayUnit) ? item.DisplayUnit : unitStr;
+                    string formattedQty = dispQty % 1m == 0m ? dispQty.ToString("0") : dispQty.ToString("0.###");
+
+                    if (_request.IncludePrice)
                     {
-                        decimal total = Math.Round(item.TotalAmount ?? ((item.Qty ?? 1) * item.Rate));
-                        decimal rate = Math.Round(item.Rate);
-                        string unitStr = !string.IsNullOrWhiteSpace(item.Unit) && !decimal.TryParse(item.Unit, out _) ? item.Unit : "kg";
+                        string priceText = total > 0
+                            ? $"Qty: {formattedQty} {dispUnit}  •  Rs. {total:#,##0}"
+                            : $"Qty: {formattedQty} {dispUnit}";
 
-                        decimal dispQty = item.DisplayQty.HasValue ? item.DisplayQty.Value : (item.Qty ?? 1m);
-                        string dispUnit = !string.IsNullOrWhiteSpace(item.DisplayUnit) ? item.DisplayUnit : unitStr;
-                        string formattedQty = dispQty % 1m == 0m ? dispQty.ToString("0") : dispQty.ToString("0.###");
-
-                        col.Item().AlignCenter().Text($"Qty: {formattedQty} {dispUnit}  •  Rs. {total:#,##0}")
-                            .FontSize(priceFontSize)
-                            .Bold()
-                            .FontColor(Colors.Black);
-
-                        col.Item().AlignCenter().Text($"Rate: Rs. {rate:#,##0}/{unitStr}")
-                            .FontSize(companyFontSize)
+                        col.Item().AlignCenter().Text(priceText)
+                            .FontSize(effectivePriceFontSize)
                             .Bold()
                             .FontColor(Colors.Black);
                     }
                     else
                     {
+                        col.Item().AlignCenter().Text($"Qty: {formattedQty} {dispUnit}")
+                            .FontSize(effectivePriceFontSize)
+                            .Bold()
+                            .FontColor(Colors.Black);
+                    }
+
+                    if (hasRate)
+                    {
+                        decimal rate = Math.Round(item.Rate);
+                        col.Item().AlignCenter().Text($"Rate: Rs. {rate:#,##0}/{unitStr}")
+                            .FontSize(rateFontSize)
+                            .Bold()
+                            .FontColor(Colors.Black);
+                    }
+                }
+                else
+                {
+                    if (_request.IncludePrice)
+                    {
                         col.Item().AlignCenter().Text($"Rs. {Math.Round(item.Rate):#,##0}")
-                            .FontSize(priceFontSize + 1.2f)
+                            .FontSize(effectivePriceFontSize + 1.2f)
                             .Bold()
                             .FontColor(Colors.Black);
                     }

@@ -22,6 +22,7 @@ public class BarcodePrintRequest
     public string Layout { get; set; } = "ThermalRoll"; // "ThermalRoll" (50x30mm) or "SheetA4" (24 stickers per sheet)
     public float SideStickersSpreadMm { get; set; } = 2.0f;
     public bool IncludePrice { get; set; } = true;
+    public bool IncludeRate { get; set; } = false;
     public bool IncludeTitle { get; set; } = true;
     public bool IncludeCompanyName { get; set; } = true;
     public string? CompanyName { get; set; }
