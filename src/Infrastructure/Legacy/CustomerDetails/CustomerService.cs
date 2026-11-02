@@ -1,3 +1,4 @@
+using Retailer.Application.Legacy.OpeningBalances;
 using Microsoft.EntityFrameworkCore;
 using Retailer.Application.Common.Exceptions;
 using Retailer.Application.Common.Persistence;
@@ -19,6 +20,8 @@ internal class CustomerService : ICustomerService
     private readonly IRepository<CustomerSupplyItem> _customerSupplyItemRepository;
     private readonly IRepository<ItemDetail> _itemDetailRepository;
     private readonly IMediaServiceClient _mediaServiceClient;
+    private readonly IOpeningBalanceService _openingBalanceService;
+    private readonly IRepository<CustomerCategory> _customerCategoryRepository;
 
     public CustomerService(
         IRepository<ChartOfAccount> chartOfAccountRepository,
@@ -26,7 +29,9 @@ internal class CustomerService : ICustomerService
         IRepository<DefaultAccount> defaultAccountRepository,
         IRepository<CustomerSupplyItem> customerSupplyItemRepository,
         IRepository<ItemDetail> itemDetailRepository,
-        IMediaServiceClient mediaServiceClient)
+        IMediaServiceClient mediaServiceClient,
+        IOpeningBalanceService openingBalanceService,
+        IRepository<CustomerCategory> customerCategoryRepository)
     {
         _chartOfAccountRepository = chartOfAccountRepository;
         _customerDetailRepository = customerDetailRepository;
@@ -34,6 +39,8 @@ internal class CustomerService : ICustomerService
         _customerSupplyItemRepository = customerSupplyItemRepository;
         _itemDetailRepository = itemDetailRepository;
         _mediaServiceClient = mediaServiceClient;
+        _openingBalanceService = openingBalanceService;
+        _customerCategoryRepository = customerCategoryRepository;
     }
 
     public async Task<List<CustomerResponse>> GetAsync(CancellationToken cancellationToken)
@@ -679,25 +686,76 @@ internal class CustomerService : ICustomerService
 
         var accLevel = parent.AccLevel + 1;
 
+        // Customer Categories lookup and on-the-fly resolution
+        var existingCategories = await _customerCategoryRepository.GetAll()
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        var catById = existingCategories.ToDictionary(c => c.Id, StringComparer.OrdinalIgnoreCase);
+        var catByTitle = existingCategories
+            .Where(c => !string.IsNullOrWhiteSpace(c.Title))
+            .GroupBy(c => c.Title.Trim(), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+        var newCategoriesToAdd = new List<CustomerCategory>();
+        long maxCatNum = 0;
+        foreach (var c in existingCategories)
+        {
+            if (long.TryParse(c.Id, out var num) && num > maxCatNum)
+                maxCatNum = num;
+        }
+
+        string? ResolveCategoryId(string? catInput)
+        {
+            if (string.IsNullOrWhiteSpace(catInput))
+                return null;
+
+            var trimmed = catInput.Trim();
+            if (catById.TryGetValue(trimmed, out var byId))
+                return byId.Id;
+            if (catByTitle.TryGetValue(trimmed, out var byTitle))
+                return byTitle.Id;
+
+            // Auto-create category with this title so bulk import doesn't fail
+            maxCatNum++;
+            var newCode = maxCatNum.ToString("D3");
+            var newCat = new CustomerCategory
+            {
+                Id = newCode,
+                Title = trimmed,
+                Active = true
+            };
+            newCategoriesToAdd.Add(newCat);
+            catById[newCode] = newCat;
+            catByTitle[trimmed] = newCat;
+            return newCode;
+        }
+
         var updateCandidates = request.Customers
             .Select((c, idx) => new { Item = c, RowIndex = idx + 1 })
             .Where(x => !string.IsNullOrWhiteSpace(x.Item.Account))
             .ToList();
 
         var updateAccountIds = updateCandidates.Select(x => x.Item.Account!.Trim()).Distinct().ToList();
+        var lookupCodes = updateAccountIds
+            .Concat(updateAccountIds.Select(a => customerAccountPrefix + a))
+            .Distinct()
+            .ToList();
 
         var existingCoas = await _chartOfAccountRepository.GetAll()
-            .Where(x => updateAccountIds.Contains(x.Id) && x.AccLevel == 5 && x.Id.StartsWith(customerAccountPrefix))
+            .Where(x => lookupCodes.Contains(x.Id) && x.AccLevel == 5 && x.Id.StartsWith(customerAccountPrefix))
             .ToDictionaryAsync(x => x.Id, cancellationToken);
 
+        var existingAccountIds = existingCoas.Keys.ToList();
         var existingDetails = await _customerDetailRepository.GetAll()
-            .Where(x => updateAccountIds.Contains(x.Id))
+            .Where(x => existingAccountIds.Contains(x.Id))
             .ToDictionaryAsync(x => x.Id, cancellationToken);
 
         var newCoasToAdd = new List<ChartOfAccount>();
         var newDetailsToAdd = new List<CustomerDetail>();
         var coasToUpdate = new List<ChartOfAccount>();
         var detailsToUpdate = new List<CustomerDetail>();
+        var openingBalanceRequests = new List<OpeningBalanceUpsertRequest>();
 
         for (int i = 0; i < request.Customers.Count; i++)
         {
@@ -716,8 +774,21 @@ internal class CustomerService : ICustomerService
                 continue;
             }
 
+            var resolvedCategoryId = ResolveCategoryId(item.CustomerCategoryId);
+
             var account = item.Account?.Trim();
-            if (!string.IsNullOrWhiteSpace(account) && existingCoas.TryGetValue(account, out var coa))
+            ChartOfAccount? coa = null;
+            string? matchedAccountId = null;
+
+            if (!string.IsNullOrWhiteSpace(account))
+            {
+                if (existingCoas.TryGetValue(account, out coa))
+                    matchedAccountId = account;
+                else if (existingCoas.TryGetValue(customerAccountPrefix + account, out coa))
+                    matchedAccountId = customerAccountPrefix + account;
+            }
+
+            if (coa != null && matchedAccountId != null)
             {
                 if (coa.Title != item.Title)
                 {
@@ -725,7 +796,7 @@ internal class CustomerService : ICustomerService
                     coasToUpdate.Add(coa);
                 }
 
-                if (existingDetails.TryGetValue(account, out var detail))
+                if (existingDetails.TryGetValue(matchedAccountId, out var detail))
                 {
                     detail.Email = item.Email;
                     detail.Fax = item.Fax;
@@ -739,15 +810,15 @@ internal class CustomerService : ICustomerService
                     detail.SmsAlert = item.SmsAlert;
                     detail.EmailAlert = item.EmailAlert;
                     detail.Active = item.Active;
-                    if (item.CustomerCategoryId != null)
-                        detail.CustomerCategoryId = item.CustomerCategoryId;
+                    if (resolvedCategoryId != null)
+                        detail.CustomerCategoryId = resolvedCategoryId;
                     detailsToUpdate.Add(detail);
                 }
                 else
                 {
                     var newDetail = new CustomerDetail
                     {
-                        Id = account,
+                        Id = matchedAccountId,
                         Email = item.Email,
                         Fax = item.Fax,
                         Cnic = item.Cnic,
@@ -760,9 +831,20 @@ internal class CustomerService : ICustomerService
                         SmsAlert = item.SmsAlert,
                         EmailAlert = item.EmailAlert,
                         Active = item.Active,
-                        CustomerCategoryId = item.CustomerCategoryId
+                        CustomerCategoryId = resolvedCategoryId
                     };
                     newDetailsToAdd.Add(newDetail);
+                }
+
+                if (item.OpeningBalance.HasValue)
+                {
+                    var bal = item.OpeningBalance.Value;
+                    openingBalanceRequests.Add(new OpeningBalanceUpsertRequest
+                    {
+                        Account = matchedAccountId,
+                        DrAmount = bal >= 0 ? bal : null,
+                        CrAmount = bal < 0 ? -bal : null
+                    });
                 }
 
                 result.UpdatedCount++;
@@ -797,13 +879,27 @@ internal class CustomerService : ICustomerService
                     SmsAlert = item.SmsAlert,
                     EmailAlert = item.EmailAlert,
                     Active = item.Active,
-                    CustomerCategoryId = item.CustomerCategoryId
+                    CustomerCategoryId = resolvedCategoryId
                 };
                 newDetailsToAdd.Add(newDetail);
+
+                if (item.OpeningBalance.HasValue && item.OpeningBalance.Value != 0)
+                {
+                    var bal = item.OpeningBalance.Value;
+                    openingBalanceRequests.Add(new OpeningBalanceUpsertRequest
+                    {
+                        Account = newAccountCode,
+                        DrAmount = bal >= 0 ? bal : null,
+                        CrAmount = bal < 0 ? -bal : null
+                    });
+                }
 
                 result.CreatedCount++;
             }
         }
+
+        if (newCategoriesToAdd.Count > 0)
+            await _customerCategoryRepository.AddRangeAsync(newCategoriesToAdd, doSaveChanges: true);
 
         if (newCoasToAdd.Count > 0)
             await _chartOfAccountRepository.AddRangeAsync(newCoasToAdd, doSaveChanges: false);
@@ -820,7 +916,11 @@ internal class CustomerService : ICustomerService
         await _chartOfAccountRepository.SaveChangesAsync(cancellationToken);
         await _customerDetailRepository.SaveChangesAsync(cancellationToken);
 
+        if (openingBalanceRequests.Count > 0)
+        {
+            await _openingBalanceService.BatchUpsertAsync(openingBalanceRequests, cancellationToken);
+        }
+
         return result;
     }
 }
-

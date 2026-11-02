@@ -123,4 +123,99 @@ internal class OpeningBalanceService : IOpeningBalanceService
             await _glRepository.UpdateAsync(existing);
         }
     }
+
+    public async Task BatchUpsertAsync(List<OpeningBalanceUpsertRequest> requests, CancellationToken cancellationToken)
+    {
+        if (requests == null || requests.Count == 0)
+            return;
+
+        var validRequests = requests.Where(r => !string.IsNullOrWhiteSpace(r.Account)).ToList();
+        if (validRequests.Count == 0)
+            return;
+
+        var accountIds = validRequests.Select(r => r.Account.Trim()).Distinct().ToList();
+
+        var existingEntries = await _glRepository.GetAll()
+            .IgnoreQueryFilters()
+            .Where(x => x.VType == VType &&
+                        ((x.DrAccountId != null && accountIds.Contains(x.DrAccountId)) ||
+                         (x.CrAccountId != null && accountIds.Contains(x.CrAccountId))))
+            .ToListAsync(cancellationToken);
+
+        var existingByAccount = new Dictionary<string, GlEntry>(StringComparer.OrdinalIgnoreCase);
+        foreach (var entry in existingEntries)
+        {
+            var acc = entry.DrAccountId ?? entry.CrAccountId;
+            if (!string.IsNullOrWhiteSpace(acc) && !existingByAccount.ContainsKey(acc))
+            {
+                existingByAccount[acc] = entry;
+            }
+        }
+
+        var voucherNo = "00001";
+        var maxSeq = await _glRepository.GetAll()
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(x => x.VType == VType && x.VoucherNo == voucherNo)
+            .MaxAsync(x => (int?)x.VSeq, cancellationToken) ?? 0;
+
+        var entriesToAdd = new List<GlEntry>();
+        var entriesToUpdate = new List<GlEntry>();
+        var entriesToDelete = new List<GlEntry>();
+
+        foreach (var req in validRequests)
+        {
+            var account = req.Account.Trim();
+            var dr = req.DrAmount ?? 0m;
+            var cr = req.CrAmount ?? 0m;
+            var netAmount = dr - cr;
+
+            if (existingByAccount.TryGetValue(account, out var existing))
+            {
+                if (dr == 0 && cr == 0)
+                {
+                    entriesToDelete.Add(existing);
+                }
+                else
+                {
+                    existing.DrAccountId = netAmount >= 0 ? account : null;
+                    existing.Amount = dr != 0 ? dr : cr;
+                    existing.CrAccountId = netAmount < 0 ? account : null;
+                    entriesToUpdate.Add(existing);
+                }
+            }
+            else
+            {
+                if (dr == 0 && cr == 0)
+                    continue;
+
+                maxSeq++;
+                var newEntry = new GlEntry
+                {
+                    VDate = OpeningDate,
+                    VTime = TimeOnly.MinValue,
+                    VoucherNo = voucherNo,
+                    VType = VType,
+                    VSeq = maxSeq,
+                    DrAccountId = netAmount >= 0 ? account : null,
+                    Amount = dr != 0 ? dr : cr,
+                    CrAccountId = netAmount < 0 ? account : null,
+                    Clear = 0
+                };
+                entriesToAdd.Add(newEntry);
+                existingByAccount[account] = newEntry;
+            }
+        }
+
+        if (entriesToDelete.Count > 0)
+            await _glRepository.DeleteRangeAsync(entriesToDelete, doSaveChanges: false);
+
+        if (entriesToAdd.Count > 0)
+            await _glRepository.AddRangeAsync(entriesToAdd, doSaveChanges: false);
+
+        if (entriesToUpdate.Count > 0)
+            await _glRepository.UpdateRangeAsync(entriesToUpdate, doSaveChanges: false);
+
+        await _glRepository.SaveChangesAsync(cancellationToken);
+    }
 }

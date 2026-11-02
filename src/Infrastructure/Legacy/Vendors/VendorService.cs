@@ -1,3 +1,4 @@
+using Retailer.Application.Legacy.OpeningBalances;
 using Microsoft.EntityFrameworkCore;
 using Retailer.Application.Common.Exceptions;
 using Retailer.Application.Common.Persistence;
@@ -17,17 +18,20 @@ internal class VendorService : IVendorService
     private readonly IRepository<SupplierDetail> _vendorDetailRepository;
     private readonly IRepository<DefaultAccount> _defaultAccountRepository;
     private readonly IMediaServiceClient _mediaServiceClient;
+    private readonly IOpeningBalanceService _openingBalanceService;
 
     public VendorService(
         IRepository<ChartOfAccount> chartOfAccountRepository,
         IRepository<SupplierDetail> vendorDetailRepository,
         IRepository<DefaultAccount> defaultAccountRepository,
-        IMediaServiceClient mediaServiceClient)
+        IMediaServiceClient mediaServiceClient,
+        IOpeningBalanceService openingBalanceService)
     {
         _chartOfAccountRepository = chartOfAccountRepository;
         _vendorDetailRepository = vendorDetailRepository;
         _defaultAccountRepository = defaultAccountRepository;
         _mediaServiceClient = mediaServiceClient;
+        _openingBalanceService = openingBalanceService;
     }
 
     public async Task<List<VendorResponse>> GetAsync(CancellationToken cancellationToken)
@@ -485,19 +489,25 @@ internal class VendorService : IVendorService
             .ToList();
 
         var updateAccountIds = updateCandidates.Select(x => x.Item.Account!.Trim()).Distinct().ToList();
+        var lookupCodes = updateAccountIds
+            .Concat(updateAccountIds.Select(a => vendorAccountPrefix + a))
+            .Distinct()
+            .ToList();
 
         var existingCoas = await _chartOfAccountRepository.GetAll()
-            .Where(x => updateAccountIds.Contains(x.Id) && x.AccLevel == 5 && x.Id.StartsWith(vendorAccountPrefix))
+            .Where(x => lookupCodes.Contains(x.Id) && x.AccLevel == 5 && x.Id.StartsWith(vendorAccountPrefix))
             .ToDictionaryAsync(x => x.Id, cancellationToken);
 
+        var existingAccountIds = existingCoas.Keys.ToList();
         var existingDetails = await _vendorDetailRepository.GetAll()
-            .Where(x => updateAccountIds.Contains(x.Id))
+            .Where(x => existingAccountIds.Contains(x.Id))
             .ToDictionaryAsync(x => x.Id, cancellationToken);
 
         var newCoasToAdd = new List<ChartOfAccount>();
         var newDetailsToAdd = new List<SupplierDetail>();
         var coasToUpdate = new List<ChartOfAccount>();
         var detailsToUpdate = new List<SupplierDetail>();
+        var openingBalanceRequests = new List<OpeningBalanceUpsertRequest>();
 
         for (int i = 0; i < request.Vendors.Count; i++)
         {
@@ -517,7 +527,18 @@ internal class VendorService : IVendorService
             }
 
             var account = item.Account?.Trim();
-            if (!string.IsNullOrWhiteSpace(account) && existingCoas.TryGetValue(account, out var coa))
+            ChartOfAccount? coa = null;
+            string? matchedAccountId = null;
+
+            if (!string.IsNullOrWhiteSpace(account))
+            {
+                if (existingCoas.TryGetValue(account, out coa))
+                    matchedAccountId = account;
+                else if (existingCoas.TryGetValue(vendorAccountPrefix + account, out coa))
+                    matchedAccountId = vendorAccountPrefix + account;
+            }
+
+            if (coa != null && matchedAccountId != null)
             {
                 if (coa.Title != item.Title)
                 {
@@ -525,7 +546,7 @@ internal class VendorService : IVendorService
                     coasToUpdate.Add(coa);
                 }
 
-                if (existingDetails.TryGetValue(account, out var detail))
+                if (existingDetails.TryGetValue(matchedAccountId, out var detail))
                 {
                     detail.Email = item.Email;
                     detail.Fax = item.Fax;
@@ -546,7 +567,7 @@ internal class VendorService : IVendorService
                 {
                     var newDetail = new SupplierDetail
                     {
-                        Id = account,
+                        Id = matchedAccountId,
                         Email = item.Email,
                         Fax = item.Fax,
                         Cnic = item.Cnic,
@@ -562,6 +583,17 @@ internal class VendorService : IVendorService
                         ShowInSales = item.ShowInSales
                     };
                     newDetailsToAdd.Add(newDetail);
+                }
+
+                if (item.OpeningBalance.HasValue)
+                {
+                    var bal = item.OpeningBalance.Value;
+                    openingBalanceRequests.Add(new OpeningBalanceUpsertRequest
+                    {
+                        Account = matchedAccountId,
+                        DrAmount = bal < 0 ? -bal : null,
+                        CrAmount = bal >= 0 ? bal : null
+                    });
                 }
 
                 result.UpdatedCount++;
@@ -600,6 +632,17 @@ internal class VendorService : IVendorService
                 };
                 newDetailsToAdd.Add(newDetail);
 
+                if (item.OpeningBalance.HasValue && item.OpeningBalance.Value != 0)
+                {
+                    var bal = item.OpeningBalance.Value;
+                    openingBalanceRequests.Add(new OpeningBalanceUpsertRequest
+                    {
+                        Account = newAccountCode,
+                        DrAmount = bal < 0 ? -bal : null,
+                        CrAmount = bal >= 0 ? bal : null
+                    });
+                }
+
                 result.CreatedCount++;
             }
         }
@@ -618,6 +661,11 @@ internal class VendorService : IVendorService
 
         await _chartOfAccountRepository.SaveChangesAsync(cancellationToken);
         await _vendorDetailRepository.SaveChangesAsync(cancellationToken);
+
+        if (openingBalanceRequests.Count > 0)
+        {
+            await _openingBalanceService.BatchUpsertAsync(openingBalanceRequests, cancellationToken);
+        }
 
         return result;
     }

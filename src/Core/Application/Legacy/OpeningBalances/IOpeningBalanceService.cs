@@ -4,4 +4,5 @@ public interface IOpeningBalanceService : ITransientService
 {
     Task<List<OpeningBalanceResponse>> GetAsync(string? parentAccountId, CancellationToken cancellationToken);
     Task UpsertAsync(OpeningBalanceUpsertRequest request, CancellationToken cancellationToken);
+    Task BatchUpsertAsync(List<OpeningBalanceUpsertRequest> requests, CancellationToken cancellationToken);
 }
