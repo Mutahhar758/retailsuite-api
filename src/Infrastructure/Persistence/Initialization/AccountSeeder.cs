@@ -23,7 +23,6 @@ public class AccountSeeder : ICustomSeeder
 
     public async Task InitializeAsync(CancellationToken cancellationToken)
     {
-        await SeedChartOfAccountsAsync(cancellationToken);
         await EnsureCoreAccountHierarchyAsync(cancellationToken);
         await SeedDefaultAccountsAsync(cancellationToken);
     }
@@ -144,47 +143,64 @@ public class AccountSeeder : ICustomSeeder
         };
     }
 
-    private async Task SeedChartOfAccountsAsync(CancellationToken cancellationToken)
-    {
-        if (!await _coaRepository.GetAll().AnyAsync(cancellationToken))
-        {
-            _logger.LogInformation("Seeding Chart of Accounts.");
-            var accounts = GetCoreAccounts();
-            var levels = accounts.GroupBy(a => a.AccLevel).OrderBy(g => g.Key);
-            foreach (var level in levels)
-            {
-                await _coaRepository.AddRangeAsync(level.ToList(), true);
-            }
-        }
-    }
-
     private async Task EnsureCoreAccountHierarchyAsync(CancellationToken cancellationToken)
     {
-        // Safe idempotent update for existing databases so they receive missing Level 3 & Level 4 parents
-        var existingIds = (await _coaRepository.GetAll()
-            .Select(x => x.Id)
-            .ToListAsync(cancellationToken))
-            .ToHashSet();
+        // Fetch ALL existing accounts regardless of soft-delete or global query filters
+        var existingAccounts = await _coaRepository.GetAll()
+            .IgnoreQueryFilters()
+            .ToListAsync(cancellationToken);
 
-        var missing = GetCoreAccounts()
-            .Where(x => !existingIds.Contains(x.Id))
-            .GroupBy(x => x.AccLevel)
-            .OrderBy(g => g.Key);
+        var existingMap = existingAccounts
+            .Where(x => !string.IsNullOrWhiteSpace(x.Id))
+            .GroupBy(x => x.Id.Trim(), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
-        foreach (var levelGroup in missing)
+        var coreAccounts = GetCoreAccounts();
+        var levels = coreAccounts.GroupBy(a => a.AccLevel).OrderBy(g => g.Key);
+
+        foreach (var levelGroup in levels)
         {
-            var accountsToAdd = levelGroup.ToList();
+            var accountsToAdd = new List<ChartOfAccount>();
+            var accountsToRestore = new List<ChartOfAccount>();
+
+            foreach (var core in levelGroup)
+            {
+                var trimmedId = core.Id.Trim();
+                if (existingMap.TryGetValue(trimmedId, out var existing))
+                {
+                    // If it was soft-deleted, restore it
+                    if (existing.DeletedOn != null)
+                    {
+                        existing.DeletedOn = null;
+                        existing.DeletedBy = null;
+                        accountsToRestore.Add(existing);
+                    }
+                }
+                else
+                {
+                    accountsToAdd.Add(core);
+                    // Register in lookup so subsequent child levels recognize the parent
+                    existingMap[trimmedId] = core;
+                }
+            }
+
+            if (accountsToRestore.Count > 0)
+            {
+                _logger.LogInformation("Restoring {Count} soft-deleted core accounts at level {Level}.", accountsToRestore.Count, levelGroup.Key);
+                await _coaRepository.UpdateRangeAsync(accountsToRestore, doSaveChanges: true);
+            }
+
             if (accountsToAdd.Count > 0)
             {
-                _logger.LogInformation("Adding {Count} missing core accounts at level {Level}.", accountsToAdd.Count, levelGroup.Key);
-                await _coaRepository.AddRangeAsync(accountsToAdd, true);
+                _logger.LogInformation("Seeding {Count} missing core accounts at level {Level}.", accountsToAdd.Count, levelGroup.Key);
+                await _coaRepository.AddRangeAsync(accountsToAdd, doSaveChanges: true);
             }
         }
     }
 
     private async Task SeedDefaultAccountsAsync(CancellationToken cancellationToken)
     {
-        if (!await _defaultAccRepository.GetAll().AnyAsync(cancellationToken))
+        if (!await _defaultAccRepository.GetAll().IgnoreQueryFilters().AnyAsync(cancellationToken))
         {
             _logger.LogInformation("Seeding Default Accounts.");
             var defaultAccounts = new List<DefaultAccount>
