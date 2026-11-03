@@ -61,9 +61,9 @@ internal class RepairJobService : IRepairJobService
             var search = filter.SearchText.Trim().ToLower();
             query = query.Where(x =>
                 x.Id.ToLower().Contains(search) ||
-                (x.Imei != null && x.Imei.Contains(search)) ||
+                (x.Imei != null && x.Imei.ToLower().Contains(search)) ||
                 (x.CustomerName != null && x.CustomerName.ToLower().Contains(search)) ||
-                (x.CustomerPhone != null && x.CustomerPhone.Contains(search)) ||
+                (x.CustomerPhone != null && x.CustomerPhone.ToLower().Contains(search)) ||
                 x.DeviceModel.ToLower().Contains(search));
         }
 

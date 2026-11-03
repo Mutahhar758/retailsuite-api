@@ -137,16 +137,16 @@ internal class VendorService : IVendorService
 
         if (!string.IsNullOrWhiteSpace(filter.Search))
         {
-            var s = filter.Search.Trim();
+            var s = filter.Search.Trim().ToLower();
             joinedQuery = joinedQuery.Where(x =>
-                x.coa.Title.Contains(s) ||
-                x.coa.Id.Contains(s) ||
+                (x.coa.Title != null && x.coa.Title.ToLower().Contains(s)) ||
+                (x.coa.Id != null && x.coa.Id.ToLower().Contains(s)) ||
                 (x.vd != null && (
-                    (x.vd.Phone1 != null && x.vd.Phone1.Contains(s)) ||
-                    (x.vd.Phone2 != null && x.vd.Phone2.Contains(s)) ||
-                    (x.vd.Email != null && x.vd.Email.Contains(s)) ||
-                    (x.vd.Cnic != null && x.vd.Cnic.Contains(s)) ||
-                    (x.vd.Address != null && x.vd.Address.Contains(s))
+                    (x.vd.Phone1 != null && x.vd.Phone1.ToLower().Contains(s)) ||
+                    (x.vd.Phone2 != null && x.vd.Phone2.ToLower().Contains(s)) ||
+                    (x.vd.Email != null && x.vd.Email.ToLower().Contains(s)) ||
+                    (x.vd.Cnic != null && x.vd.Cnic.ToLower().Contains(s)) ||
+                    (x.vd.Address != null && x.vd.Address.ToLower().Contains(s))
                 )));
         }
 

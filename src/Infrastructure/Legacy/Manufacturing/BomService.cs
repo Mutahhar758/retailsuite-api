@@ -49,8 +49,11 @@ internal class BomService : IBomService
 
         if (!string.IsNullOrWhiteSpace(filter.Keyword))
         {
-            var keyword = filter.Keyword.Trim();
-            query = query.Where(x => x.Code.Contains(keyword) || x.Title.Contains(keyword) || x.FinishedItem.Title.Contains(keyword));
+            var keyword = filter.Keyword.Trim().ToLower();
+            query = query.Where(x =>
+                (x.Code != null && x.Code.ToLower().Contains(keyword)) ||
+                (x.Title != null && x.Title.ToLower().Contains(keyword)) ||
+                (x.FinishedItem != null && x.FinishedItem.Title != null && x.FinishedItem.Title.ToLower().Contains(keyword)));
         }
 
         if (!string.IsNullOrWhiteSpace(filter.FinishedItemId))

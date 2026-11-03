@@ -194,16 +194,16 @@ internal class CustomerService : ICustomerService
 
         if (!string.IsNullOrWhiteSpace(filter.Search))
         {
-            var s = filter.Search.Trim();
+            var s = filter.Search.Trim().ToLower();
             joinedQuery = joinedQuery.Where(x =>
-                x.coa.Title.Contains(s) ||
-                x.coa.Id.Contains(s) ||
+                (x.coa.Title != null && x.coa.Title.ToLower().Contains(s)) ||
+                (x.coa.Id != null && x.coa.Id.ToLower().Contains(s)) ||
                 (x.cd != null && (
-                    (x.cd.Phone1 != null && x.cd.Phone1.Contains(s)) ||
-                    (x.cd.Phone2 != null && x.cd.Phone2.Contains(s)) ||
-                    (x.cd.Email != null && x.cd.Email.Contains(s)) ||
-                    (x.cd.Cnic != null && x.cd.Cnic.Contains(s)) ||
-                    (x.cd.Address != null && x.cd.Address.Contains(s))
+                    (x.cd.Phone1 != null && x.cd.Phone1.ToLower().Contains(s)) ||
+                    (x.cd.Phone2 != null && x.cd.Phone2.ToLower().Contains(s)) ||
+                    (x.cd.Email != null && x.cd.Email.ToLower().Contains(s)) ||
+                    (x.cd.Cnic != null && x.cd.Cnic.ToLower().Contains(s)) ||
+                    (x.cd.Address != null && x.cd.Address.ToLower().Contains(s))
                 )));
         }
 
