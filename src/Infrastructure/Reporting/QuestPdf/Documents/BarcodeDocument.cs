@@ -78,6 +78,7 @@ public class BarcodeDocument : IDocument
 
             container.Page(page =>
             {
+                // 3.94 in x 0.90 in (100mm x 22.86mm) 3-up continuous thermal sticker roll
                 page.Size(100f, 22.86f, Unit.Millimetre);
                 page.MarginVertical(0.4f, Unit.Millimetre);
                 page.MarginHorizontal(pageMarginH, Unit.Millimetre);
@@ -216,33 +217,44 @@ public class BarcodeDocument : IDocument
         bool hasRate = _request.IncludeRate && item.Rate > 0;
 
         float effectiveBarcodeHeight;
+        float itemSpacing = 0f;
         if (maxLabelWidthMm <= 32f)
         {
             if (hasSubHeader && hasRate)
-                effectiveBarcodeHeight = 4.5f;
+            {
+                effectiveBarcodeHeight = 4.8f;
+                itemSpacing = 0f;
+            }
             else if (hasSubHeader || hasRate)
+            {
                 effectiveBarcodeHeight = 5.2f;
+                itemSpacing = 0f;
+            }
             else
-                effectiveBarcodeHeight = isVariable ? 6.2f : 7.2f;
+            {
+                effectiveBarcodeHeight = isVariable ? 6.8f : 7.5f;
+                itemSpacing = 0.2f;
+            }
         }
         else
         {
             effectiveBarcodeHeight = isVariable ? Math.Max(5.5f, barcodeHeightMm - 1.2f) : barcodeHeightMm;
+            itemSpacing = 0f;
         }
 
         float effectiveCompanyFontSize = hasSubHeader && maxLabelWidthMm <= 32f ? 5.0f : companyFontSize;
         float subFontSize = 4.0f;
-        float effectiveTitleFontSize = hasSubHeader && maxLabelWidthMm <= 32f ? 5.8f : titleFontSize;
-        float effectivePriceFontSize = hasSubHeader && maxLabelWidthMm <= 32f ? 6.2f : priceFontSize;
+        float effectiveTitleFontSize = hasSubHeader && maxLabelWidthMm <= 32f ? 5.5f : (maxLabelWidthMm <= 32f ? 6.2f : titleFontSize);
+        float effectivePriceFontSize = hasSubHeader && maxLabelWidthMm <= 32f ? 6.2f : (maxLabelWidthMm <= 32f ? 7.8f : priceFontSize);
         float rateFontSize = hasSubHeader && maxLabelWidthMm <= 32f ? 4.8f : companyFontSize;
 
         container
             .PaddingLeft(leftPaddingMm, Unit.Millimetre)
             .PaddingRight(rightPaddingMm, Unit.Millimetre)
-            .PaddingVertical(0.2f, Unit.Millimetre)
+            .PaddingVertical(hasSubHeader || hasRate ? 0.2f : 0.5f, Unit.Millimetre)
             .Column(col =>
             {
-                col.Spacing(0);
+                col.Spacing(itemSpacing);
 
                 if (_request.IncludeCompanyName)
                 {
