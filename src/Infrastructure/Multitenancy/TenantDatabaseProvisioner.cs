@@ -48,6 +48,48 @@ internal class TenantDatabaseProvisioner
         return adminConn;
     }
 
+    public bool IsDedicatedTenantUser(string dbProvider, string dbUser)
+    {
+        if (string.IsNullOrWhiteSpace(dbUser))
+        {
+            return false;
+        }
+
+        string providerLower = dbProvider.ToLowerInvariant();
+        string adminConn = GetAdminConnectionString(dbProvider);
+
+        if (providerLower is DbProviderKeys.Npgsql or "npgsql" or "postgres" or "postgresql")
+        {
+            try
+            {
+                var adminBuilder = new NpgsqlConnectionStringBuilder(adminConn);
+                string adminUser = adminBuilder.Username ?? string.Empty;
+                if (string.Equals(dbUser, adminUser, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(dbUser, "postgres", StringComparison.OrdinalIgnoreCase))
+                {
+                    return false;
+                }
+            }
+            catch { }
+        }
+        else if (providerLower is DbProviderKeys.SqlServer or "sqlserver" or "mssql")
+        {
+            try
+            {
+                var adminBuilder = new SqlConnectionStringBuilder(adminConn);
+                string adminUser = adminBuilder.UserID ?? string.Empty;
+                if (string.Equals(dbUser, adminUser, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(dbUser, "sa", StringComparison.OrdinalIgnoreCase))
+                {
+                    return false;
+                }
+            }
+            catch { }
+        }
+
+        return dbUser.StartsWith("usr_", StringComparison.OrdinalIgnoreCase);
+    }
+
     public string BuildConnectionString(string dbProvider, string targetDatabase, string dbUser, string dbPassword)
     {
         string adminConn = GetAdminConnectionString(dbProvider);
@@ -125,6 +167,15 @@ internal class TenantDatabaseProvisioner
             await using var createDbCmd = new NpgsqlCommand($"CREATE DATABASE \"{escapedDb}\"", connection);
             await createDbCmd.ExecuteNonQueryAsync(cancellationToken);
             _logger.LogInformation("Created PostgreSQL database '{Database}'.", targetDatabase);
+        }
+
+        // If the user being provisioned is the administrative account, skip user creation
+        string adminUser = adminBuilder.Username ?? string.Empty;
+        if (string.Equals(dbUser, adminUser, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(dbUser, "postgres", StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogInformation("Database user '{User}' is the administrative user; skipping role creation for '{Database}'.", dbUser, targetDatabase);
+            return;
         }
 
         // 2. Ensure DB user exists with password
@@ -209,6 +260,15 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO ""{escapedUs
             _logger.LogInformation("Created SQL Server database '{Database}'.", targetDatabase);
         }
 
+        // If the user being provisioned is the administrative account, skip user creation
+        string adminUser = adminBuilder.UserID ?? string.Empty;
+        if (string.Equals(dbUser, adminUser, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(dbUser, "sa", StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogInformation("Database user '{User}' is the administrative login; skipping SQL Server user mapping for '{Database}'.", dbUser, targetDatabase);
+            return;
+        }
+
         // 2. Ensure server login exists with password
         var escapedLogin = dbUser.Replace("]", "]]");
         var escapedPassword = dbPassword.Replace("'", "''");
@@ -238,14 +298,30 @@ END";
 
         var escapedUser = dbUser.Replace("]", "]]");
         string userRoleScript = $@"
-IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = '{escapedUser}')
+DECLARE @existingUser sysname;
+SELECT @existingUser = dp.name
+FROM sys.database_principals dp
+JOIN sys.server_principals sp ON dp.sid = sp.sid
+WHERE sp.name = '{escapedLogin}';
+
+IF @existingUser IS NULL
 BEGIN
-    EXEC('CREATE USER [{escapedUser}] FOR LOGIN [{escapedLogin}]');
-END;
-IF IS_ROLEMEMBER('db_owner', '{escapedUser}') = 0 OR IS_ROLEMEMBER('db_owner', '{escapedUser}') IS NULL
+    IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = '{escapedUser}')
+    BEGIN
+        EXEC('CREATE USER [{escapedUser}] FOR LOGIN [{escapedLogin}]');
+    END;
+    IF IS_ROLEMEMBER('db_owner', '{escapedUser}') = 0 OR IS_ROLEMEMBER('db_owner', '{escapedUser}') IS NULL
+    BEGIN
+        ALTER ROLE db_owner ADD MEMBER [{escapedUser}];
+    END;
+END
+ELSE IF @existingUser <> 'dbo'
 BEGIN
-    ALTER ROLE db_owner ADD MEMBER [{escapedUser}];
-END";
+    IF IS_ROLEMEMBER('db_owner', @existingUser) = 0 OR IS_ROLEMEMBER('db_owner', @existingUser) IS NULL
+    BEGIN
+        EXEC('ALTER ROLE db_owner ADD MEMBER [' + @existingUser + ']');
+    END;
+END;";
 
         await using var roleCmd = new SqlCommand(userRoleScript, targetConnection);
         await roleCmd.ExecuteNonQueryAsync(cancellationToken);

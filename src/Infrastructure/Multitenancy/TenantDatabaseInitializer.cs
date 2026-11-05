@@ -11,7 +11,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Npgsql;
-using Retailer.Infrastructure.Common;
 using AppTenantInfo = Retailer.Domain.Multitenancy.TenantInfo;
 
 namespace Retailer.Infrastructure.Multitenancy;
@@ -22,7 +21,6 @@ internal class TenantDatabaseInitializer
     private readonly IServiceProvider _serviceProvider;
     private readonly DatabaseSettings _databaseSettings;
     private readonly MultitenancySettings _multitenancySettings;
-    private readonly TenantDatabaseProvisioner _provisioner;
     private readonly ILogger<TenantDatabaseInitializer> _logger;
 
     public TenantDatabaseInitializer(
@@ -30,14 +28,12 @@ internal class TenantDatabaseInitializer
         IServiceProvider serviceProvider,
         IOptions<DatabaseSettings> databaseSettings,
         IOptions<MultitenancySettings> multitenancySettings,
-        TenantDatabaseProvisioner provisioner,
         ILogger<TenantDatabaseInitializer> logger)
     {
         _tenantDbContext = tenantDbContext;
         _serviceProvider = serviceProvider;
         _databaseSettings = databaseSettings.Value;
         _multitenancySettings = multitenancySettings.Value;
-        _provisioner = provisioner;
         _logger = logger;
     }
 
@@ -60,7 +56,7 @@ internal class TenantDatabaseInitializer
 
         await EnsureDefaultTenantAsync(cancellationToken);
 
-        // Migrate and seed each registered tenant's database
+        // Migrate and seed each registered tenant's database using its stored connection string
         var tenants = await _tenantDbContext.TenantInfo.ToListAsync(cancellationToken);
         foreach (var tenant in tenants)
         {
@@ -68,47 +64,9 @@ internal class TenantDatabaseInitializer
         }
     }
 
-    public async Task EnsureTenantDatabaseProvisionedAsync(AppTenantInfo tenant, CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrWhiteSpace(tenant.ConnectionString))
-        {
-            return;
-        }
-
-        string provider = tenant.DbProvider ?? "postgresql";
-        string targetDatabase = tenant.Identifier.ToLowerInvariant();
-        string dbUser = string.Empty;
-        string dbPassword = string.Empty;
-
-        string providerLower = provider.ToLowerInvariant();
-        if (providerLower is DbProviderKeys.Npgsql or "npgsql" or "postgres" or "postgresql")
-        {
-            var builder = new NpgsqlConnectionStringBuilder(tenant.ConnectionString);
-            if (!string.IsNullOrWhiteSpace(builder.Database)) targetDatabase = builder.Database;
-            dbUser = builder.Username ?? string.Empty;
-            dbPassword = builder.Password ?? string.Empty;
-        }
-        else if (providerLower is DbProviderKeys.SqlServer or "sqlserver" or "mssql")
-        {
-            var builder = new SqlConnectionStringBuilder(tenant.ConnectionString);
-            if (!string.IsNullOrWhiteSpace(builder.InitialCatalog)) targetDatabase = builder.InitialCatalog;
-            dbUser = builder.UserID ?? string.Empty;
-            dbPassword = builder.Password ?? string.Empty;
-        }
-
-        if (!string.IsNullOrWhiteSpace(dbUser) && !string.IsNullOrWhiteSpace(dbPassword))
-        {
-            _logger.LogInformation("Ensuring DB '{Database}' and DB user '{User}' are provisioned for tenant '{Tenant}'.", targetDatabase, dbUser, tenant.Identifier);
-            await _provisioner.EnsureDatabaseAndUserProvisionedAsync(provider, targetDatabase, dbUser, dbPassword, cancellationToken);
-        }
-    }
-
     public async Task InitializeTenantDatabaseAsync(AppTenantInfo tenant, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Initializing database for tenant '{Tenant}'.", tenant.Identifier);
-
-        // 1. Ensure database and dedicated DB user exist before creating EF DbContext
-        await EnsureTenantDatabaseProvisionedAsync(tenant, cancellationToken);
 
         using var scope = _serviceProvider.CreateScope();
 
