@@ -69,6 +69,9 @@ internal class TenantService : ITenantService
         string dbPassword = DbPasswordGenerator.Generate();
         string connectionString = _provisioner.BuildConnectionString(request.DbProvider, request.Identifier, dbUser, dbPassword);
 
+        // Provision the database and dedicated DB user on the server with full permissions
+        await _provisioner.EnsureDatabaseAndUserProvisionedAsync(request.DbProvider, request.Identifier.ToLowerInvariant(), dbUser, dbPassword, cancellationToken);
+
         string rawIndustry = request.IndustryType?.Trim().ToLowerInvariant() ?? string.Empty;
         string industry = !string.IsNullOrWhiteSpace(rawIndustry)
             ? rawIndustry
