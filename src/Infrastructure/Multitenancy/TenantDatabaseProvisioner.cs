@@ -216,11 +216,23 @@ GRANT ALL PRIVILEGES ON DATABASE ""{escapedDbName}"" TO ""{escapedUser}"";";
         await targetConnection.OpenAsync(cancellationToken);
 
         string schemaScript = $@"
-GRANT ALL ON SCHEMA public TO ""{escapedUser}"";
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO ""{escapedUser}"";
-GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO ""{escapedUser}"";
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO ""{escapedUser}"";
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO ""{escapedUser}"";";
+CREATE SCHEMA IF NOT EXISTS identity;
+CREATE SCHEMA IF NOT EXISTS auditing;
+
+DO $$
+DECLARE
+    s text;
+BEGIN
+    FOR s IN SELECT nspname FROM pg_namespace WHERE nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast') AND nspname NOT LIKE 'pg_temp%' AND nspname NOT LIKE 'pg_toast_temp%'
+    LOOP
+        EXECUTE format('GRANT ALL ON SCHEMA %I TO ""{escapedUser}""', s);
+        EXECUTE format('GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA %I TO ""{escapedUser}""', s);
+        EXECUTE format('GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA %I TO ""{escapedUser}""', s);
+        EXECUTE format('ALTER DEFAULT PRIVILEGES IN SCHEMA %I GRANT ALL ON TABLES TO ""{escapedUser}""', s);
+        EXECUTE format('ALTER DEFAULT PRIVILEGES IN SCHEMA %I GRANT ALL ON SEQUENCES TO ""{escapedUser}""', s);
+    END LOOP;
+END
+$$;";
 
         await using var schemaCmd = new NpgsqlCommand(schemaScript, targetConnection);
         try
