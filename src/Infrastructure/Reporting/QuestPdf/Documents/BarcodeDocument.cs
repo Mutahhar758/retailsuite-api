@@ -80,7 +80,8 @@ public class BarcodeDocument : IDocument
             {
                 // 3.94 in x 0.90 in (100mm x 22.86mm) 3-up continuous thermal sticker roll
                 page.Size(100f, 22.86f, Unit.Millimetre);
-                page.MarginVertical(0.4f, Unit.Millimetre);
+                page.MarginTop(2.0f, Unit.Millimetre);
+                page.MarginBottom(0.4f, Unit.Millimetre);
                 page.MarginHorizontal(pageMarginH, Unit.Millimetre);
                 page.PageColor(Colors.White);
 
@@ -227,13 +228,13 @@ public class BarcodeDocument : IDocument
             }
             else if (hasSubHeader || hasRate)
             {
-                effectiveBarcodeHeight = 5.2f;
+                effectiveBarcodeHeight = 4.8f;
                 itemSpacing = 0f;
             }
             else
             {
-                effectiveBarcodeHeight = isVariable ? 6.8f : 7.5f;
-                itemSpacing = 0.2f;
+                effectiveBarcodeHeight = isVariable ? 6.0f : 6.6f;
+                itemSpacing = 0.15f;
             }
         }
         else
@@ -242,10 +243,10 @@ public class BarcodeDocument : IDocument
             itemSpacing = 0f;
         }
 
-        float effectiveCompanyFontSize = hasSubHeader && maxLabelWidthMm <= 32f ? 5.0f : companyFontSize;
+        float effectiveCompanyFontSize = hasSubHeader && maxLabelWidthMm <= 32f ? 5.8f : (maxLabelWidthMm <= 32f ? 6.8f : companyFontSize);
         float subFontSize = 4.0f;
-        float effectiveTitleFontSize = hasSubHeader && maxLabelWidthMm <= 32f ? 5.5f : (maxLabelWidthMm <= 32f ? 6.2f : titleFontSize);
-        float effectivePriceFontSize = hasSubHeader && maxLabelWidthMm <= 32f ? 6.2f : (maxLabelWidthMm <= 32f ? 7.8f : priceFontSize);
+        float effectiveTitleFontSize = hasSubHeader && maxLabelWidthMm <= 32f ? 5.5f : (maxLabelWidthMm <= 32f ? 6.0f : titleFontSize);
+        float effectivePriceFontSize = hasSubHeader && maxLabelWidthMm <= 32f ? 6.2f : (maxLabelWidthMm <= 32f ? 7.5f : priceFontSize);
         float rateFontSize = hasSubHeader && maxLabelWidthMm <= 32f ? 4.8f : companyFontSize;
 
         container
