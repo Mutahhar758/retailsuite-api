@@ -77,4 +77,22 @@ public class TenantsController : BaseApiController
         await _tenantService.InviteTenantAsync(id, request, cancellationToken);
         return Ok(HttpResponseExtension.InformationResponse($"Invitation email sent successfully to {request.RecipientEmail ?? "tenant admin"}."));
     }
+
+    [HttpPost("{id}/provision-db-user")]
+    [OpenApiOperation("Provision or rotate dedicated database user for an existing tenant.", "Requires SuperAdmin role.")]
+    [Authorize(Roles = AppRoles.Admin)]
+    public async Task<IActionResult> ProvisionDbUserAsync(string id, CancellationToken cancellationToken)
+    {
+        var result = await _tenantService.ProvisionDbUserAsync(id, cancellationToken);
+        return Ok(result.ToSuccessResponse($"Database user provisioned and verified successfully for tenant '{id}'."));
+    }
+
+    [HttpPost("provision-all-db-users")]
+    [OpenApiOperation("Provision dedicated database users for all existing tenants.", "Requires SuperAdmin role.")]
+    [Authorize(Roles = AppRoles.Admin)]
+    public async Task<IActionResult> ProvisionAllDbUsersAsync(CancellationToken cancellationToken)
+    {
+        var results = await _tenantService.ProvisionAllExistingDbUsersAsync(cancellationToken);
+        return Ok(results.ToSuccessResponse("Database users provisioned and connection strings updated for existing tenants."));
+    }
 }

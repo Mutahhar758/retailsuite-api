@@ -18,6 +18,7 @@ internal class TenantService : ITenantService
 {
     private readonly TenantDbContext _tenantDbContext;
     private readonly TenantDatabaseInitializer _dbInitializer;
+    private readonly TenantDatabaseProvisioner _provisioner;
     private readonly ILogger<TenantService> _logger;
     private readonly DatabaseSettings _dbSettings;
     private readonly MultitenancySettings _multitenancySettings;
@@ -26,6 +27,7 @@ internal class TenantService : ITenantService
     public TenantService(
         TenantDbContext tenantDbContext,
         TenantDatabaseInitializer dbInitializer,
+        TenantDatabaseProvisioner provisioner,
         ILogger<TenantService> logger,
         IOptions<DatabaseSettings> dbSettings,
         IOptions<MultitenancySettings> multitenancySettings,
@@ -33,6 +35,7 @@ internal class TenantService : ITenantService
     {
         _tenantDbContext = tenantDbContext;
         _dbInitializer = dbInitializer;
+        _provisioner = provisioner;
         _logger = logger;
         _dbSettings = dbSettings.Value;
         _multitenancySettings = multitenancySettings.Value;
@@ -61,7 +64,10 @@ internal class TenantService : ITenantService
             throw new ConflictException($"Tenant with id '{request.Id}' already exists.");
         }
 
-        string connectionString = BuildConnectionString(request.DbProvider, request.Identifier);
+        // Entirely backend-handled: generate dedicated DB credentials with random password
+        string dbUser = DbPasswordGenerator.GenerateDbUsername(request.Identifier);
+        string dbPassword = DbPasswordGenerator.Generate();
+        string connectionString = _provisioner.BuildConnectionString(request.DbProvider, request.Identifier, dbUser, dbPassword);
 
         string rawIndustry = request.IndustryType?.Trim().ToLowerInvariant() ?? string.Empty;
         string industry = !string.IsNullOrWhiteSpace(rawIndustry)
@@ -99,7 +105,7 @@ internal class TenantService : ITenantService
 
         try
         {
-            _logger.LogInformation("Tenant '{Identifier}' created with industry '{Industry}' and subcategory '{SubCategory}'. Provisioning database.", tenant.Identifier, tenant.IndustryType, tenant.BusinessSubType);
+            _logger.LogInformation("Tenant '{Identifier}' created with industry '{Industry}'. Provisioning database with isolated DB user.", tenant.Identifier, tenant.IndustryType);
             await _dbInitializer.InitializeTenantDatabaseAsync(tenant, cancellationToken);
         }
         catch (Exception ex)
@@ -110,7 +116,89 @@ internal class TenantService : ITenantService
             throw;
         }
 
-        return new CreateTenantResponse { Id = tenant.Id, LicenseKey = tenant.LicenseKey! };
+        return new CreateTenantResponse
+        {
+            Id = tenant.Id,
+            LicenseKey = tenant.LicenseKey!
+        };
+    }
+
+    public async Task<ProvisionDbUserResult> ProvisionDbUserAsync(string id, CancellationToken cancellationToken)
+    {
+        var tenant = await _tenantDbContext.TenantInfo.FirstOrDefaultAsync(t => t.Id == id, cancellationToken)
+            ?? throw new NotFoundException($"Tenant with id '{id}' not found.");
+
+        if (string.Equals(tenant.Id, "root", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new BadRequestException("Provisioning dedicated tenant DB credentials for the 'root' tenant is not permitted.");
+        }
+
+        string dbProvider = tenant.DbProvider ?? "postgresql";
+        string targetDatabase = tenant.Identifier.ToLowerInvariant();
+
+        // Entirely backend-handled: auto-generate DB user and random password
+        string dbUser = DbPasswordGenerator.GenerateDbUsername(tenant.Identifier);
+        string dbPassword = DbPasswordGenerator.Generate();
+
+        _logger.LogInformation("Provisioning dedicated DB user '{User}' for tenant '{Tenant}'.", dbUser, tenant.Identifier);
+
+        await _provisioner.EnsureDatabaseAndUserProvisionedAsync(dbProvider, targetDatabase, dbUser, dbPassword, cancellationToken);
+
+        string newConnectionString = _provisioner.BuildConnectionString(dbProvider, targetDatabase, dbUser, dbPassword);
+
+        // Verify connectivity using the newly generated credentials
+        await _provisioner.TestConnectivityAsync(dbProvider, newConnectionString, cancellationToken);
+
+        tenant.ConnectionString = newConnectionString;
+        _tenantDbContext.TenantInfo.Update(tenant);
+        await _tenantDbContext.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation("Successfully updated connection string for tenant '{Tenant}' with dedicated DB user '{User}'.", tenant.Identifier, dbUser);
+
+        return new ProvisionDbUserResult
+        {
+            TenantId = tenant.Id,
+            Identifier = tenant.Identifier,
+            DbProvider = dbProvider,
+            DatabaseName = targetDatabase,
+            DbUser = dbUser,
+            Success = true,
+            Message = "Dedicated database user provisioned, verified, and connection string updated successfully."
+        };
+    }
+
+    public async Task<List<ProvisionDbUserResult>> ProvisionAllExistingDbUsersAsync(CancellationToken cancellationToken)
+    {
+        var tenants = await _tenantDbContext.TenantInfo
+            .Where(t => t.Id != "root")
+            .ToListAsync(cancellationToken);
+
+        var results = new List<ProvisionDbUserResult>();
+
+        foreach (var tenant in tenants)
+        {
+            try
+            {
+                var result = await ProvisionDbUserAsync(tenant.Id, cancellationToken);
+                results.Add(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to provision dedicated DB user for tenant '{Tenant}'.", tenant.Identifier);
+                results.Add(new ProvisionDbUserResult
+                {
+                    TenantId = tenant.Id,
+                    Identifier = tenant.Identifier,
+                    DbProvider = tenant.DbProvider ?? "unknown",
+                    DatabaseName = tenant.Identifier.ToLowerInvariant(),
+                    DbUser = string.Empty,
+                    Success = false,
+                    Message = ex.Message
+                });
+            }
+        }
+
+        return results;
     }
 
     public async Task UpdateAsync(UpdateTenantRequest request, CancellationToken cancellationToken)
@@ -157,43 +245,6 @@ internal class TenantService : ITenantService
         tenant.HasMobileShopFeature = tenant.IndustryType == "mobile" || request.HasMobileShopFeature;
 
         await _tenantDbContext.SaveChangesAsync(cancellationToken);
-    }
-
-    private string BuildConnectionString(string dbProvider, string tenantIdentifier)
-    {
-        string providerLower = dbProvider.ToLowerInvariant();
-        string baseConnectionString = providerLower switch
-        {
-            DbProviderKeys.Npgsql or "npgsql" or "postgres" => _multitenancySettings.DefaultConnectionString,
-            DbProviderKeys.SqlServer or "sqlserver" => _dbSettings.ConnectionString,
-            _ => throw new BadRequestException($"Unsupported DB Provider: {dbProvider}")
-        };
-
-        if (string.IsNullOrWhiteSpace(baseConnectionString))
-        {
-            throw new BadRequestException($"Base connection string for provider '{dbProvider}' is not configured.");
-        }
-
-        string dbName = tenantIdentifier.ToLowerInvariant();
-
-        if (providerLower is DbProviderKeys.Npgsql or "npgsql" or "postgres")
-        {
-            var builder = new NpgsqlConnectionStringBuilder(baseConnectionString)
-            {
-                Database = dbName
-            };
-            return builder.ConnectionString;
-        }
-        else if (providerLower is DbProviderKeys.SqlServer or "sqlserver")
-        {
-            var builder = new SqlConnectionStringBuilder(baseConnectionString)
-            {
-                InitialCatalog = dbName
-            };
-            return builder.ConnectionString;
-        }
-
-        throw new BadRequestException($"Unsupported DB Provider: {dbProvider}");
     }
 
     public async Task ActivateAsync(string id, CancellationToken cancellationToken)

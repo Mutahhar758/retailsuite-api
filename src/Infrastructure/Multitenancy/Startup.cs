@@ -38,6 +38,7 @@ internal static class Startup
         services.AddScoped<ICurrentTenant, CurrentTenant>();
         services.AddScoped<TenantMiddleware>();
         services.AddScoped<TenantLogEnricherMiddleware>();
+        services.AddTransient<TenantDatabaseProvisioner>();
         services.AddTransient<TenantDatabaseInitializer>();
         services.AddScoped<ITenantService, TenantService>();
 

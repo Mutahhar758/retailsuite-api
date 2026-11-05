@@ -10,4 +10,6 @@ public interface ITenantService
     Task DeactivateAsync(string id, CancellationToken cancellationToken);
     Task<TenantDto> GetTenantIdByLicenseKeyAsync(string licenseKey, CancellationToken cancellationToken);
     Task InviteTenantAsync(string id, InviteTenantRequest request, CancellationToken cancellationToken);
+    Task<ProvisionDbUserResult> ProvisionDbUserAsync(string id, CancellationToken cancellationToken);
+    Task<List<ProvisionDbUserResult>> ProvisionAllExistingDbUsersAsync(CancellationToken cancellationToken);
 }

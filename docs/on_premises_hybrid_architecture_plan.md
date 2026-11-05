@@ -6,7 +6,7 @@ This architecture enables RetailSuite to support **on-premises store deployments
 1. **Require zero code duplication:** The exact same core API, domain logic, CQRS handlers, and database entities run in both Cloud and On-Premises environments.
 2. **Do not create the multi-tenant master database locally:** The local installation only creates and accesses its **own store database** (`ApplicationDbContext`). The cloud master database (`TenantDbContext` containing other tenants, billing, and global licenses) remains strictly in the cloud and is never exposed or installed locally.
 3. **Work offline and online seamlessly:** Local Point of Sale (POS) terminals communicate directly over LAN with the local server with zero internet dependency. When internet is available, cloud users (HQ, mobile app, store owner) can query and control the store.
-4. **Require no paid VPNs and zero firewall configuration:** Communication between Cloud and Local uses an encrypted, **outbound-only** tunnel (built into the application via WebSockets/SignalR or via free Cloudflare Tunnels), requiring no public IP, no port forwarding, and no router configuration.
+4. **Require no paid VPNs and zero firewall configuration:** Communication between Cloud and Local uses an encrypted, **outbound-only** SignalR/WebSocket tunnel built directly into `WebAPI`, requiring no public IP, no port forwarding, and no router configuration.
 5. **Feature automated, secure self-installation:** A one-click installer or setup wizard initializes the local database, applies EF Core migrations, and establishes the secure channel using a one-time activation token.
 
 ---
@@ -48,33 +48,38 @@ In the cloud, RetailSuite uses Finbuckle to resolve tenants dynamically and conn
 - `TenantDbContext`: Contains the registry of all tenant connection strings, license dates, and features.
 - `ApplicationDbContext`: Contains the actual retail data (Sales, Purchases, Inventory, Customers).
 
-### The On-Premises Model: Dedicated Single-Store Mode
+### The On-Premises Model: Dedicated Single-Store Mode & Compile-Time Stripping
 On customer hardware:
-- **`TenantDbContext` is completely omitted.** The customer never receives the master database schema, connection strings of other tenants, or multitenant catalog.
+- **`TenantDbContext` is physically excluded from the On-Premises build.** Using MSBuild conditional compilation (`<Compile Remove="..." Condition="'$(Configuration)' == 'OnPremises'" />` and `#if ON_PREMISES`), `TenantDbContext`, `TenantService`, `TenantDatabaseInitializer`, `TenantsController`, and all `Migrations\TenantDb\**` files are not even compiled into the On-Premises `.dll`/`.exe`. The customer never receives the master database schema, tenant management endpoints, or multitenant catalog in the binary.
 - `ApplicationDbContext` runs in **Fixed Single-Store Mode**.
 - When the local server boots, it uses its locally stored, encrypted connection string directly, bypassing tenant lookup headers.
 - Multi-tenant query filters (`IsMultiTenant`) are automatically bound to the store's assigned `TenantId` so EF Core logic remains identical to cloud execution.
 
 ---
 
-## 4. Free, Super-Secure Connectivity (No Paid VPN)
+## 4. Free, Super-Secure Connectivity (Built-in SignalR Relay Tunnel)
 
-To enable cloud access to the local server without paying for VPNs or forcing customers to open router ports, we use an **Outbound-Only Encrypted Tunnel**.
+To enable cloud access to the local server without paying for VPNs or forcing customers to open router ports, we use a **Built-in Application Relay (SignalR over TLS/WebSockets)** directly inside `WebAPI`.
 
-### Option A: Built-in Application Relay (SignalR / gRPC Streaming over TLS) — *Recommended*
 * **Zero 3rd-party dependencies, 100% our own code.**
 * **How it works:**
-  1. The local server boots and initiates an outbound WebSocket/TLS connection to `wss://api.retailcloud.com/tunnel-hub`.
+  1. The local server boots and `LocalTunnelAgent` (`BackgroundService`) initiates an outbound WebSocket/TLS connection to `wss://api.retailcloud.com/tunnel-hub`.
   2. The connection is authenticated using a **Hardware-Bound HMAC Signature + Store API Key**.
   3. Because the connection is outbound on standard port `443`, firewalls, NATs, and dynamic IPs allow it with zero configuration.
   4. When an API call for this tenant arrives at the Cloud API (e.g. `GET /api/v1/sales/summary`), the Cloud API dispatches the request over the existing WebSocket stream to the local server.
-  5. The local server executes the request against its local database and streams the response back to the cloud.
+  5. The local server executes the request against its local PostgreSQL database and streams the response back to the cloud.
 
-### Option B: Cloudflare Tunnel (`cloudflared`) — *Zero Cost Infrastructure*
-* **100% Free** under Cloudflare's standard plan.
-* Bundled with the local installer as a background daemon.
-* Establishes 4 outbound encrypted QUIC/HTTP2 tunnels to Cloudflare edge nodes.
-* Gives the store a private origin hostname (e.g., `store-102.internal.retailsuite.cloud`) accessible only by your Cloud API via Cloudflare Service Tokens.
+### Automatic Reconnection & Drop Recovery (24/7 Resilience)
+In real retail stores, Wi-Fi routers reboot, ISPs drop connections, or the Cloud API may redeploy. The `LocalTunnelAgent` uses a **3-Layer Reconnection Strategy** so it never stays disconnected:
+
+1. **Layer 1: Built-in SignalR Infinite `IRetryPolicy` (`.WithAutomaticReconnect`)**
+   - Configured with a custom `InfiniteRetryPolicy` (`0s`, `2s`, `5s`, `10s`, and then every `30s` forever).
+   - If the internet drops for 5 minutes or 10 hours, SignalR automatically retries in the background and re-registers the store in the Cloud Hub the exact second internet returns.
+2. **Layer 2: Outer `BackgroundService` Watchdog Loop**
+   - Handles initial boot when the store PC turns on before the store's internet router is ready, or if `Closed` fires after a token refresh.
+   - Ensures the connection loop runs continuously for the lifetime of the Windows Service (`while (!stoppingToken.IsCancellationRequested)`).
+3. **Layer 3: Ping/Keep-Alive Dead-Socket Detection**
+   - `KeepAliveInterval = 15s` and `ServerTimeout = 30s` detect "half-open" zombie connections (e.g., someone unplugged the fiber cable from the ISP modem) within 30 seconds and immediately trigger the reconnection loop.
 
 ---
 
@@ -164,30 +169,46 @@ When a customer unplugs the internet cable, system time alone is untrusted. The 
 
 | Threat Vector | Mitigation Strategy |
 | :--- | :--- |
-| **Tampering with Local Database** | SQL Server / PostgreSQL runs with a system-generated, 64-character random password. The connection string is encrypted using **Windows Data Protection API (DPAPI)** or Linux MachineKey, accessible only by the service account. |
+| **Tampering with Local Database** | PostgreSQL runs with a system-generated, 64-character random password bound strictly to `127.0.0.1`. The connection string is encrypted using **Windows Data Protection API (DPAPI)**, accessible only by the local Windows Service account. |
 | **Eavesdropping on LAN Traffic** | Local API generates a self-signed HTTPS certificate during installation or uses mTLS for in-store POS terminals. |
 | **Inbound Attack / Port Scanners** | The local server **listens only on LAN** (`192.168.x.x` or `127.0.0.1`). No public ports are forwarded on the store router. All external traffic is outbound. |
 | **Unauthorized Cloud Ingestion** | The tunnel handshake requires mutual authentication: Tenant ID + Hardware Fingerprint (CPU/Motherboard UUID) + Cryptographic License Key. |
-| **Code / Intellectual Property Inspection** | Local API is published with Ahead-Of-Time (AOT) compilation or obfuscated single-file binary, running as a protected Windows Service. |
+| **Code Inspection & Cloud Schema Exposure** | Published as a **Compressed Single-File ReadyToRun (`R2R`) executable** (`DebugType=none`), with `TenantDbContext` and Cloud-only classes physically stripped at compile time (`<Compile Remove>`). *(Optional Control-Flow Obfuscation & Anti-Tamper is parked for a later phase.)* |
 
 ---
 
-## 9. Automated Self-Installation Process
+## 9. Automated Self-Installation Process (Visual Studio Setup Project + Portable PostgreSQL)
 
-When the customer downloads and runs `RetailSuite-Setup.exe`:
+The installer is built using the official **Microsoft Visual Studio Setup Project (`RetailSuite.Setup.vdproj`)** producing `setup.exe` + `RetailSuite.msi`, bundling a **Portable Embedded PostgreSQL (`pgsql` binary distribution)** with `pgvector` pre-installed.
+
+When the customer downloads and runs `setup.exe`:
 
 ```mermaid
 graph TD
-    A[Customer runs RetailSuite-Setup.exe] --> B[Enter Store License Key / Activation Code]
-    B --> C[Installer calls Cloud API /api/v1/tenants/activate]
-    C --> D[Cloud validates license, generates unique encryption keys & Store ID]
-    D --> E[Installer provisions Local DB: SQL Server Express or PostgreSQL or SQLite]
-    E --> F[Run EF Core Migrations: ApplicationDbContext.Database.Migrate]
-    F --> G[Seed initial store data, admin role, and permissions]
-    G --> H[Register and start Windows Service / Systemd daemon]
-    H --> I[Establish outbound encrypted tunnel to Cloud Hub]
-    I --> J[Ready! POS terminals connect to local IP on LAN]
+    A[Customer runs setup.exe / RetailSuite.msi] --> B[VS Setup UI Dialog: Enter Store Activation Code]
+    B --> C[MSI extracts Self-Contained WebAPI + Portable pgsql folder]
+    C --> D[Custom Action calls Cloud API /api/v1/tenants/activate]
+    D --> E[Cloud validates license, returns signed lease & Store TenantId]
+    E --> F[Custom Action runs initdb.exe & pg_ctl.exe register on Port 5439]
+    F --> G[Save DPAPI-encrypted appsettings.Local.json]
+    G --> H[Register & start RetailSuiteLocalServer Windows Service]
+    H --> I[On Startup: ApplicationDbContext.Database.MigrateAsync + Seeding]
+    I --> J[Establish outbound encrypted tunnel to Cloud Hub]
+    J --> K[Ready! POS terminals connect to local IP on LAN]
 ```
+
+### Portable Embedded PostgreSQL Strategy (Option A — Selected)
+Instead of running a separate 350 MB third-party PostgreSQL installer, the `.vdproj` packages a stripped, portable **PostgreSQL 16+ Windows Binary (`pgsql\`)** (~50 MB) inside the Application Folder:
+1. **Pre-bundled `pgvector` Extension:** `vector.dll` and `vector.control` are included directly inside `pgsql\lib` and `pgsql\share\extension`, guaranteeing 100% compatibility with `Migrators.PostgreSQL` (`e.UseVector()`).
+2. **Zero Port or Service Conflicts:**
+   - Bound strictly to `127.0.0.1` on dedicated port **`5439`** (never conflicts with a default `5432` installation and is invisible to external network scanners).
+   - Registered as an isolated Windows Service (`RetailSuitePostgres`) pointing to `C:\ProgramData\RetailSuite\pgdata`.
+3. **Silent Provisioning via `.vdproj` Custom Action:**
+   - **Initialize cluster:** `pgsql\bin\initdb.exe -D "C:\ProgramData\RetailSuite\pgdata" -U retailsuite --pwfile="<temp_64char_pw>" -E UTF8 -A scram-sha-256`
+   - **Register & start DB service:** `pgsql\bin\pg_ctl.exe register -N "RetailSuitePostgres" -D "C:\ProgramData\RetailSuite\pgdata"`
+4. **Single Control Panel Entry & Clean Uninstall:**
+   - Windows *Add/Remove Programs* shows only **"RetailSuite Server"** (staff cannot accidentally uninstall PostgreSQL separately).
+   - Uninstalling `RetailSuite.msi` automatically stops and removes both `RetailSuiteLocalServer` and `RetailSuitePostgres` services cleanly.
 
 ---
 
@@ -207,20 +228,42 @@ RetailSuite/
 │   ├── Persistence/
 │   │   ├── Context/
 │   │   │   └── ApplicationDbContext.cs # 100% Reused (Entity mapping & migrations)
-│   │   └── Startup.cs                # Switches between Dynamic Finbuckle DB or Local DB
+│   │   └── Startup.cs                # Switches between Dynamic Finbuckle DB or Local PostgreSQL DB
 │   └── Tunnel/
 │       ├── CloudRelayHub.cs          # Cloud server: receives tunnel connections
 │       └── LocalTunnelAgent.cs       # Local server: connects outbound to CloudRelayHub
-└── src/Host/                         # Single executable with `HostingEnvironment` switch
+├── src/Host/WebAPI/                  # Single executable with `HostingMode` switch + `.UseWindowsService()`
+└── setup/RetailSuite.Setup/          # Visual Studio Setup Project (.vdproj) bundling WebAPI + portable pgsql/
 ```
 
-### 2. Configuration Profiles
+### 2. Compile-Time Stripping of Cloud/Master DB Code (`OnPremises` Build Configuration)
+To ensure `TenantDbContext` and multi-tenant management code do not even exist inside the compiled On-Premises binary:
+- **`Infrastructure.csproj`, `Migrators.PostgreSQL.csproj`, and `WebAPI.csproj`:**
+  ```xml
+  <ItemGroup Condition="'$(Configuration)' == 'OnPremises'">
+    <DefineConstants>$(DefineConstants);ON_PREMISES</DefineConstants>
+    <Compile Remove="Multitenancy\TenantDbContext.cs" />
+    <Compile Remove="Multitenancy\TenantService.cs" />
+    <Compile Remove="Multitenancy\TenantDatabaseInitializer.cs" />
+  </ItemGroup>
+  ```
+  *(Similarly excluding `Migrations\TenantDb\**` in `Migrators.PostgreSQL.csproj` and `TenantsController.cs` in `WebAPI.csproj`.)*
+- **`Multitenancy/Startup.cs`:**
+  ```csharp
+  #if ON_PREMISES
+      // Register static single-store tenant from local config (WithInMemoryStore + WithStaticStrategy)
+  #else
+      // Register TenantDbContext, TenantService, and EFCoreStore
+  #endif
+  ```
+
+### 3. Configuration Profiles
 - **Cloud (`appsettings.Production.json`):**
   ```json
   {
     "HostingMode": "Cloud",
     "MultitenancySettings": {
-      "DefaultConnectionString": "Server=cloud-db;Database=MasterTenantDb;..."
+      "DefaultConnectionString": "Host=cloud-db;Database=MasterTenantDb;Username=postgres;Password=..."
     }
   }
   ```
@@ -234,8 +277,8 @@ RetailSuite/
       "CloudRelayUrl": "https://api.retailsuite.cloud/tunnel"
     },
     "DatabaseSettings": {
-      "DBProvider": "mssql",
-      "ConnectionString": "Server=localhost;Database=RetailSuite_Local;..."
+      "DBProvider": "postgresql",
+      "ConnectionString": "Host=127.0.0.1;Port=5439;Database=RetailSuite_Local;Username=retailsuite;Password=..."
     }
   }
   ```
@@ -244,13 +287,15 @@ RetailSuite/
 
 ## 11. Implementation Milestones
 
-1. **Phase 1: Single-Tenant Bootstrapper Mode**
-   - Add a configuration switch (`HostingMode: "OnPremises"`) in `Startup.cs`.
-   - When set, bypass `TenantDbContext` and initialize `ApplicationDbContext` with the single local connection string and fixed tenant ID.
+1. **Phase 1: Single-Tenant Bootstrapper & Compile-Time Stripping (`OnPremises` Build)**
+   - Add the `OnPremises` MSBuild configuration (`ON_PREMISES` symbol + `<Compile Remove>` for `TenantDbContext`, `TenantService`, `TenantsController`, and `Migrations\TenantDb\**`).
+   - In `Multitenancy/Startup.cs`, use `#if ON_PREMISES` to initialize `ApplicationDbContext` with the single local PostgreSQL connection string and fixed tenant ID via Finbuckle's `WithInMemoryStore` + `WithStaticStrategy`.
 2. **Phase 2: Automated Local Migration & Provisioning**
-   - Implement automated migration execution on startup (`dbContext.Database.MigrateAsync()`) when running locally.
+   - Implement automated migration execution on startup (`dbContext.Database.MigrateAsync()`) using `Migrators.PostgreSQL` when running locally.
 3. **Phase 3: Outbound Encrypted Tunnel (SignalR / gRPC Stream)**
    - Create `CloudTunnelHub` in Cloud API and `LocalTunnelAgent` in On-Premises mode.
    - Forward HTTP requests with header preservation between Cloud and On-Premises.
-4. **Phase 4: Customer Installer Package**
-   - Package the local build into an automated installer (Inno Setup / WiX) that provisions the database and registers the background service automatically.
+4. **Phase 4: Customer Installer Package (Visual Studio Setup Project + Portable PostgreSQL)**
+   - Add a **Microsoft Visual Studio Setup Project (`RetailSuite.Setup.vdproj`)** directly into `RetailSuite.sln` to produce a standard Windows Installer (`setup.exe` bootstrapper + `RetailSuite.msi`).
+   - Bundle the stripped **Portable Embedded PostgreSQL (`pgsql\`)** binaries (including `pgvector`) inside the `.vdproj` Application Folder.
+   - Use VS Setup **User Interface Dialogs** and **Custom Actions** to capture the Store Activation Key, silently initialize the local PostgreSQL cluster (`initdb.exe` + `pg_ctl.exe register` on port `5439`), DPAPI-encrypt `appsettings.Local.json`, and register/start the `RetailSuiteLocalServer` Windows Service.
