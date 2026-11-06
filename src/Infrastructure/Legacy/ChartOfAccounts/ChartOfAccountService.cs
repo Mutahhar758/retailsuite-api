@@ -260,19 +260,21 @@ internal class ChartOfAccountService : IChartOfAccountService
 
     public async Task<List<ChartOfAccountHeadResponse>> GetCustomerAccountsAsync(CancellationToken cancellationToken)
     {
-        var prefixes = await _defaultAccountRepository.GetAll()
+        var defaultAccounts = await _defaultAccountRepository.GetAll()
             .AsNoTracking()
             .Where(x => CustomerAccountTitles.Contains(x.Title!))
-            .Select(x => x.MapAccountId ?? x.AccountId)
-            .Where(x => x != null && x != string.Empty)
+            .Select(x => new { x.Title, Prefix = x.MapAccountId ?? x.AccountId })
+            .Where(x => !string.IsNullOrWhiteSpace(x.Prefix))
             .ToListAsync(cancellationToken);
 
-        if (prefixes.Count == 0)
+        if (defaultAccounts.Count == 0)
             throw new NotFoundException("Default customer or supplier account mapping is not configured.");
 
-        var distinctPrefixes = prefixes
-            .Where(x => !string.IsNullOrWhiteSpace(x))
-            .Select(x => x!)
+        string? customerPrefix = defaultAccounts.FirstOrDefault(x => x.Title == "Customers")?.Prefix;
+        string? supplierPrefix = defaultAccounts.FirstOrDefault(x => x.Title == "Suppliers")?.Prefix;
+
+        var distinctPrefixes = defaultAccounts
+            .Select(x => x.Prefix!)
             .Distinct()
             .ToList();
 
@@ -284,6 +286,18 @@ internal class ChartOfAccountService : IChartOfAccountService
             .ToListAsync(cancellationToken))
             .Where(x => distinctPrefixes.Any(p => x.Account.StartsWith(p, StringComparison.Ordinal)))
             .ToList();
+
+        foreach (var acc in accounts)
+        {
+            if (supplierPrefix != null && acc.Account.StartsWith(supplierPrefix, StringComparison.Ordinal))
+            {
+                acc.AccountType = "Vendor";
+            }
+            else
+            {
+                acc.AccountType = "Customer";
+            }
+        }
 
         if (accounts.Count > 0)
         {

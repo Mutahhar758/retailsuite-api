@@ -3,6 +3,7 @@ namespace Retailer.Application.Legacy.BankAccounts;
 public class BankAccountResponse
 {
     public string Account { get; set; } = default!;
+    public string AccountType { get; set; } = "Bank"; // "Cash" or "Bank"
     public string? BankName { get; set; }
     public string AccountTitle { get; set; } = default!;
     public string? AccountNumber { get; set; }

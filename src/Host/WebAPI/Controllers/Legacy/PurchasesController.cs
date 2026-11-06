@@ -1,3 +1,4 @@
+using Retailer.Application.Legacy.Common;
 using Retailer.Application.Legacy.Purchases;
 using Retailer.Infrastructure.Common.Extensions;
 using Retailer.Infrastructure.Auth.Permissions;
@@ -45,6 +46,17 @@ public class PurchasesController : VersionNeutralApiController
         CancellationToken cancellationToken)
     {
         var result = await _purchaseService.GetDetailAsync(voucherNo, cancellationToken);
+        return result.ToInformationResponse();
+    }
+
+    [HttpGet("{voucherNo}/payments")]
+    [MustHavePermission(AppAction.View, AppResource.Purchases)]
+    [OpenApiOperation("Get payment entries for a purchase voucher.", "")]
+    public async Task<HttpResponseDto<List<PaymentRecordResponse>>> GetPaymentsAsync(
+        string voucherNo,
+        CancellationToken cancellationToken)
+    {
+        var result = await _purchaseService.GetPaymentsAsync(voucherNo, cancellationToken);
         return result.ToInformationResponse();
     }
 

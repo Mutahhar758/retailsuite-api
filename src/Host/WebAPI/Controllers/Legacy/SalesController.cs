@@ -1,3 +1,4 @@
+using Retailer.Application.Legacy.Common;
 using Retailer.Application.Legacy.Sales;
 using Retailer.Infrastructure.Common.Extensions;
 using Retailer.Infrastructure.Auth.Permissions;
@@ -57,6 +58,17 @@ public class SalesController : VersionNeutralApiController
         CancellationToken cancellationToken)
     {
         var result = await _saleService.GetDetailAsync(voucherNo, cancellationToken);
+        return result.ToInformationResponse();
+    }
+
+    [HttpGet("{voucherNo}/payments")]
+    [MustHavePermission(AppAction.View, AppResource.Sales)]
+    [OpenApiOperation("Get payment entries for a sale voucher.", "")]
+    public async Task<HttpResponseDto<List<PaymentRecordResponse>>> GetPaymentsAsync(
+        string voucherNo,
+        CancellationToken cancellationToken)
+    {
+        var result = await _saleService.GetPaymentsAsync(voucherNo, cancellationToken);
         return result.ToInformationResponse();
     }
 

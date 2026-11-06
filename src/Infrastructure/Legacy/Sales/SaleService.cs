@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Retailer.Application.Common.Exceptions;
 using Retailer.Application.Common.Interfaces;
 using Retailer.Application.Common.Persistence;
+using Retailer.Application.Legacy.Common;
 using Retailer.Application.Legacy.Inventory;
 using Retailer.Application.Common.Models;
 using Retailer.Application.Legacy.Sales;
@@ -18,6 +19,7 @@ internal class SaleService : ISaleService
 
     private readonly IRepository<SaleMaster> _saleMasterRepository;
     private readonly IRepository<Sale> _saleRepository;
+    private readonly IRepository<SalePayment> _salePaymentRepository;
     private readonly IRepository<GlEntry> _glRepository;
     private readonly IRepository<ItemTransaction> _itemTransactionRepository;
     private readonly IRepository<DefaultAccount> _defaultAccountRepository;
@@ -31,6 +33,7 @@ internal class SaleService : ISaleService
     public SaleService(
         IRepository<SaleMaster> saleMasterRepository,
         IRepository<Sale> saleRepository,
+        IRepository<SalePayment> salePaymentRepository,
         IRepository<GlEntry> glRepository,
         IRepository<ItemTransaction> itemTransactionRepository,
         IRepository<DefaultAccount> defaultAccountRepository,
@@ -43,6 +46,7 @@ internal class SaleService : ISaleService
     {
         _saleMasterRepository = saleMasterRepository;
         _saleRepository = saleRepository;
+        _salePaymentRepository = salePaymentRepository;
         _glRepository = glRepository;
         _itemTransactionRepository = itemTransactionRepository;
         _defaultAccountRepository = defaultAccountRepository;
@@ -198,6 +202,92 @@ internal class SaleService : ISaleService
             }).ToListAsync(cancellationToken);
     }
 
+    public async Task<List<PaymentRecordResponse>> GetPaymentsAsync(string voucherNo, CancellationToken cancellationToken)
+    {
+        var payments = await _salePaymentRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => x.VType == VType && x.VNo == voucherNo)
+            .OrderBy(x => x.Seq)
+            .Select(x => new PaymentRecordResponse
+            {
+                Seq = x.Seq,
+                AccountId = x.AccountId,
+                AccountTitle = x.Account != null ? x.Account.Title : x.AccountId,
+                Amount = x.Amount,
+                Reference = x.Reference,
+                CheckNum = x.CheckNum,
+                CheckDate = x.CheckDate
+            })
+            .ToListAsync(cancellationToken);
+
+        if (payments.Count == 0)
+        {
+            var master = await _saleMasterRepository.GetAll()
+                .AsNoTracking()
+                .Where(x => x.VType == VType && x.VNo == voucherNo)
+                .Select(x => new { x.CashReceipt, x.CashBack })
+                .FirstOrDefaultAsync(cancellationToken);
+
+            var netCash = (master?.CashReceipt ?? 0) - (master?.CashBack ?? 0);
+            if (netCash > 0)
+            {
+                var glPayments = await _glRepository.GetAll()
+                    .AsNoTracking()
+                    .Where(x => x.VType == VType && x.VoucherNo == voucherNo && x.VSeq >= 2)
+                    .OrderBy(x => x.VSeq)
+                    .ToListAsync(cancellationToken);
+
+                if (glPayments.Count > 0)
+                {
+                    var accountIds = glPayments.Select(g => g.DrAccountId).Distinct().ToList();
+                    var titles = await _chartOfAccountRepository.GetAll()
+                        .AsNoTracking()
+                        .Where(a => accountIds.Contains(a.Id))
+                        .ToDictionaryAsync(a => a.Id, a => a.Title, cancellationToken);
+
+                    return glPayments.Select((g, idx) => new PaymentRecordResponse
+                    {
+                        Seq = idx + 1,
+                        AccountId = g.DrAccountId,
+                        AccountTitle = titles.GetValueOrDefault(g.DrAccountId, g.DrAccountId),
+                        Amount = g.Amount,
+                        Reference = g.Remarks
+                    }).ToList();
+                }
+                else
+                {
+                    var defaultCash = await _defaultAccountRepository.GetAll()
+                        .AsNoTracking()
+                        .Where(x => x.Title == CashDefaultAccountTitle)
+                        .Select(x => x.AccountId)
+                        .FirstOrDefaultAsync(cancellationToken);
+
+                    if (!string.IsNullOrEmpty(defaultCash))
+                    {
+                        var cashTitle = await _chartOfAccountRepository.GetAll()
+                            .AsNoTracking()
+                            .Where(a => a.Id == defaultCash)
+                            .Select(a => a.Title)
+                            .FirstOrDefaultAsync(cancellationToken);
+
+                        return
+                        [
+                            new PaymentRecordResponse
+                            {
+                                Seq = 1,
+                                AccountId = defaultCash,
+                                AccountTitle = cashTitle ?? "Cash",
+                                Amount = netCash
+                            }
+                        ];
+                    }
+                }
+            }
+        }
+
+        return payments;
+    }
+
     public async Task<string> CreateAsync(SaleCreateRequest request, CancellationToken cancellationToken)
     {
         var maxVoucherNo = await _saleMasterRepository.GetAll()
@@ -218,6 +308,16 @@ internal class SaleService : ISaleService
             ? ((x.Qty * x.Rate) - x.Discount + ((x.SecQty ?? 0) * (x.Carriage ?? 0)))
             : (((x.Qty * x.Rate) + ((x.SecQty ?? 0) * (x.SecRate ?? 0))) - x.Discount + (x.Carriage ?? 0)));
 
+        var validPayments = request.Payments?
+            .Where(p => !string.IsNullOrWhiteSpace(p.AccountId) && p.Amount > 0)
+            .ToList();
+        var cashReceipt = validPayments != null && validPayments.Count > 0
+            ? validPayments.Sum(p => p.Amount)
+            : request.CashReceipt;
+        var cashBack = validPayments != null && validPayments.Count > 0
+            ? 0
+            : request.CashBack;
+
         var master = new SaleMaster
         {
             VDate = request.Date,
@@ -230,12 +330,31 @@ internal class SaleService : ISaleService
             Amount = grossAmount,
             Discount = discountAmount,
             NetAmount = netAmount,
-            CashReceipt = request.CashReceipt,
-            CashBack = request.CashBack,
+            CashReceipt = cashReceipt,
+            CashBack = cashBack,
             Counter = "001"
         };
 
         await _saleMasterRepository.AddAsync(master, false);
+
+        if (validPayments != null && validPayments.Count > 0)
+        {
+            var pSeq = 1;
+            foreach (var p in validPayments)
+            {
+                await _salePaymentRepository.AddAsync(new SalePayment
+                {
+                    VType = VType,
+                    VNo = voucherNo,
+                    Seq = pSeq++,
+                    AccountId = p.AccountId,
+                    Amount = p.Amount,
+                    Reference = p.Reference,
+                    CheckNum = p.CheckNum,
+                    CheckDate = p.CheckDate
+                }, false);
+            }
+        }
 
         var itemIds = request.Lines.Select(x => x.ItemId).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().ToList();
         var itemMap = await _itemRepository.GetAll()
@@ -329,6 +448,16 @@ internal class SaleService : ISaleService
             ? ((x.Qty * x.Rate) - x.Discount + ((x.SecQty ?? 0) * (x.Carriage ?? 0)))
             : (((x.Qty * x.Rate) + ((x.SecQty ?? 0) * (x.SecRate ?? 0))) - x.Discount + (x.Carriage ?? 0)));
 
+        var validPayments = request.Payments?
+            .Where(p => !string.IsNullOrWhiteSpace(p.AccountId) && p.Amount > 0)
+            .ToList();
+        var cashReceipt = validPayments != null && validPayments.Count > 0
+            ? validPayments.Sum(p => p.Amount)
+            : request.CashReceipt;
+        var cashBack = validPayments != null && validPayments.Count > 0
+            ? 0
+            : request.CashBack;
+
         master.VDate = request.Date;
         master.VTime = TimeOnly.FromDateTime(DateTime.Now);
         master.AccountId = request.Account;
@@ -337,10 +466,38 @@ internal class SaleService : ISaleService
         master.Amount = grossAmount;
         master.Discount = discountAmount;
         master.NetAmount = netAmount;
-        master.CashReceipt = request.CashReceipt;
-        master.CashBack = request.CashBack;
+        master.CashReceipt = cashReceipt;
+        master.CashBack = cashBack;
 
         await _saleMasterRepository.UpdateAsync(master, false);
+
+        if (request.Payments != null)
+        {
+            var existingPayments = await _salePaymentRepository.GetAll()
+                .Where(x => x.VType == VType && x.VNo == voucherNo)
+                .ToListAsync(cancellationToken);
+            if (existingPayments.Count > 0)
+                await _salePaymentRepository.DeleteRangeAsync(existingPayments, false);
+
+            if (validPayments != null && validPayments.Count > 0)
+            {
+                var pSeq = 1;
+                foreach (var p in validPayments)
+                {
+                    await _salePaymentRepository.AddAsync(new SalePayment
+                    {
+                        VType = VType,
+                        VNo = voucherNo,
+                        Seq = pSeq++,
+                        AccountId = p.AccountId,
+                        Amount = p.Amount,
+                        Reference = p.Reference,
+                        CheckNum = p.CheckNum,
+                        CheckDate = p.CheckDate
+                    }, false);
+                }
+            }
+        }
 
         var itemIds = request.Lines.Select(x => x.ItemId).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().ToList();
         var itemMap = await _itemRepository.GetAll()
@@ -459,6 +616,10 @@ internal class SaleService : ISaleService
             .Where(x => x.VType == VType && x.VNo == voucherNo)
             .ToListAsync(cancellationToken);
 
+        var payments = await _salePaymentRepository.GetAll()
+            .Where(x => x.VType == VType && x.VNo == voucherNo)
+            .ToListAsync(cancellationToken);
+
         var oldDate = masters.FirstOrDefault()?.VDate ?? DateOnly.FromDateTime(DateTime.Today);
         var affectedItemIds = itemTransactions.Select(x => x.ItemId).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
 
@@ -466,6 +627,8 @@ internal class SaleService : ISaleService
         await _saleMasterRepository.DeleteRangeAsync(masters, true);
         await _glRepository.DeleteRangeAsync(glEntries, true);
         await _itemTransactionRepository.DeleteRangeAsync(itemTransactions, true);
+        if (payments.Count > 0)
+            await _salePaymentRepository.DeleteRangeAsync(payments, true);
 
         await _saleMasterRepository.SaveChangesAsync(cancellationToken);
 
@@ -543,7 +706,23 @@ internal class SaleService : ISaleService
         }
     }
 
-    private async Task UpsertGlEntriesAsync(string voucherNo, SaleCreateRequest request, decimal netAmount, CancellationToken cancellationToken)
+    private Task UpsertGlEntriesAsync(string voucherNo, SaleCreateRequest request, decimal netAmount, CancellationToken cancellationToken) =>
+        UpsertGlEntriesAsync(voucherNo, request.Date, request.Account, request.Narration, request.Description, netAmount, request.Payments, request.CashReceipt, request.CashBack, cancellationToken);
+
+    private Task UpsertGlEntriesAsync(string voucherNo, SaleUpdateRequest request, decimal netAmount, CancellationToken cancellationToken) =>
+        UpsertGlEntriesAsync(voucherNo, request.Date, request.Account, request.Narration, request.Description, netAmount, request.Payments, request.CashReceipt, request.CashBack, cancellationToken);
+
+    private async Task UpsertGlEntriesAsync(
+        string voucherNo,
+        DateOnly date,
+        string account,
+        string? narration,
+        string? description,
+        decimal netAmount,
+        List<PaymentRecordRequest>? payments,
+        decimal cashReceipt,
+        decimal cashBack,
+        CancellationToken cancellationToken)
     {
         var salesAccount = await _defaultAccountRepository.GetAll()
             .AsNoTracking()
@@ -554,85 +733,72 @@ internal class SaleService : ISaleService
         if (string.IsNullOrWhiteSpace(salesAccount))
             throw new NotFoundException("Default sales account is not configured.");
 
-        var cashAccount = await _defaultAccountRepository.GetAll()
-            .AsNoTracking()
-            .Where(x => x.Title == CashDefaultAccountTitle)
-            .Select(x => x.AccountId)
-            .FirstOrDefaultAsync(cancellationToken);
-
-        if (string.IsNullOrWhiteSpace(cashAccount))
-            throw new NotFoundException("Default cash account is not configured.");
-
-        var customerDetail = !string.IsNullOrWhiteSpace(request.Account)
+        var customerDetail = !string.IsNullOrWhiteSpace(account)
             ? await _customerDetailRepository.GetAll()
                 .AsNoTracking()
-                .Where(x => x.Id == request.Account)
+                .Where(x => x.Id == account)
                 .Select(x => new { x.Id, x.ParentCustomerAccountId })
                 .FirstOrDefaultAsync(cancellationToken)
             : null;
 
         var isSub = !string.IsNullOrWhiteSpace(customerDetail?.ParentCustomerAccountId);
-        var effectiveCustomerAccount = isSub ? customerDetail!.ParentCustomerAccountId! : request.Account;
-        var glDescription = request.Description;
+        var effectiveCustomerAccount = isSub ? customerDetail!.ParentCustomerAccountId! : account;
+        var glDescription = description;
         if (isSub)
         {
             var subTitle = await _chartOfAccountRepository.GetAll()
                 .AsNoTracking()
-                .Where(x => x.Id == request.Account)
+                .Where(x => x.Id == account)
                 .Select(x => x.Title)
-                .FirstOrDefaultAsync(cancellationToken) ?? request.Account;
+                .FirstOrDefaultAsync(cancellationToken) ?? account;
             var prefix = $"[Sub: {subTitle}]";
             glDescription = string.IsNullOrWhiteSpace(glDescription) ? prefix : $"{prefix} {glDescription}";
         }
 
-        await UpsertGlEntryAsync(voucherNo, request.Date, 1, effectiveCustomerAccount, salesAccount, netAmount, request.Narration, glDescription, cancellationToken);
-        await UpsertGlEntryAsync(voucherNo, request.Date, 2, cashAccount, effectiveCustomerAccount, request.CashReceipt - request.CashBack, request.Narration, glDescription, cancellationToken);
-    }
+        // VSeq 1: Dr Customer / Cr Sales (Full invoice amount)
+        await UpsertGlEntryAsync(voucherNo, date, 1, effectiveCustomerAccount, salesAccount, netAmount, narration, glDescription, cancellationToken);
 
-    private async Task UpsertGlEntriesAsync(string voucherNo, SaleUpdateRequest request, decimal netAmount, CancellationToken cancellationToken)
-    {
-        var salesAccount = await _defaultAccountRepository.GetAll()
-            .AsNoTracking()
-            .Where(x => x.Title == VType)
-            .Select(x => x.AccountId)
-            .FirstOrDefaultAsync(cancellationToken);
+        var validPayments = payments?.Where(p => !string.IsNullOrWhiteSpace(p.AccountId) && p.Amount > 0).ToList();
+        var glSeq = 2;
 
-        if (string.IsNullOrWhiteSpace(salesAccount))
-            throw new NotFoundException("Default sales account is not configured.");
-
-        var cashAccount = await _defaultAccountRepository.GetAll()
-            .AsNoTracking()
-            .Where(x => x.Title == CashDefaultAccountTitle)
-            .Select(x => x.AccountId)
-            .FirstOrDefaultAsync(cancellationToken);
-
-        if (string.IsNullOrWhiteSpace(cashAccount))
-            throw new NotFoundException("Default cash account is not configured.");
-
-        var customerDetail = !string.IsNullOrWhiteSpace(request.Account)
-            ? await _customerDetailRepository.GetAll()
-                .AsNoTracking()
-                .Where(x => x.Id == request.Account)
-                .Select(x => new { x.Id, x.ParentCustomerAccountId })
-                .FirstOrDefaultAsync(cancellationToken)
-            : null;
-
-        var isSub = !string.IsNullOrWhiteSpace(customerDetail?.ParentCustomerAccountId);
-        var effectiveCustomerAccount = isSub ? customerDetail!.ParentCustomerAccountId! : request.Account;
-        var glDescription = request.Description;
-        if (isSub)
+        if (validPayments != null && validPayments.Count > 0)
         {
-            var subTitle = await _chartOfAccountRepository.GetAll()
-                .AsNoTracking()
-                .Where(x => x.Id == request.Account)
-                .Select(x => x.Title)
-                .FirstOrDefaultAsync(cancellationToken) ?? request.Account;
-            var prefix = $"[Sub: {subTitle}]";
-            glDescription = string.IsNullOrWhiteSpace(glDescription) ? prefix : $"{prefix} {glDescription}";
+            foreach (var p in validPayments)
+            {
+                var paymentRemarks = !string.IsNullOrWhiteSpace(p.Reference)
+                    ? (string.IsNullOrWhiteSpace(glDescription) ? p.Reference : $"{glDescription} - Ref: {p.Reference}")
+                    : glDescription;
+
+                await UpsertGlEntryAsync(voucherNo, date, glSeq++, p.AccountId, effectiveCustomerAccount, p.Amount, narration, paymentRemarks, cancellationToken);
+            }
+        }
+        else if (payments == null)
+        {
+            var netCash = cashReceipt - cashBack;
+            if (netCash > 0)
+            {
+                var cashAccount = await _defaultAccountRepository.GetAll()
+                    .AsNoTracking()
+                    .Where(x => x.Title == CashDefaultAccountTitle)
+                    .Select(x => x.AccountId)
+                    .FirstOrDefaultAsync(cancellationToken);
+
+                if (!string.IsNullOrWhiteSpace(cashAccount))
+                {
+                    await UpsertGlEntryAsync(voucherNo, date, glSeq++, cashAccount, effectiveCustomerAccount, netCash, narration, glDescription, cancellationToken);
+                }
+            }
         }
 
-        await UpsertGlEntryAsync(voucherNo, request.Date, 1, effectiveCustomerAccount, salesAccount, netAmount, request.Narration, glDescription, cancellationToken);
-        await UpsertGlEntryAsync(voucherNo, request.Date, 2, cashAccount, effectiveCustomerAccount, request.CashReceipt - request.CashBack, request.Narration, glDescription, cancellationToken);
+        // Delete obsolete payment GL entries (e.g. from previous edit or reduced payment count)
+        var obsoleteGlEntries = await _glRepository.GetAll()
+            .Where(x => x.VType == VType && x.VoucherNo == voucherNo && x.VSeq >= glSeq)
+            .ToListAsync(cancellationToken);
+
+        if (obsoleteGlEntries.Count > 0)
+        {
+            await _glRepository.DeleteRangeAsync(obsoleteGlEntries, false);
+        }
     }
 
     private async Task UpsertGlEntryAsync(

@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Retailer.Application.Common.Exceptions;
 using Retailer.Application.Common.Interfaces;
 using Retailer.Application.Common.Persistence;
+using Retailer.Application.Legacy.Common;
 using Retailer.Application.Legacy.Inventory;
 using Retailer.Application.Common.Models;
 using Retailer.Application.Legacy.Purchases;
@@ -18,6 +19,7 @@ internal class PurchaseService : IPurchaseService
 
     private readonly IRepository<PurchaseMaster> _purchaseMasterRepository;
     private readonly IRepository<PurchaseDetail> _purchaseDetailRepository;
+    private readonly IRepository<PurchasePayment> _purchasePaymentRepository;
     private readonly IRepository<GlEntry> _glRepository;
     private readonly IRepository<ItemTransaction> _itemTransactionRepository;
     private readonly IRepository<DefaultAccount> _defaultAccountRepository;
@@ -29,6 +31,7 @@ internal class PurchaseService : IPurchaseService
     public PurchaseService(
         IRepository<PurchaseMaster> purchaseMasterRepository,
         IRepository<PurchaseDetail> purchaseDetailRepository,
+        IRepository<PurchasePayment> purchasePaymentRepository,
         IRepository<GlEntry> glRepository,
         IRepository<ItemTransaction> itemTransactionRepository,
         IRepository<DefaultAccount> defaultAccountRepository,
@@ -39,6 +42,7 @@ internal class PurchaseService : IPurchaseService
     {
         _purchaseMasterRepository = purchaseMasterRepository;
         _purchaseDetailRepository = purchaseDetailRepository;
+        _purchasePaymentRepository = purchasePaymentRepository;
         _glRepository = glRepository;
         _itemTransactionRepository = itemTransactionRepository;
         _defaultAccountRepository = defaultAccountRepository;
@@ -195,6 +199,92 @@ internal class PurchaseService : IPurchaseService
             }).ToListAsync(cancellationToken);
     }
 
+    public async Task<List<PaymentRecordResponse>> GetPaymentsAsync(string voucherNo, CancellationToken cancellationToken)
+    {
+        var payments = await _purchasePaymentRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => x.VType == VType && x.VNo == voucherNo)
+            .OrderBy(x => x.Seq)
+            .Select(x => new PaymentRecordResponse
+            {
+                Seq = x.Seq,
+                AccountId = x.AccountId,
+                AccountTitle = x.Account != null ? x.Account.Title : x.AccountId,
+                Amount = x.Amount,
+                Reference = x.Reference,
+                CheckNum = x.CheckNum,
+                CheckDate = x.CheckDate
+            })
+            .ToListAsync(cancellationToken);
+
+        if (payments.Count == 0)
+        {
+            var master = await _purchaseMasterRepository.GetAll()
+                .AsNoTracking()
+                .Where(x => x.VType == VType && x.VNo == voucherNo)
+                .Select(x => new { x.CashPaid, x.CashBack })
+                .FirstOrDefaultAsync(cancellationToken);
+
+            var netCash = (master?.CashPaid ?? 0) - (master?.CashBack ?? 0);
+            if (netCash > 0)
+            {
+                var glPayments = await _glRepository.GetAll()
+                    .AsNoTracking()
+                    .Where(x => x.VType == VType && x.VoucherNo == voucherNo && x.VSeq >= 2)
+                    .OrderBy(x => x.VSeq)
+                    .ToListAsync(cancellationToken);
+
+                if (glPayments.Count > 0)
+                {
+                    var accountIds = glPayments.Select(g => g.CrAccountId).Distinct().ToList();
+                    var titles = await _chartOfAccountRepository.GetAll()
+                        .AsNoTracking()
+                        .Where(a => accountIds.Contains(a.Id))
+                        .ToDictionaryAsync(a => a.Id, a => a.Title, cancellationToken);
+
+                    return glPayments.Select((g, idx) => new PaymentRecordResponse
+                    {
+                        Seq = idx + 1,
+                        AccountId = g.CrAccountId,
+                        AccountTitle = titles.GetValueOrDefault(g.CrAccountId, g.CrAccountId),
+                        Amount = g.Amount,
+                        Reference = g.Remarks
+                    }).ToList();
+                }
+                else
+                {
+                    var defaultCash = await _defaultAccountRepository.GetAll()
+                        .AsNoTracking()
+                        .Where(x => x.Title == CashDefaultAccountTitle)
+                        .Select(x => x.AccountId)
+                        .FirstOrDefaultAsync(cancellationToken);
+
+                    if (!string.IsNullOrEmpty(defaultCash))
+                    {
+                        var cashTitle = await _chartOfAccountRepository.GetAll()
+                            .AsNoTracking()
+                            .Where(a => a.Id == defaultCash)
+                            .Select(a => a.Title)
+                            .FirstOrDefaultAsync(cancellationToken);
+
+                        return
+                        [
+                            new PaymentRecordResponse
+                            {
+                                Seq = 1,
+                                AccountId = defaultCash,
+                                AccountTitle = cashTitle ?? "Cash",
+                                Amount = netCash
+                            }
+                        ];
+                    }
+                }
+            }
+        }
+
+        return payments;
+    }
+
     public async Task<string> CreateAsync(PurchaseCreateRequest request, CancellationToken cancellationToken)
     {
         var maxVoucherNo = await _purchaseMasterRepository.GetAll()
@@ -211,6 +301,16 @@ internal class PurchaseService : IPurchaseService
             ? ((x.Qty * x.Rate) + x.AddLess)
             : ((x.Qty * x.Rate) + x.AddLess + ((x.SecQty ?? 0) * (x.SecRate ?? 0))));
 
+        var validPayments = request.Payments?
+            .Where(p => !string.IsNullOrWhiteSpace(p.AccountId) && p.Amount > 0)
+            .ToList();
+        var cashPaid = validPayments != null && validPayments.Count > 0
+            ? validPayments.Sum(p => p.Amount)
+            : request.CashPaid;
+        var cashBack = validPayments != null && validPayments.Count > 0
+            ? 0
+            : request.CashBack;
+
         var master = new PurchaseMaster
         {
             VDate = request.Date,
@@ -221,14 +321,33 @@ internal class PurchaseService : IPurchaseService
             Descr = request.Description,
             NarrationId = request.Narration,
             Amount = totalAmount,
-            CashPaid = request.CashPaid,
-            CashBack = request.CashBack,
+            CashPaid = cashPaid,
+            CashBack = cashBack,
             SellerCnic = request.SellerCnic,
             SellerContact = request.SellerContact,
             Counter = "001"
         };
 
         await _purchaseMasterRepository.AddAsync(master, false);
+
+        if (validPayments != null && validPayments.Count > 0)
+        {
+            var pSeq = 1;
+            foreach (var p in validPayments)
+            {
+                await _purchasePaymentRepository.AddAsync(new PurchasePayment
+                {
+                    VType = VType,
+                    VNo = voucherNo,
+                    Seq = pSeq++,
+                    AccountId = p.AccountId,
+                    Amount = p.Amount,
+                    Reference = p.Reference,
+                    CheckNum = p.CheckNum,
+                    CheckDate = p.CheckDate
+                }, false);
+            }
+        }
 
         var itemIds = request.Lines.Select(x => x.ItemId).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().ToList();
         var itemMap = await _itemRepository.GetAll()
@@ -311,18 +430,56 @@ internal class PurchaseService : IPurchaseService
             ? ((x.Qty * x.Rate) + x.AddLess)
             : ((x.Qty * x.Rate) + x.AddLess + ((x.SecQty ?? 0) * (x.SecRate ?? 0))));
 
+        var validPayments = request.Payments?
+            .Where(p => !string.IsNullOrWhiteSpace(p.AccountId) && p.Amount > 0)
+            .ToList();
+        var cashPaid = validPayments != null && validPayments.Count > 0
+            ? validPayments.Sum(p => p.Amount)
+            : request.CashPaid;
+        var cashBack = validPayments != null && validPayments.Count > 0
+            ? 0
+            : request.CashBack;
+
         master.VDate = request.Date;
         master.VTime = TimeOnly.FromDateTime(DateTime.Now);
         master.AccountId = request.Account;
         master.Descr = request.Description;
         master.NarrationId = request.Narration;
         master.Amount = totalAmount;
-        master.CashPaid = request.CashPaid;
-        master.CashBack = request.CashBack;
+        master.CashPaid = cashPaid;
+        master.CashBack = cashBack;
         master.SellerCnic = request.SellerCnic;
         master.SellerContact = request.SellerContact;
 
         await _purchaseMasterRepository.UpdateAsync(master, false);
+
+        if (request.Payments != null)
+        {
+            var existingPayments = await _purchasePaymentRepository.GetAll()
+                .Where(x => x.VType == VType && x.VNo == voucherNo)
+                .ToListAsync(cancellationToken);
+            if (existingPayments.Count > 0)
+                await _purchasePaymentRepository.DeleteRangeAsync(existingPayments, false);
+
+            if (validPayments != null && validPayments.Count > 0)
+            {
+                var pSeq = 1;
+                foreach (var p in validPayments)
+                {
+                    await _purchasePaymentRepository.AddAsync(new PurchasePayment
+                    {
+                        VType = VType,
+                        VNo = voucherNo,
+                        Seq = pSeq++,
+                        AccountId = p.AccountId,
+                        Amount = p.Amount,
+                        Reference = p.Reference,
+                        CheckNum = p.CheckNum,
+                        CheckDate = p.CheckDate
+                    }, false);
+                }
+            }
+        }
 
         var itemIds = request.Lines.Select(x => x.ItemId).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().ToList();
         var itemMap = await _itemRepository.GetAll()
@@ -435,6 +592,10 @@ internal class PurchaseService : IPurchaseService
             .Where(x => x.VType == VType && x.VNo == voucherNo)
             .ToListAsync(cancellationToken);
 
+        var payments = await _purchasePaymentRepository.GetAll()
+            .Where(x => x.VType == VType && x.VNo == voucherNo)
+            .ToListAsync(cancellationToken);
+
         var oldDate = masters.FirstOrDefault()?.VDate ?? DateOnly.FromDateTime(DateTime.Today);
         var affectedItemIds = itemTransactions.Select(x => x.ItemId).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
 
@@ -442,6 +603,8 @@ internal class PurchaseService : IPurchaseService
         await _purchaseMasterRepository.DeleteRangeAsync(masters, true);
         await _glRepository.DeleteRangeAsync(glEntries, true);
         await _itemTransactionRepository.DeleteRangeAsync(itemTransactions, true);
+        if (payments.Count > 0)
+            await _purchasePaymentRepository.DeleteRangeAsync(payments, true);
 
         await _purchaseMasterRepository.SaveChangesAsync(cancellationToken);
 
@@ -590,7 +753,23 @@ internal class PurchaseService : IPurchaseService
         await _balanceService.ProcessVoucherRunningBalancesAsync(_currentTenant.Id, VType, voucherNo, date, txsToProcess, cancellationToken);
     }
 
-    private async Task UpsertGlEntriesAsync(string voucherNo, PurchaseCreateRequest request, decimal totalAmount, CancellationToken cancellationToken)
+    private Task UpsertGlEntriesAsync(string voucherNo, PurchaseCreateRequest request, decimal totalAmount, CancellationToken cancellationToken) =>
+        UpsertGlEntriesAsync(voucherNo, request.Date, request.Account, request.Narration, request.Description, totalAmount, request.Payments, request.CashPaid, request.CashBack, cancellationToken);
+
+    private Task UpsertGlEntriesAsync(string voucherNo, PurchaseUpdateRequest request, decimal totalAmount, CancellationToken cancellationToken) =>
+        UpsertGlEntriesAsync(voucherNo, request.Date, request.Account, request.Narration, request.Description, totalAmount, request.Payments, request.CashPaid, request.CashBack, cancellationToken);
+
+    private async Task UpsertGlEntriesAsync(
+        string voucherNo,
+        DateOnly date,
+        string account,
+        string? narration,
+        string? description,
+        decimal totalAmount,
+        List<PaymentRecordRequest>? payments,
+        decimal cashPaid,
+        decimal cashBack,
+        CancellationToken cancellationToken)
     {
         var purchaseAccount = await _defaultAccountRepository.GetAll()
             .AsNoTracking()
@@ -601,41 +780,51 @@ internal class PurchaseService : IPurchaseService
         if (string.IsNullOrWhiteSpace(purchaseAccount))
             throw new NotFoundException("Default purchase account is not configured.");
 
-        var cashAccount = await _defaultAccountRepository.GetAll()
-            .AsNoTracking()
-            .Where(x => x.Title == CashDefaultAccountTitle)
-            .Select(x => x.AccountId)
-            .FirstOrDefaultAsync(cancellationToken);
+        // VSeq 1: Dr Purchases / Cr Supplier (Full invoice amount)
+        await UpsertGlEntryAsync(voucherNo, date, 1, purchaseAccount, account, totalAmount, narration, description, cancellationToken);
 
-        if (string.IsNullOrWhiteSpace(cashAccount))
-            throw new NotFoundException("Default cash account is not configured.");
+        var validPayments = payments?.Where(p => !string.IsNullOrWhiteSpace(p.AccountId) && p.Amount > 0).ToList();
+        var glSeq = 2;
 
-        await UpsertGlEntryAsync(voucherNo, request.Date, 1, purchaseAccount, request.Account, totalAmount, request.Narration, request.Description, cancellationToken);
-        await UpsertGlEntryAsync(voucherNo, request.Date, 2, request.Account, cashAccount, request.CashPaid - request.CashBack, request.Narration, request.Description, cancellationToken);
-    }
+        if (validPayments != null && validPayments.Count > 0)
+        {
+            foreach (var p in validPayments)
+            {
+                var paymentRemarks = !string.IsNullOrWhiteSpace(p.Reference)
+                    ? (string.IsNullOrWhiteSpace(description) ? p.Reference : $"{description} - Ref: {p.Reference}")
+                    : description;
 
-    private async Task UpsertGlEntriesAsync(string voucherNo, PurchaseUpdateRequest request, decimal totalAmount, CancellationToken cancellationToken)
-    {
-        var purchaseAccount = await _defaultAccountRepository.GetAll()
-            .AsNoTracking()
-            .Where(x => x.Title == VType)
-            .Select(x => x.AccountId)
-            .FirstOrDefaultAsync(cancellationToken);
+                // Purchase Payment: Dr Supplier / Cr PaymentAccount
+                await UpsertGlEntryAsync(voucherNo, date, glSeq++, account, p.AccountId, p.Amount, narration, paymentRemarks, cancellationToken);
+            }
+        }
+        else if (payments == null)
+        {
+            var netCash = cashPaid - cashBack;
+            if (netCash > 0)
+            {
+                var cashAccount = await _defaultAccountRepository.GetAll()
+                    .AsNoTracking()
+                    .Where(x => x.Title == CashDefaultAccountTitle)
+                    .Select(x => x.AccountId)
+                    .FirstOrDefaultAsync(cancellationToken);
 
-        if (string.IsNullOrWhiteSpace(purchaseAccount))
-            throw new NotFoundException("Default purchase account is not configured.");
+                if (!string.IsNullOrWhiteSpace(cashAccount))
+                {
+                    await UpsertGlEntryAsync(voucherNo, date, glSeq++, account, cashAccount, netCash, narration, description, cancellationToken);
+                }
+            }
+        }
 
-        var cashAccount = await _defaultAccountRepository.GetAll()
-            .AsNoTracking()
-            .Where(x => x.Title == CashDefaultAccountTitle)
-            .Select(x => x.AccountId)
-            .FirstOrDefaultAsync(cancellationToken);
+        // Delete obsolete payment GL entries
+        var obsoleteGlEntries = await _glRepository.GetAll()
+            .Where(x => x.VType == VType && x.VoucherNo == voucherNo && x.VSeq >= glSeq)
+            .ToListAsync(cancellationToken);
 
-        if (string.IsNullOrWhiteSpace(cashAccount))
-            throw new NotFoundException("Default cash account is not configured.");
-
-        await UpsertGlEntryAsync(voucherNo, request.Date, 1, purchaseAccount, request.Account, totalAmount, request.Narration, request.Description, cancellationToken);
-        await UpsertGlEntryAsync(voucherNo, request.Date, 2, request.Account, cashAccount, request.CashPaid - request.CashBack, request.Narration, request.Description, cancellationToken);
+        if (obsoleteGlEntries.Count > 0)
+        {
+            await _glRepository.DeleteRangeAsync(obsoleteGlEntries, false);
+        }
     }
 
     private async Task UpsertGlEntryAsync(

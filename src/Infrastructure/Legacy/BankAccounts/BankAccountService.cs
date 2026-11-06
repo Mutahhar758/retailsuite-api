@@ -12,6 +12,7 @@ namespace Retailer.Infrastructure.Legacy.BankAccounts;
 internal class BankAccountService : IBankAccountService
 {
     private const string DefaultBankPrefix = "001002002002";
+    private const string DefaultCashPrefix = "001002002001";
     private const string CashBanksParentId = "001002002";
     private const string OpeningVType = "Op";
 
@@ -41,15 +42,17 @@ internal class BankAccountService : IBankAccountService
     public async Task<List<BankAccountResponse>> GetAllAsync(CancellationToken cancellationToken)
     {
         var bankPrefix = await GetBankParentPrefixAsync(cancellationToken);
+        var cashPrefix = await GetCashParentPrefixAsync(cancellationToken);
 
         var accounts = await _chartOfAccountRepository.GetAll()
             .AsNoTracking()
-            .Where(x => x.AccLevel == 5 && (x.ParentId == bankPrefix || x.Id.StartsWith(bankPrefix)))
+            .Where(x => x.AccLevel == 5 && (x.ParentId == bankPrefix || x.Id.StartsWith(bankPrefix) || x.ParentId == cashPrefix || x.Id.StartsWith(cashPrefix)))
             .OrderBy(x => x.Id)
             .Select(x => new
             {
                 x.Id,
                 x.Title,
+                x.ParentId,
                 x.CreatedBy,
                 x.CreatedOn,
                 x.LastModifiedBy,
@@ -101,11 +104,13 @@ internal class BankAccountService : IBankAccountService
         {
             detailMap.TryGetValue(x.Id, out var detail);
             opMap.TryGetValue(x.Id, out var opBal);
+            var isCash = x.ParentId == cashPrefix || x.Id.StartsWith(cashPrefix);
 
             return new BankAccountResponse
             {
                 Account = x.Id,
-                BankName = detail?.BankName,
+                AccountType = isCash ? "Cash" : "Bank",
+                BankName = isCash ? "Cash" : (detail?.BankName ?? "Bank"),
                 AccountTitle = detail?.AccountTitle ?? x.Title,
                 AccountNumber = detail?.AccountNumber,
                 Iban = detail?.Iban,
@@ -135,15 +140,19 @@ internal class BankAccountService : IBankAccountService
 
     public async Task<string> CreateAsync(BankAccountCreateRequest request, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.BankName))
-            throw new BadRequestException("Bank name is required.");
+        var isCash = string.Equals(request.AccountType, "Cash", StringComparison.OrdinalIgnoreCase);
+
+        if (!isCash && string.IsNullOrWhiteSpace(request.BankName))
+            throw new BadRequestException("Bank name is required for bank accounts.");
 
         if (string.IsNullOrWhiteSpace(request.AccountTitle))
             throw new BadRequestException("Account title is required.");
 
-        var bankPrefix = await GetBankParentPrefixAsync(cancellationToken);
+        var parentPrefix = isCash
+            ? await GetCashParentPrefixAsync(cancellationToken)
+            : await GetBankParentPrefixAsync(cancellationToken);
 
-        var parent = await _chartOfAccountRepository.GetByIdAsync(bankPrefix, cancellationToken);
+        var parent = await _chartOfAccountRepository.GetByIdAsync(parentPrefix, cancellationToken);
         if (parent is null)
         {
             // Auto-create parent if 001002002 exists
@@ -152,18 +161,18 @@ internal class BankAccountService : IBankAccountService
             {
                 parent = new ChartOfAccount
                 {
-                    Id = DefaultBankPrefix,
-                    Title = "Banks",
+                    Id = isCash ? DefaultCashPrefix : DefaultBankPrefix,
+                    Title = isCash ? "Cash in Hand" : "Banks",
                     ParentId = CashBanksParentId,
                     AccLevel = 4,
                     AccType = "Parent"
                 };
                 await _chartOfAccountRepository.AddAsync(parent);
-                bankPrefix = parent.Id;
+                parentPrefix = parent.Id;
             }
             else
             {
-                throw new NotFoundException($"Parent bank account '{bankPrefix}' not found in Chart of Accounts.");
+                throw new NotFoundException($"Parent account '{parentPrefix}' not found in Chart of Accounts.");
             }
         }
 
@@ -171,29 +180,31 @@ internal class BankAccountService : IBankAccountService
         var maxChildId = await _chartOfAccountRepository.GetAll()
             .IgnoreQueryFilters([GlobalQueryFilterConstants.SoftDelete])
             .AsNoTracking()
-            .Where(x => x.ParentId == bankPrefix)
+            .Where(x => x.ParentId == parentPrefix)
             .Select(x => x.Id)
             .OrderByDescending(x => x.Length)
             .ThenByDescending(x => x)
             .FirstOrDefaultAsync(cancellationToken);
 
         var maxSuffix = 0L;
-        if (!string.IsNullOrWhiteSpace(maxChildId) && maxChildId.Length > bankPrefix.Length)
+        if (!string.IsNullOrWhiteSpace(maxChildId) && maxChildId.Length > parentPrefix.Length)
         {
-            long.TryParse(maxChildId[bankPrefix.Length..], out maxSuffix);
+            long.TryParse(maxChildId[parentPrefix.Length..], out maxSuffix);
         }
 
-        var newAccountCode = bankPrefix + (maxSuffix + 1).ToString("D3");
+        var newAccountCode = parentPrefix + (maxSuffix + 1).ToString("D3");
         var accLevel = parent.AccLevel + 1;
 
         // Build composite title for COA display
-        var coaTitle = BuildCoaTitle(request.BankName, request.AccountTitle);
+        var coaTitle = isCash
+            ? request.AccountTitle.Trim()
+            : BuildCoaTitle(request.BankName ?? "Bank", request.AccountTitle);
 
         var newAccount = new ChartOfAccount
         {
             Id = newAccountCode,
             Title = coaTitle,
-            ParentId = bankPrefix,
+            ParentId = parentPrefix,
             AccLevel = accLevel,
             AccType = "Detail"
         };
@@ -205,13 +216,13 @@ internal class BankAccountService : IBankAccountService
             var detail = new BankDetail
             {
                 Id = newAccountCode,
-                BankName = request.BankName.Trim(),
+                BankName = isCash ? "Cash" : request.BankName?.Trim(),
                 AccountTitle = request.AccountTitle.Trim(),
-                AccountNumber = request.AccountNumber?.Trim(),
-                Iban = request.Iban?.Trim(),
-                BranchName = request.BranchName?.Trim(),
-                BranchCode = request.BranchCode?.Trim(),
-                SwiftCode = request.SwiftCode?.Trim(),
+                AccountNumber = isCash ? null : request.AccountNumber?.Trim(),
+                Iban = isCash ? null : request.Iban?.Trim(),
+                BranchName = isCash ? null : request.BranchName?.Trim(),
+                BranchCode = isCash ? null : request.BranchCode?.Trim(),
+                SwiftCode = isCash ? null : request.SwiftCode?.Trim(),
                 Currency = request.Currency?.Trim() ?? "PKR",
                 Notes = request.Notes?.Trim(),
                 Active = request.Active
@@ -239,7 +250,7 @@ internal class BankAccountService : IBankAccountService
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to set opening balance for bank account {Account}.", newAccountCode);
+                _logger.LogWarning(ex, "Failed to set opening balance for account {Account}.", newAccountCode);
             }
         }
 
@@ -253,14 +264,20 @@ internal class BankAccountService : IBankAccountService
 
         var chartOfAccount = await _chartOfAccountRepository.GetByIdAsync(account, cancellationToken);
         if (chartOfAccount is null || chartOfAccount.AccLevel != 5)
-            throw new NotFoundException($"Bank account '{account}' not found.");
+            throw new NotFoundException($"Account '{account}' not found.");
 
-        var bankName = request.BankName?.Trim();
+        var cashPrefix = await GetCashParentPrefixAsync(cancellationToken);
+        var isCash = chartOfAccount.ParentId == cashPrefix || chartOfAccount.Id.StartsWith(cashPrefix);
+
+        var bankName = isCash ? "Cash" : request.BankName?.Trim();
         var accountTitle = request.AccountTitle?.Trim();
 
         if (!string.IsNullOrWhiteSpace(bankName) || !string.IsNullOrWhiteSpace(accountTitle))
         {
-            var newTitle = BuildCoaTitle(bankName ?? chartOfAccount.Title, accountTitle ?? chartOfAccount.Title);
+            var newTitle = isCash
+                ? (accountTitle ?? chartOfAccount.Title)
+                : BuildCoaTitle(bankName ?? chartOfAccount.Title, accountTitle ?? chartOfAccount.Title);
+
             if (chartOfAccount.Title != newTitle)
             {
                 chartOfAccount.Title = newTitle;
@@ -278,12 +295,12 @@ internal class BankAccountService : IBankAccountService
                     Id = account,
                     BankName = bankName,
                     AccountTitle = accountTitle ?? chartOfAccount.Title,
-                    AccountNumber = request.AccountNumber?.Trim(),
-                    Iban = request.Iban?.Trim(),
-                    BranchName = request.BranchName?.Trim(),
-                    BranchCode = request.BranchCode?.Trim(),
-                    SwiftCode = request.SwiftCode?.Trim(),
-                    Currency = request.Currency?.Trim(),
+                    AccountNumber = isCash ? null : request.AccountNumber?.Trim(),
+                    Iban = isCash ? null : request.Iban?.Trim(),
+                    BranchName = isCash ? null : request.BranchName?.Trim(),
+                    BranchCode = isCash ? null : request.BranchCode?.Trim(),
+                    SwiftCode = isCash ? null : request.SwiftCode?.Trim(),
+                    Currency = request.Currency?.Trim() ?? "PKR",
                     Notes = request.Notes?.Trim(),
                     Active = request.Active ?? true
                 };
@@ -293,11 +310,11 @@ internal class BankAccountService : IBankAccountService
             {
                 if (bankName != null) detail.BankName = bankName;
                 if (accountTitle != null) detail.AccountTitle = accountTitle;
-                if (request.AccountNumber != null) detail.AccountNumber = request.AccountNumber.Trim();
-                if (request.Iban != null) detail.Iban = request.Iban.Trim();
-                if (request.BranchName != null) detail.BranchName = request.BranchName.Trim();
-                if (request.BranchCode != null) detail.BranchCode = request.BranchCode.Trim();
-                if (request.SwiftCode != null) detail.SwiftCode = request.SwiftCode.Trim();
+                if (request.AccountNumber != null) detail.AccountNumber = isCash ? null : request.AccountNumber.Trim();
+                if (request.Iban != null) detail.Iban = isCash ? null : request.Iban.Trim();
+                if (request.BranchName != null) detail.BranchName = isCash ? null : request.BranchName.Trim();
+                if (request.BranchCode != null) detail.BranchCode = isCash ? null : request.BranchCode.Trim();
+                if (request.SwiftCode != null) detail.SwiftCode = isCash ? null : request.SwiftCode.Trim();
                 if (request.Currency != null) detail.Currency = request.Currency.Trim();
                 if (request.Notes != null) detail.Notes = request.Notes.Trim();
                 if (request.Active.HasValue) detail.Active = request.Active.Value;
@@ -326,7 +343,7 @@ internal class BankAccountService : IBankAccountService
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to update opening balance for bank account {Account}.", account);
+                _logger.LogWarning(ex, "Failed to update opening balance for account {Account}.", account);
             }
         }
     }
@@ -338,7 +355,7 @@ internal class BankAccountService : IBankAccountService
 
         var chartOfAccount = await _chartOfAccountRepository.GetByIdAsync(account, cancellationToken);
         if (chartOfAccount is null)
-            throw new NotFoundException($"Bank account '{account}' not found.");
+            throw new NotFoundException($"Account '{account}' not found.");
 
         // Check if there are any non-opening GL entries
         var hasTransactions = await _glRepository.GetAll()
@@ -347,7 +364,7 @@ internal class BankAccountService : IBankAccountService
 
         if (hasTransactions)
         {
-            throw new BadRequestException($"Cannot delete bank account '{chartOfAccount.Title}' because it has existing transaction entries in the general ledger. You can deactivate it instead.");
+            throw new BadRequestException($"Cannot delete account '{chartOfAccount.Title}' because it has existing transaction entries in the general ledger. You can deactivate it instead.");
         }
 
         // Delete opening balance entry if exists
@@ -377,19 +394,23 @@ internal class BankAccountService : IBankAccountService
         await _chartOfAccountRepository.DeleteAsync(chartOfAccount);
     }
 
-    private async Task<string> GetBankParentPrefixAsync(CancellationToken cancellationToken)
+    private async Task<string> GetCashParentPrefixAsync(CancellationToken cancellationToken)
     {
-        // 1. Try DefaultAccount with title "Banks" or "Bank"
+        // 1. Try DefaultAccount with title "Cash"
         var defaultAccount = await _defaultAccountRepository.GetAll()
             .AsNoTracking()
-            .Where(x => x.Title == "Banks" || x.Title == "Bank")
+            .Where(x => x.Title == "Cash")
             .Select(x => new { x.AccountId, x.MapAccountId })
             .FirstOrDefaultAsync(cancellationToken);
 
-        var accountId = defaultAccount?.MapAccountId ?? defaultAccount?.AccountId;
-        if (!string.IsNullOrWhiteSpace(accountId))
+        // MapAccountId explicitly maps the Level 4 Cash parent prefix (e.g. 001002002001)
+        if (!string.IsNullOrWhiteSpace(defaultAccount?.MapAccountId))
+            return defaultAccount.MapAccountId;
+
+        // If MapAccountId is null, resolve parent from AccountId
+        if (!string.IsNullOrWhiteSpace(defaultAccount?.AccountId))
         {
-            var coa = await _chartOfAccountRepository.GetByIdAsync(accountId, cancellationToken);
+            var coa = await _chartOfAccountRepository.GetByIdAsync(defaultAccount.AccountId, cancellationToken);
             if (coa != null)
             {
                 if (coa.AccLevel == 4)
@@ -399,17 +420,37 @@ internal class BankAccountService : IBankAccountService
             }
         }
 
-        // 2. Search ChartOfAccount for level 4 Banks parent
-        var bankParent = await _chartOfAccountRepository.GetAll()
+        // 2. Fallback to standard Cash code: "001002002001"
+        return DefaultCashPrefix;
+    }
+
+    private async Task<string> GetBankParentPrefixAsync(CancellationToken cancellationToken)
+    {
+        // 1. Try DefaultAccount with title "Bank" or "Banks"
+        var defaultAccount = await _defaultAccountRepository.GetAll()
             .AsNoTracking()
-            .Where(x => x.AccLevel == 4 && (x.Title == "Banks" || x.Title == "Bank" || x.Title.Contains("Bank")))
-            .Select(x => x.Id)
+            .Where(x => x.Title == "Bank" || x.Title == "Banks")
+            .Select(x => new { x.AccountId, x.MapAccountId })
             .FirstOrDefaultAsync(cancellationToken);
 
-        if (!string.IsNullOrWhiteSpace(bankParent))
-            return bankParent;
+        // MapAccountId explicitly maps the Level 4 Bank parent prefix (e.g. 001002002002)
+        if (!string.IsNullOrWhiteSpace(defaultAccount?.MapAccountId))
+            return defaultAccount.MapAccountId;
 
-        // 3. Fallback to default Banks code: "001002002002"
+        // If MapAccountId is null, resolve parent from AccountId
+        if (!string.IsNullOrWhiteSpace(defaultAccount?.AccountId))
+        {
+            var coa = await _chartOfAccountRepository.GetByIdAsync(defaultAccount.AccountId, cancellationToken);
+            if (coa != null)
+            {
+                if (coa.AccLevel == 4)
+                    return coa.Id;
+                if (coa.AccLevel == 5 && !string.IsNullOrWhiteSpace(coa.ParentId))
+                    return coa.ParentId;
+            }
+        }
+
+        // 2. Fallback to standard Banks code: "001002002002"
         return DefaultBankPrefix;
     }
 

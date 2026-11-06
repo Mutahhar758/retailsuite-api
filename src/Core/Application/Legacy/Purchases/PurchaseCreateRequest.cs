@@ -1,3 +1,5 @@
+using Retailer.Application.Legacy.Common;
+
 namespace Retailer.Application.Legacy.Purchases;
 
 public class PurchaseCreateRequest
@@ -11,4 +13,5 @@ public class PurchaseCreateRequest
     public string? SellerCnic { get; set; }
     public string? SellerContact { get; set; }
     public List<PurchaseLineRequest> Lines { get; set; } = [];
+    public List<PaymentRecordRequest>? Payments { get; set; }
 }

@@ -3081,6 +3081,97 @@ namespace Migrators.PostgreSQL.Migrations.Application
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
 
+            modelBuilder.Entity("Retailer.Domain.Legacy.PurchasePayment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("TenantId")
+                        .HasColumnType("text")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("AccountId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("account_id");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("amount");
+
+                    b.Property<DateOnly?>("CheckDate")
+                        .HasColumnType("date")
+                        .HasColumnName("check_date");
+
+                    b.Property<string>("CheckNum")
+                        .HasColumnType("text")
+                        .HasColumnName("check_num");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_on");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("text")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_on");
+
+                    b.Property<string>("LastModifiedBy")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("last_modified_by");
+
+                    b.Property<DateTime?>("LastModifiedOn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_modified_on");
+
+                    b.Property<string>("Reference")
+                        .HasColumnType("text")
+                        .HasColumnName("reference");
+
+                    b.Property<int>("Seq")
+                        .HasColumnType("integer")
+                        .HasColumnName("seq");
+
+                    b.Property<string>("VNo")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("v_no");
+
+                    b.Property<string>("VType")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("v_type");
+
+                    b.HasKey("Id", "TenantId")
+                        .HasName("ak_purchase_payment_id_tenant_id");
+
+                    b.HasIndex("AccountId", "TenantId")
+                        .HasDatabaseName("ix_purchase_payment_account_id_tenant_id");
+
+                    b.HasIndex("VType", "VNo", "Seq", "TenantId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_purchase_payment_v_type_v_no_seq")
+                        .HasFilter("deleted_on IS NULL");
+
+                    b.ToTable("PurchasePayment", "public");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
             modelBuilder.Entity("Retailer.Domain.Legacy.PurchaseRetDetail", b =>
                 {
                     b.Property<int>("Id")
@@ -3917,6 +4008,97 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasFilter("deleted_on IS NULL");
 
                     b.ToTable("SaleMaster", "public");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Legacy.SalePayment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("TenantId")
+                        .HasColumnType("text")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("AccountId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("account_id");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("amount");
+
+                    b.Property<DateOnly?>("CheckDate")
+                        .HasColumnType("date")
+                        .HasColumnName("check_date");
+
+                    b.Property<string>("CheckNum")
+                        .HasColumnType("text")
+                        .HasColumnName("check_num");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_on");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("text")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_on");
+
+                    b.Property<string>("LastModifiedBy")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("last_modified_by");
+
+                    b.Property<DateTime?>("LastModifiedOn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_modified_on");
+
+                    b.Property<string>("Reference")
+                        .HasColumnType("text")
+                        .HasColumnName("reference");
+
+                    b.Property<int>("Seq")
+                        .HasColumnType("integer")
+                        .HasColumnName("seq");
+
+                    b.Property<string>("VNo")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("v_no");
+
+                    b.Property<string>("VType")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("v_type");
+
+                    b.HasKey("Id", "TenantId")
+                        .HasName("ak_sale_payment_id_tenant_id");
+
+                    b.HasIndex("AccountId", "TenantId")
+                        .HasDatabaseName("ix_sale_payment_account_id_tenant_id");
+
+                    b.HasIndex("VType", "VNo", "Seq", "TenantId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_sale_payment_v_type_v_no_seq")
+                        .HasFilter("deleted_on IS NULL");
+
+                    b.ToTable("SalePayment", "public");
 
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
@@ -5827,6 +6009,18 @@ namespace Migrators.PostgreSQL.Migrations.Application
                     b.Navigation("Narration");
                 });
 
+            modelBuilder.Entity("Retailer.Domain.Legacy.PurchasePayment", b =>
+                {
+                    b.HasOne("Retailer.Domain.Legacy.ChartOfAccount", "Account")
+                        .WithMany()
+                        .HasForeignKey("AccountId", "TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_purchase_payment_chart_of_account_account_id_tenant_id");
+
+                    b.Navigation("Account");
+                });
+
             modelBuilder.Entity("Retailer.Domain.Legacy.PurchaseRetDetail", b =>
                 {
                     b.HasOne("Retailer.Domain.Legacy.ItemDetail", "Item")
@@ -6002,6 +6196,18 @@ namespace Migrators.PostgreSQL.Migrations.Application
                     b.Navigation("Account");
 
                     b.Navigation("Narration");
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Legacy.SalePayment", b =>
+                {
+                    b.HasOne("Retailer.Domain.Legacy.ChartOfAccount", "Account")
+                        .WithMany()
+                        .HasForeignKey("AccountId", "TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_sale_payment_chart_of_account_account_id_tenant_id");
+
+                    b.Navigation("Account");
                 });
 
             modelBuilder.Entity("Retailer.Domain.Legacy.SaleRetDetail", b =>

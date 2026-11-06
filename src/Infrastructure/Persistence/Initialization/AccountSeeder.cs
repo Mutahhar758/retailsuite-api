@@ -207,8 +207,8 @@ public class AccountSeeder : ICustomSeeder
             {
                 new() { Title = "SL", A = null, AccountId = "003001001001001", MapAccountId = null },
                 new() { Title = "PU", A = null, AccountId = "004001001001001", MapAccountId = null },
-                new() { Title = "Bank", A = null, AccountId = "001002002002001", MapAccountId = null },
-                new() { Title = "Cash", A = null, AccountId = "001002002001001", MapAccountId = null },
+                new() { Title = "Bank", A = null, AccountId = "001002002002001", MapAccountId = "001002002002" },
+                new() { Title = "Cash", A = null, AccountId = "001002002001001", MapAccountId = "001002002001" },
                 new() { Title = "INVENTORY", A = null, AccountId = "001002003001001", MapAccountId = null },
                 new() { Title = "Capital", A = null, AccountId = "005001001001001", MapAccountId = null },
                 new() { Title = "Customers", A = null, AccountId = "001002001001", MapAccountId = null },
@@ -221,6 +221,31 @@ public class AccountSeeder : ICustomSeeder
 
             await _defaultAccRepository.AddRangeAsync(defaultAccounts);
             await _defaultAccRepository.SaveChangesAsync(cancellationToken);
+        }
+        else
+        {
+            // Backfill MapAccountId for Cash and Bank if missing in existing databases
+            var existingCash = await _defaultAccRepository.GetAll().FirstOrDefaultAsync(x => x.Title == "Cash", cancellationToken);
+            bool updated = false;
+            if (existingCash != null && string.IsNullOrWhiteSpace(existingCash.MapAccountId))
+            {
+                existingCash.MapAccountId = "001002002001";
+                await _defaultAccRepository.UpdateAsync(existingCash);
+                updated = true;
+            }
+
+            var existingBank = await _defaultAccRepository.GetAll().FirstOrDefaultAsync(x => x.Title == "Bank" || x.Title == "Banks", cancellationToken);
+            if (existingBank != null && string.IsNullOrWhiteSpace(existingBank.MapAccountId))
+            {
+                existingBank.MapAccountId = "001002002002";
+                await _defaultAccRepository.UpdateAsync(existingBank);
+                updated = true;
+            }
+
+            if (updated)
+            {
+                await _defaultAccRepository.SaveChangesAsync(cancellationToken);
+            }
         }
     }
 }

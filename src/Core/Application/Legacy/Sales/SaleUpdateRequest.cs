@@ -1,3 +1,5 @@
+using Retailer.Application.Legacy.Common;
+
 namespace Retailer.Application.Legacy.Sales;
 
 public class SaleUpdateRequest
@@ -9,4 +11,5 @@ public class SaleUpdateRequest
     public decimal CashReceipt { get; set; }
     public decimal CashBack { get; set; }
     public List<SaleLineRequest> Lines { get; set; } = [];
+    public List<PaymentRecordRequest>? Payments { get; set; }
 }

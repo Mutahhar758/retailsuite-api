@@ -466,6 +466,40 @@ public class SaleConfig : IEntityTypeConfiguration<Sale>
     }
 }
 
+public class SalePaymentConfig : IEntityTypeConfiguration<SalePayment>
+{
+    public void Configure(EntityTypeBuilder<SalePayment> builder)
+    {
+        var mtBuilder = builder.IsMultiTenant();
+        builder.Property(x => x.Id).ValueGeneratedOnAdd();
+        builder.HasIndex(x => new { x.VType, x.VNo, x.Seq }).IsUnique().HasSoftDeleteFilter();
+        mtBuilder.AdjustUniqueIndexes();
+        builder.Property(x => x.Amount).HasPrecision(18, 2);
+
+        builder.HasOne(x => x.Account)
+            .WithMany()
+            .HasForeignKey(x => x.AccountId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+public class PurchasePaymentConfig : IEntityTypeConfiguration<PurchasePayment>
+{
+    public void Configure(EntityTypeBuilder<PurchasePayment> builder)
+    {
+        var mtBuilder = builder.IsMultiTenant();
+        builder.Property(x => x.Id).ValueGeneratedOnAdd();
+        builder.HasIndex(x => new { x.VType, x.VNo, x.Seq }).IsUnique().HasSoftDeleteFilter();
+        mtBuilder.AdjustUniqueIndexes();
+        builder.Property(x => x.Amount).HasPrecision(18, 2);
+
+        builder.HasOne(x => x.Account)
+            .WithMany()
+            .HasForeignKey(x => x.AccountId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
 public class SaleRetMasterConfig : IEntityTypeConfiguration<SaleRetMaster>
 {
     public void Configure(EntityTypeBuilder<SaleRetMaster> builder)

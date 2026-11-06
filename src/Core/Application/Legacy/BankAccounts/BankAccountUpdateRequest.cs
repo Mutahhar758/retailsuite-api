@@ -2,6 +2,7 @@ namespace Retailer.Application.Legacy.BankAccounts;
 
 public class BankAccountUpdateRequest
 {
+    public string? AccountType { get; set; } // "Cash" or "Bank"
     public string? BankName { get; set; }
     public string? AccountTitle { get; set; }
     public string? AccountNumber { get; set; }

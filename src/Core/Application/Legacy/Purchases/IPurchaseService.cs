@@ -1,3 +1,5 @@
+using Retailer.Application.Legacy.Common;
+
 namespace Retailer.Application.Legacy.Purchases;
 
 public interface IPurchaseService : ITransientService
@@ -6,6 +8,7 @@ public interface IPurchaseService : ITransientService
     Task<List<PurchaseResponse>> GetListAsync(PurchaseListFilter filter, CancellationToken cancellationToken);
     Task<PaginationResponse<PurchaseResponse>> GetPagedListAsync(PurchasePagedListFilter filter, CancellationToken cancellationToken);
     Task<List<PurchaseLineResponse>> GetDetailAsync(string voucherNo, CancellationToken cancellationToken);
+    Task<List<PaymentRecordResponse>> GetPaymentsAsync(string voucherNo, CancellationToken cancellationToken);
     Task<string> CreateAsync(PurchaseCreateRequest request, CancellationToken cancellationToken);
     Task UpdateAsync(string voucherNo, PurchaseUpdateRequest request, CancellationToken cancellationToken);
     Task DeleteAsync(string voucherNo, CancellationToken cancellationToken);
