@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Retailer.Shared.Common;
 using Retailer.Application.Common.Exceptions;
 using Retailer.Application.Common.Models;
 using Retailer.Application.Common.Persistence;
@@ -199,7 +200,7 @@ internal class PaymentService : IPaymentService
             {
                 VDate = request.Date,
                 ClearingDate = request.ClearingDate,
-                VTime = TimeOnly.FromDateTime(DateTime.Now),
+                VTime = PakistanTime.CurrentTime,
                 VoucherNo = voucherNo,
                 VType = VType,
                 VSeq = line.Seq,
@@ -241,7 +242,7 @@ internal class PaymentService : IPaymentService
                 {
                     VDate = request.Date,
                     ClearingDate = request.ClearingDate,
-                    VTime = TimeOnly.FromDateTime(DateTime.Now),
+                    VTime = PakistanTime.CurrentTime,
                     VoucherNo = voucherNo,
                     VType = VType,
                     VSeq = line.Seq,
@@ -262,7 +263,7 @@ internal class PaymentService : IPaymentService
                 existing.DeletedBy = null;
                 existing.VDate = request.Date;
                 existing.ClearingDate = request.ClearingDate;
-                existing.VTime = TimeOnly.FromDateTime(DateTime.Now);
+                existing.VTime = PakistanTime.CurrentTime;
                 existing.DrAccountId = line.Account;
                 existing.Amount = line.Amount;
                 existing.CrAccountId = request.CashBankAccount;

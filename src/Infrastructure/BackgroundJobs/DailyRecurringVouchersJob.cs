@@ -7,6 +7,7 @@ using Retailer.Application.Legacy.RecurringChains;
 using Retailer.Infrastructure.Auth;
 using Retailer.Infrastructure.Multitenancy;
 using Retailer.Infrastructure.Persistence.Transactions;
+using Retailer.Shared.Common;
 using AppTenantInfo = Retailer.Domain.Multitenancy.TenantInfo;
 
 namespace Retailer.Infrastructure.BackgroundJobs;
@@ -29,12 +30,13 @@ public class DailyRecurringVouchersJob : IDailyRecurringVouchersJob
 
     public async Task ExecuteAsync(CancellationToken cancellationToken)
     {
-        var today = DateOnly.FromDateTime(DateTime.Today);
+        var today = PakistanTime.Today;
+        var now = PakistanTime.Now;
         _logger.LogInformation("Starting DailyRecurringVouchersJob for date {Date}.", today);
 
         var tenants = await _tenantDbContext.TenantInfo
             .AsNoTracking()
-            .Where(t => t.IsActive && t.ValidFrom <= DateTime.UtcNow && (t.ValidUntil == null || t.ValidUntil >= DateTime.UtcNow))
+            .Where(t => t.IsActive && t.ValidFrom <= now && (t.ValidUntil == null || t.ValidUntil >= now))
             .ToListAsync(cancellationToken);
 
         foreach (var tenant in tenants)

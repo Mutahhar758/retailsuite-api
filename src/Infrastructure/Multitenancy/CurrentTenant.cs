@@ -1,4 +1,5 @@
 using Retailer.Application.Common.Interfaces;
+using Retailer.Shared.Common;
 using Finbuckle.MultiTenant.Abstractions;
 using AppTenantInfo = Retailer.Domain.Multitenancy.TenantInfo;
 
@@ -31,6 +32,6 @@ public class CurrentTenant : ICurrentTenant
     public bool IsValid =>
         _multiTenantContextAccessor.MultiTenantContext?.TenantInfo is { } tenant
         && tenant.IsActive
-        && tenant.ValidFrom <= DateTime.UtcNow
-        && (tenant.ValidUntil == null || tenant.ValidUntil >= DateTime.UtcNow);
+        && tenant.ValidFrom <= PakistanTime.Now
+        && (tenant.ValidUntil == null || tenant.ValidUntil >= PakistanTime.Now);
 }

@@ -10,6 +10,7 @@ using Microsoft.Data.SqlClient;
 using Npgsql;
 using Retailer.Application.Common.Mailing;
 using Retailer.Infrastructure.Persistence.Initialization;
+using Retailer.Shared.Common;
 using AppTenantInfo = Retailer.Domain.Multitenancy.TenantInfo;
 
 namespace Retailer.Infrastructure.Multitenancy;
@@ -98,7 +99,7 @@ internal class TenantService : ITenantService
             BusinessSubType = subCategory,
             HasVariablePackFeature = isWanda,
             HasMobileShopFeature = isMobile,
-            ValidFrom = request.ValidFrom ?? DateTime.UtcNow,
+            ValidFrom = request.ValidFrom ?? PakistanTime.Now,
             ValidUntil = request.ValidUntil,
             LicenseKey = Guid.NewGuid().ToString("N").ToUpper()
         };

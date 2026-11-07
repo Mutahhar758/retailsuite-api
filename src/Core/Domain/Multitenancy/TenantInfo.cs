@@ -1,4 +1,5 @@
 using Finbuckle.MultiTenant.Abstractions;
+using Retailer.Shared.Common;
 
 namespace Retailer.Domain.Multitenancy;
 
@@ -28,7 +29,7 @@ public class TenantInfo : ITenantInfo
     public string? IndustryType { get; set; }
     public string? BusinessSubType { get; set; }
 
-    public DateTime ValidFrom { get; set; } = DateTime.UtcNow;
+    public DateTime ValidFrom { get; set; } = PakistanTime.Now;
 
     public DateTime? ValidUntil { get; set; }
 

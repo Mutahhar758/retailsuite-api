@@ -1,3 +1,5 @@
+using Retailer.Shared.Common;
+
 namespace Retailer.Domain.Multitenancy;
 
 public class TenantAiTokenUsage
@@ -9,5 +11,5 @@ public class TenantAiTokenUsage
     public long OutputTokens { get; set; }
     public long TotalTokens { get; set; }
     public int CallCount { get; set; }
-    public DateTime LastUsedAt { get; set; } = DateTime.UtcNow;
+    public DateTime LastUsedAt { get; set; } = PakistanTime.Now;
 }

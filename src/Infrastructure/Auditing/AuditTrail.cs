@@ -1,4 +1,5 @@
 using Retailer.Application.Common.Interfaces;
+using Retailer.Shared.Common;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 
 namespace Retailer.Infrastructure.Auditing;
@@ -31,7 +32,7 @@ public class AuditTrail
             UserId = UserId,
             Type = TrailType.ToString(),
             TableName = TableName,
-            DateTime = DateTime.UtcNow,
+            DateTime = PakistanTime.Now,
             PrimaryKey = _serializer.Serialize(KeyValues),
             OldValues = OldValues.Count == 0 ? null : _serializer.Serialize(OldValues),
             NewValues = NewValues.Count == 0 ? null : _serializer.Serialize(NewValues),

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Retailer.Shared.Common;
 using Retailer.Application.Common.Exceptions;
 using Retailer.Application.Common.Interfaces;
 using Retailer.Application.Common.Models;
@@ -197,7 +198,7 @@ internal class PurchaseReturnService : IPurchaseReturnService
         var master = new PurchaseRetMaster
         {
             VDate = request.Date,
-            VTime = TimeOnly.FromDateTime(DateTime.Now),
+            VTime = PakistanTime.CurrentTime,
             VType = VType,
             VNo = voucherNo,
             AccountId = request.Account,
@@ -271,7 +272,7 @@ internal class PurchaseReturnService : IPurchaseReturnService
             : ((x.Qty * x.Rate) + ((x.SecQty ?? 0) * (x.SecRate ?? 0))));
 
         master.VDate = request.Date;
-        master.VTime = TimeOnly.FromDateTime(DateTime.Now);
+        master.VTime = PakistanTime.CurrentTime;
         master.AccountId = request.Account;
         master.Descr = request.Description;
         master.NarrationId = request.Narration;
@@ -443,7 +444,7 @@ internal class PurchaseReturnService : IPurchaseReturnService
                 tx = new ItemTransaction
                 {
                     VDate = date,
-                    VTime = TimeOnly.FromDateTime(DateTime.Now),
+                    VTime = PakistanTime.CurrentTime,
                     VType = VType,
                     VNo = voucherNo,
                     Seq = line.Seq,
@@ -468,7 +469,7 @@ internal class PurchaseReturnService : IPurchaseReturnService
                 tx.DeletedOn = null;
                 tx.DeletedBy = null;
                 tx.VDate = date;
-                tx.VTime = TimeOnly.FromDateTime(DateTime.Now);
+                tx.VTime = PakistanTime.CurrentTime;
                 tx.TranType = "out";
                 tx.AccountId = accountId;
                 tx.ItemId = line.ItemId;
@@ -527,7 +528,7 @@ internal class PurchaseReturnService : IPurchaseReturnService
             await _glRepository.AddAsync(new GlEntry
             {
                 VDate = date,
-                VTime = TimeOnly.FromDateTime(DateTime.Now),
+                VTime = PakistanTime.CurrentTime,
                 VoucherNo = voucherNo,
                 VType = VType,
                 VSeq = 1,
@@ -544,7 +545,7 @@ internal class PurchaseReturnService : IPurchaseReturnService
             gl.DeletedOn = null;
             gl.DeletedBy = null;
             gl.VDate = date;
-            gl.VTime = TimeOnly.FromDateTime(DateTime.Now);
+            gl.VTime = PakistanTime.CurrentTime;
             gl.DrAccountId = account;
             gl.CrAccountId = purchaseReturnAccount;
             gl.Amount = amount;

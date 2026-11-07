@@ -4,6 +4,7 @@ using Retailer.Infrastructure.Persistence.Initialization;
 using Retailer.Infrastructure.Persistence.Transactions;
 using Retailer.Infrastructure.AI.Gemini;
 using Finbuckle.MultiTenant;
+using Retailer.Shared.Common;
 using Finbuckle.MultiTenant.Abstractions;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -120,7 +121,7 @@ internal class TenantDatabaseInitializer
                 IsActive = true,
                 IndustryType = "general",
                 BusinessSubType = "general_store",
-                ValidFrom = DateTime.UtcNow
+                ValidFrom = PakistanTime.Now
             };
 
             _tenantDbContext.TenantInfo.Add(defaultTenant);

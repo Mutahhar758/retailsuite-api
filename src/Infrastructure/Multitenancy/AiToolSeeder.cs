@@ -1,5 +1,6 @@
 using Retailer.Domain.Multitenancy;
 using Microsoft.EntityFrameworkCore;
+using Retailer.Shared.Common;
 using Microsoft.Extensions.Logging;
 using Retailer.Infrastructure.AI.Gemini;
 
@@ -223,7 +224,7 @@ internal class AiToolSeeder
                 }
                 """,
                 IsActive = true,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = PakistanTime.Now
             },
             new()
             {
@@ -244,7 +245,7 @@ internal class AiToolSeeder
                 }
                 """,
                 IsActive = true,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = PakistanTime.Now
             },
             new()
             {
@@ -265,7 +266,7 @@ internal class AiToolSeeder
                 }
                 """,
                 IsActive = true,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = PakistanTime.Now
             },
             new()
             {
@@ -289,7 +290,7 @@ internal class AiToolSeeder
                 }
                 """,
                 IsActive = true,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = PakistanTime.Now
             },
             new()
             {
@@ -311,7 +312,7 @@ internal class AiToolSeeder
                 }
                 """,
                 IsActive = true,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = PakistanTime.Now
             },
             new()
             {
@@ -335,7 +336,7 @@ internal class AiToolSeeder
                 }
                 """,
                 IsActive = true,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = PakistanTime.Now
             },
             new()
             {
@@ -357,7 +358,7 @@ internal class AiToolSeeder
                 }
                 """,
                 IsActive = true,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = PakistanTime.Now
             },
             new()
             {
@@ -378,7 +379,7 @@ internal class AiToolSeeder
                 }
                 """,
                 IsActive = true,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = PakistanTime.Now
             }
         };
     }
@@ -398,7 +399,7 @@ internal class AiToolSeeder
                     RouteHint = "/daily-entries/payment-voucher/new",
                     TaskSpecificSystemPrompt = "- Task: Draft Payment Voucher. Always resolve the vendor, supplier, or payee account first using `search_account` (vendors and suppliers are level 5 accounts). Once resolved, call `draft_payment_voucher` with vendorId, vendorName, amount, remarks, and cashBankAccountId if specified.",
                     IsActive = true,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = PakistanTime.Now
                 },
                 new List<string> { "search_account", "draft_payment_voucher" }
             ),
@@ -411,7 +412,7 @@ internal class AiToolSeeder
                     RouteHint = "/daily-entries/receipt-voucher/new",
                     TaskSpecificSystemPrompt = "- Task: Draft Receipt Voucher. Always resolve the customer or payer account first using `search_account`. Once resolved, call `draft_receipt_voucher` with customerId, customerName, amount, remarks, and cashBankAccountId if specified.",
                     IsActive = true,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = PakistanTime.Now
                 },
                 new List<string> { "search_account", "draft_receipt_voucher" }
             ),
@@ -424,7 +425,7 @@ internal class AiToolSeeder
                     RouteHint = "/reports/account-statement",
                     TaskSpecificSystemPrompt = "- Task: View Account Statement (Ledger/Khata). If user specifies an account, customer, or vendor, resolve their account ID first using `search_account`. Calculate explicit YYYY-MM-DD fromDate and toDate based on relative terms (e.g. today, this month, this year). Then call `navigate_to_report` with reportType='account_statement', account, accountTitle, fromDate, and toDate.",
                     IsActive = true,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = PakistanTime.Now
                 },
                 new List<string> { "search_account", "navigate_to_report" }
             ),
@@ -437,7 +438,7 @@ internal class AiToolSeeder
                     RouteHint = "/reports/account-statement-with-due",
                     TaskSpecificSystemPrompt = "- Task: View Account Statement with Due Days. Resolve the account ID using `search_account`. Call `navigate_to_report` with reportType='account_statement_with_due', account, fromDate, toDate.",
                     IsActive = true,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = PakistanTime.Now
                 },
                 new List<string> { "search_account", "navigate_to_report" }
             ),
@@ -450,7 +451,7 @@ internal class AiToolSeeder
                     RouteHint = "/reports/account-balance",
                     TaskSpecificSystemPrompt = "- Task: View Account Balance Report. Call `navigate_to_report` with reportType='account_balance' and date filters if provided.",
                     IsActive = true,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = PakistanTime.Now
                 },
                 new List<string> { "navigate_to_report" }
             ),
@@ -463,7 +464,7 @@ internal class AiToolSeeder
                     RouteHint = "/reports/trial-balance",
                     TaskSpecificSystemPrompt = "- Task: View Trial Balance. Call `navigate_to_report` with reportType='trial_balance' with toDate or fromDate/toDate.",
                     IsActive = true,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = PakistanTime.Now
                 },
                 new List<string> { "navigate_to_report" }
             ),
@@ -476,7 +477,7 @@ internal class AiToolSeeder
                     RouteHint = "/reports/stock-balance",
                     TaskSpecificSystemPrompt = "- Task: View Stock Balance Report. ONLY call `navigate_to_report` if the user explicitly asked to open, show, or navigate to the stock balance report/screen. If the user only asked about stock quantity of a specific item, do NOT navigate; provide the answer directly in chat using search_item.",
                     IsActive = true,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = PakistanTime.Now
                 },
                 new List<string> { "navigate_to_report", "search_item" }
             ),
@@ -489,7 +490,7 @@ internal class AiToolSeeder
                     RouteHint = "/reports/item-ledger",
                     TaskSpecificSystemPrompt = "- Task: View Product/Item Ledger. Resolve item ID using `search_item`. Call `navigate_to_report` with reportType='item_ledger', item, itemTitle, fromDate, and toDate.",
                     IsActive = true,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = PakistanTime.Now
                 },
                 new List<string> { "search_item", "navigate_to_report" }
             ),
@@ -502,7 +503,7 @@ internal class AiToolSeeder
                     RouteHint = "/reports/income-summary",
                     TaskSpecificSystemPrompt = "- Task: View Income Summary (Profit & Loss). Call `navigate_to_report` with reportType='income_summary', fromDate, and toDate.",
                     IsActive = true,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = PakistanTime.Now
                 },
                 new List<string> { "navigate_to_report" }
             ),
@@ -515,7 +516,7 @@ internal class AiToolSeeder
                     RouteHint = "/reports/balance-sheet",
                     TaskSpecificSystemPrompt = "- Task: View Balance Sheet. Call `navigate_to_report` with reportType='balance_sheet' and as-of date (toDate).",
                     IsActive = true,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = PakistanTime.Now
                 },
                 new List<string> { "navigate_to_report" }
             ),
@@ -528,7 +529,7 @@ internal class AiToolSeeder
                     RouteHint = "/reports/customer-balance-recovery",
                     TaskSpecificSystemPrompt = "- Task: View Customer Balance Recovery. Call `navigate_to_report` with reportType='customer_balance_recovery' and optional balanceFilter ('HasBalance', 'All').",
                     IsActive = true,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = PakistanTime.Now
                 },
                 new List<string> { "navigate_to_report" }
             ),
@@ -541,7 +542,7 @@ internal class AiToolSeeder
                     RouteHint = "/reports/profit-by-customer",
                     TaskSpecificSystemPrompt = "- Task: View Profit by Customer. Resolve customer if specified via `search_account`. Call `navigate_to_report` with reportType='profit_by_customer', fromDate, toDate.",
                     IsActive = true,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = PakistanTime.Now
                 },
                 new List<string> { "search_account", "navigate_to_report" }
             ),
@@ -554,7 +555,7 @@ internal class AiToolSeeder
                     RouteHint = "/reports/profit-by-item",
                     TaskSpecificSystemPrompt = "- Task: View Profit by Item. Resolve item if specified via `search_item`. Call `navigate_to_report` with reportType='profit_by_item', fromDate, toDate.",
                     IsActive = true,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = PakistanTime.Now
                 },
                 new List<string> { "search_item", "navigate_to_report" }
             ),
@@ -567,7 +568,7 @@ internal class AiToolSeeder
                     RouteHint = "/reports/purchase-supply-comparison",
                     TaskSpecificSystemPrompt = "- Task: View Purchase vs Supply Comparison. Call `navigate_to_report` with reportType='purchase_supply_comparison', fromDate, toDate.",
                     IsActive = true,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = PakistanTime.Now
                 },
                 new List<string> { "navigate_to_report" }
             ),
@@ -580,7 +581,7 @@ internal class AiToolSeeder
                     RouteHint = "/reports/customer-bill",
                     TaskSpecificSystemPrompt = "- Task: View Customer Bill. Resolve customer ID using `search_account`. Call `navigate_to_report` with reportType='customer_bill', account, accountTitle.",
                     IsActive = true,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = PakistanTime.Now
                 },
                 new List<string> { "search_account", "navigate_to_report" }
             ),
@@ -593,7 +594,7 @@ internal class AiToolSeeder
                     RouteHint = "/reports/manufacturing",
                     TaskSpecificSystemPrompt = "- Task: View Manufacturing Report. Call `navigate_to_report` with reportType='manufacturing', fromDate, toDate.",
                     IsActive = true,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = PakistanTime.Now
                 },
                 new List<string> { "navigate_to_report" }
             ),
@@ -606,7 +607,7 @@ internal class AiToolSeeder
                     RouteHint = "/reports",
                     TaskSpecificSystemPrompt = "- Task: Reports Menu. Guide user to specific reports or call `navigate_to_report` with reportType='account_statement'.",
                     IsActive = true,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = PakistanTime.Now
                 },
                 new List<string> { "search_account", "navigate_to_report" }
             ),
@@ -619,7 +620,7 @@ internal class AiToolSeeder
                     RouteHint = "/setup/chart-of-accounts",
                     TaskSpecificSystemPrompt = "- Task: Balance Inquiry & Account Search. Call `search_account` with includeBalance=true. Provide multiple name variations in the `names` array. Clearly explain the current balance in chat, indicating whether it is receivable (Debit) or payable (Credit). Do NOT open any report screen.",
                     IsActive = true,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = PakistanTime.Now
                 },
                 new List<string> { "search_account" }
             ),
@@ -632,7 +633,7 @@ internal class AiToolSeeder
                     RouteHint = "/daily-entries/payment-voucher",
                     TaskSpecificSystemPrompt = "- Task: Voucher & Sales Listings. Call the appropriate listing tool (`filter_payment_listing`, `filter_receipt_listing`, or `filter_sale_listing`) with explicit YYYY-MM-DD dates and filter criteria.",
                     IsActive = true,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = PakistanTime.Now
                 },
                 new List<string> { "filter_payment_listing", "filter_receipt_listing", "filter_sale_listing", "search_account" }
             ),
@@ -645,7 +646,7 @@ internal class AiToolSeeder
                     RouteHint = "/setup/item-details",
                     TaskSpecificSystemPrompt = "- Task: Search Inventory & Item Stock Balance. Always call `search_item` with product keywords and set `includeStockBalance=true` when asked about stock/quantity/units. Always answer directly in chat with the item name, available stock quantity, unit, and whether in stock or out of stock. NEVER call navigate_to_report or open any screen unless the user explicitly said 'report kholo' or 'open report'.",
                     IsActive = true,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = PakistanTime.Now
                 },
                 new List<string> { "search_item" }
             ),
@@ -658,7 +659,7 @@ internal class AiToolSeeder
                     RouteHint = null,
                     TaskSpecificSystemPrompt = "- Task: General Assistant. Answer conversationally, concisely, and helpfully about RetailSuite capabilities.",
                     IsActive = true,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = PakistanTime.Now
                 },
                 new List<string>()
             )

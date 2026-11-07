@@ -18,6 +18,7 @@ public class NewtonSoftService : ISerializerService
         {
             ContractResolver = new CamelCasePropertyNamesContractResolver(),
             NullValueHandling = NullValueHandling.Ignore,
+            DateFormatString = "yyyy-MM-ddTHH:mm:ss",
             Converters = new List<JsonConverter>
             {
                 new StringEnumConverter() { CamelCaseText = true }
@@ -27,6 +28,6 @@ public class NewtonSoftService : ISerializerService
 
     public string Serialize<T>(T obj, Type type)
     {
-        return JsonConvert.SerializeObject(obj, type, new());
+        return JsonConvert.SerializeObject(obj, type, new JsonSerializerSettings { DateFormatString = "yyyy-MM-ddTHH:mm:ss" });
     }
 }

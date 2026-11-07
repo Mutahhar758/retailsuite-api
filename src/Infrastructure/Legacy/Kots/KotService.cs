@@ -3,6 +3,7 @@ using Retailer.Application.Common.Exceptions;
 using Retailer.Application.Common.Persistence;
 using Retailer.Application.Legacy.Kots;
 using Retailer.Domain.Legacy;
+using Retailer.Shared.Common;
 
 namespace Retailer.Infrastructure.Legacy.Kots;
 
@@ -32,8 +33,8 @@ internal class KotService : IKotService
 
     public async Task<KotOrderResponse> CreateAsync(KotOrderCreateRequest request, CancellationToken cancellationToken)
     {
-        var nowPkt = DateTime.UtcNow.AddHours(5);
-        var today = DateOnly.FromDateTime(nowPkt);
+        var nowPkt = PakistanTime.Now;
+        var today = PakistanTime.Today;
         
         // 1. Generate sequential token number for today
         var maxTokenNo = await _kotOrderRepository.GetAll()
@@ -53,7 +54,7 @@ internal class KotService : IKotService
         {
             TokenNo = tokenNo,
             OrderDate = today,
-            OrderTime = TimeOnly.FromDateTime(nowPkt),
+            OrderTime = PakistanTime.CurrentTime,
             OrderType = request.OrderType,
             TableId = request.TableId,
             CustomerId = request.CustomerId,
@@ -210,7 +211,7 @@ internal class KotService : IKotService
         if (order == null && int.TryParse(query, out int tokenVal))
         {
             // Search by today's Token #
-            var today = DateOnly.FromDateTime(DateTime.Today);
+            var today = PakistanTime.Today;
             order = await _kotOrderRepository.GetAll()
                 .Include(o => o.Table)
                 .FirstOrDefaultAsync(o => o.TokenNo == tokenVal && o.OrderDate == today && o.Status != "Paid" && o.Status != "Cancelled", cancellationToken);

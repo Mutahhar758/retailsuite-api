@@ -40,7 +40,12 @@ try
     }
 
     builder.Services.AddControllers()
-        .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()))
+        .AddJsonOptions(o =>
+        {
+            o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+            o.JsonSerializerOptions.Converters.Add(new PakistanDateTimeJsonConverter());
+            o.JsonSerializerOptions.Converters.Add(new NullablePakistanDateTimeJsonConverter());
+        })
         .ConfigureApiBehaviorOptions(options =>
         {
             options.InvalidModelStateResponseFactory = context =>

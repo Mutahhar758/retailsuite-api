@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations.Schema;
+using Retailer.Shared.Common;
 
 namespace Retailer.Domain.Legacy;
 
@@ -12,7 +13,7 @@ public class RepairJobPart : BaseEntity<long>, IAggregateRoot
     public decimal CostRate { get; set; }
 
     public string? CreatedBy { get; set; }
-    public DateTime CreatedOn { get; set; } = DateTime.UtcNow;
+    public DateTime CreatedOn { get; set; } = PakistanTime.Now;
 
     public RepairJob? RepairJob { get; set; }
     public ItemDetail? Item { get; set; }

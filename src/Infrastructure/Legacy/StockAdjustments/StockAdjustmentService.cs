@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Retailer.Shared.Common;
 using Retailer.Application.Common.Exceptions;
 using Retailer.Application.Common.Interfaces;
 using Retailer.Application.Common.Models;
@@ -198,7 +199,7 @@ internal class StockAdjustmentService : IStockAdjustmentService
         var master = new StockAdjMaster
         {
             VDate = request.Date,
-            VTime = TimeOnly.FromDateTime(DateTime.Now),
+            VTime = PakistanTime.CurrentTime,
             VType = VType,
             VNo = voucherNo,
             Descr = request.Description,
@@ -259,7 +260,7 @@ internal class StockAdjustmentService : IStockAdjustmentService
             throw new NotFoundException($"Stock adjustment voucher '{voucherNo}' not found.");
 
         master.VDate = request.Date;
-        master.VTime = TimeOnly.FromDateTime(DateTime.Now);
+        master.VTime = PakistanTime.CurrentTime;
         master.Descr = request.Description;
         master.NarrationId = request.Narration;
 
@@ -402,7 +403,7 @@ internal class StockAdjustmentService : IStockAdjustmentService
                 tx = new ItemTransaction
                 {
                     VDate = date,
-                    VTime = TimeOnly.FromDateTime(DateTime.Now),
+                    VTime = PakistanTime.CurrentTime,
                     VType = VType,
                     VNo = voucherNo,
                     Seq = line.Seq,
@@ -428,7 +429,7 @@ internal class StockAdjustmentService : IStockAdjustmentService
                 tx.DeletedOn = null;
                 tx.DeletedBy = null;
                 tx.VDate = date;
-                tx.VTime = TimeOnly.FromDateTime(DateTime.Now);
+                tx.VTime = PakistanTime.CurrentTime;
                 tx.TranType = tranType;
                 tx.AccountId = null;
                 tx.ItemId = line.ItemId;

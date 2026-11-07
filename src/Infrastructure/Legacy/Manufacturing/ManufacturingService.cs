@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Retailer.Shared.Common;
 using Retailer.Application.Common.Exceptions;
 using Retailer.Application.Common.Interfaces;
 using Retailer.Application.Common.Models;
@@ -398,11 +399,11 @@ internal class ManufacturingService : IManufacturingService
         var totalProductionCost = totalMaterialCost + totalOverheads;
         var unitProductionCost = request.ProducedQty > 0 ? (totalProductionCost / request.ProducedQty) : 0;
 
-        var now = DateTime.UtcNow;
+        var now = PakistanTime.Now;
         var master = new ProductionMaster
         {
             VDate = request.Date,
-            VTime = TimeOnly.FromDateTime(DateTime.Now),
+            VTime = PakistanTime.CurrentTime,
             VType = VType,
             VNo = voucherNo,
             BomMasterId = request.BomMasterId,
@@ -481,7 +482,7 @@ internal class ManufacturingService : IManufacturingService
         var unitProductionCost = request.ProducedQty > 0 ? (totalProductionCost / request.ProducedQty) : 0;
 
         master.VDate = request.Date;
-        master.VTime = TimeOnly.FromDateTime(DateTime.Now);
+        master.VTime = PakistanTime.CurrentTime;
         master.BomMasterId = request.BomMasterId;
         master.FinishedItemId = request.FinishedItemId;
         master.TargetQty = request.TargetQty;
@@ -499,10 +500,10 @@ internal class ManufacturingService : IManufacturingService
         master.CurrentStage = request.CurrentStage;
 
         if ((master.Status == ProductionStatus.InProgress || master.Status == ProductionStatus.Completed) && master.IssuedDate == null)
-            master.IssuedDate = DateTime.UtcNow;
+            master.IssuedDate = PakistanTime.Now;
 
         if (master.Status == ProductionStatus.Completed && master.CompletedDate == null)
-            master.CompletedDate = DateTime.UtcNow;
+            master.CompletedDate = PakistanTime.Now;
 
         master.Details.Clear();
         foreach (var line in request.Lines)
@@ -552,12 +553,12 @@ internal class ManufacturingService : IManufacturingService
         master.Status = newStatus;
         if (newStatus == ProductionStatus.InProgress)
         {
-            master.IssuedDate = DateTime.UtcNow;
+            master.IssuedDate = PakistanTime.Now;
             master.CurrentStage = "In Progress";
         }
         else if (newStatus == ProductionStatus.Completed)
         {
-            master.CompletedDate = DateTime.UtcNow;
+            master.CompletedDate = PakistanTime.Now;
             master.CurrentStage = "Completed";
         }
         else if (newStatus == ProductionStatus.Cancelled)

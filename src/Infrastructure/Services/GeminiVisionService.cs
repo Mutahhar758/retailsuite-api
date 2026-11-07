@@ -6,6 +6,7 @@ using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Retailer.Shared.Common;
 using Retailer.Application.Common.Exceptions;
 using Retailer.Application.Common.Interfaces;
 using Retailer.Application.Legacy.ChartOfAccounts;
@@ -76,7 +77,7 @@ public class GeminiVisionService : IAiScanService
             throw new NotFoundException($"Tenant '{tenantId}' not found.");
         }
 
-        var currentMonth = DateTime.UtcNow.ToString("yyyy-MM");
+        var currentMonth = PakistanTime.Now.ToString("yyyy-MM");
         if (tenant.AiScanCurrentMonth != currentMonth)
         {
             tenant.AiScanCurrentMonth = currentMonth;
@@ -295,7 +296,7 @@ Return strictly valid JSON with this schema:
                 InputTokens = inputTokens,
                 OutputTokens = outputTokens,
                 TotalTokens = totalTokens,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = PakistanTime.Now
             });
             await _tenantDbContext.SaveChangesAsync(cancellationToken);
         }

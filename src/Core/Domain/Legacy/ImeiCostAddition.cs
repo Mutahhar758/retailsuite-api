@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations.Schema;
+using Retailer.Shared.Common;
 
 namespace Retailer.Domain.Legacy;
 
@@ -15,7 +16,7 @@ public class ImeiCostAddition : BaseEntity<long>, IAggregateRoot
     public decimal? ConsumedQty { get; set; } = 1;
 
     public string? CreatedBy { get; set; }
-    public DateTime CreatedOn { get; set; } = DateTime.UtcNow;
+    public DateTime CreatedOn { get; set; } = PakistanTime.Now;
 
     public ChartOfAccount? PaidFrom { get; set; }
     public ItemDetail? ConsumedItem { get; set; }

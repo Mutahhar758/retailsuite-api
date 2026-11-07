@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Retailer.Shared.Common;
 using Retailer.Application.Common.Exceptions;
 using Retailer.Application.Common.Persistence;
 using Retailer.Application.Legacy.Payrolls;
@@ -291,7 +292,7 @@ internal class PayrollService : IPayrollService
             await _glRepository.AddAsync(new GlEntry
             {
                 VDate = request.Date,
-                VTime = TimeOnly.FromDateTime(DateTime.Now),
+                VTime = PakistanTime.CurrentTime,
                 VoucherNo = voucherNo,
                 VType = VType,
                 VSeq = (int)line.Seq,
@@ -308,7 +309,7 @@ internal class PayrollService : IPayrollService
             gl.DeletedOn = null;
             gl.DeletedBy = null;
             gl.VDate = request.Date;
-            gl.VTime = TimeOnly.FromDateTime(DateTime.Now);
+            gl.VTime = PakistanTime.CurrentTime;
             gl.DrAccountId = line.ExpenseAccount;
             gl.CrAccountId = line.PayableAccount;
             gl.Amount = line.NetSalary;

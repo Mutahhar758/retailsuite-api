@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Retailer.Shared.Common;
 using Retailer.Application.Common.Exceptions;
 using Retailer.Application.Common.Models;
 using Retailer.Application.Common.Persistence;
@@ -173,7 +174,7 @@ internal class JournalVoucherService : IJournalVoucherService
             await _glRepository.AddAsync(new GlEntry
             {
                 VDate = request.Date,
-                VTime = TimeOnly.FromDateTime(DateTime.Now),
+                VTime = PakistanTime.CurrentTime,
                 VoucherNo = voucherNo,
                 VType = VType,
                 VSeq = line.Seq,
@@ -211,7 +212,7 @@ internal class JournalVoucherService : IJournalVoucherService
                 await _glRepository.AddAsync(new GlEntry
                 {
                     VDate = request.Date,
-                    VTime = TimeOnly.FromDateTime(DateTime.Now),
+                    VTime = PakistanTime.CurrentTime,
                     VoucherNo = voucherNo,
                     VType = VType,
                     VSeq = line.Seq,
@@ -228,7 +229,7 @@ internal class JournalVoucherService : IJournalVoucherService
                 existing.DeletedOn = null;
                 existing.DeletedBy = null;
                 existing.VDate = request.Date;
-                existing.VTime = TimeOnly.FromDateTime(DateTime.Now);
+                existing.VTime = PakistanTime.CurrentTime;
                 existing.DrAccountId = line.DrAccount;
                 existing.Amount = line.Amount;
                 existing.CrAccountId = line.CrAccount;

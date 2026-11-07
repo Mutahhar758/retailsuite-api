@@ -1,4 +1,5 @@
 using Pgvector;
+using Retailer.Shared.Common;
 
 namespace Retailer.Domain.Multitenancy;
 
@@ -13,7 +14,7 @@ public class AiTool
     public string? RequiredPermission { get; set; }
     public Vector? Embedding { get; set; }
     public bool IsActive { get; set; } = true;
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime CreatedAt { get; set; } = PakistanTime.Now;
     public DateTime? UpdatedAt { get; set; }
 
     public ICollection<AiTaskTool> TaskTools { get; set; } = new List<AiTaskTool>();

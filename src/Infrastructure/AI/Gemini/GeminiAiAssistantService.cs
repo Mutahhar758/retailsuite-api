@@ -6,6 +6,7 @@ using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Retailer.Shared.Common;
 using Retailer.Application.Common.Interfaces;
 using Retailer.Application.Common.Persistence;
 using Retailer.Domain.Legacy;
@@ -202,7 +203,7 @@ public class GeminiAiAssistantService : IAiAssistantService
         // 5. Dynamic Task-Specific System Instructions
         var promptBuilder = new StringBuilder();
         promptBuilder.AppendLine("You are the official voice and text AI Assistant for RetailSuite ERP.");
-        promptBuilder.AppendLine($"Current UTC Date: {DateTime.UtcNow:yyyy-MM-dd (dddd)}.");
+        promptBuilder.AppendLine($"Current Date: {PakistanTime.Now:yyyy-MM-dd (dddd)} (PKT).");
         promptBuilder.AppendLine($"Active Tenant ID: {_currentTenant.Id ?? "default"}.");
         if (!string.IsNullOrWhiteSpace(request.CurrentRoute))
         {
@@ -303,7 +304,7 @@ public class GeminiAiAssistantService : IAiAssistantService
                     IsSuccess = false,
                     DurationMs = stopwatch.ElapsedMilliseconds,
                     ErrorMessage = error,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = PakistanTime.Now
                 }, cancellationToken);
 
                 return new AiAssistantResponse
@@ -355,7 +356,7 @@ public class GeminiAiAssistantService : IAiAssistantService
                     OutputTokens = outputTokens,
                     TotalTokens = totalTokens,
                     ErrorMessage = "No candidates returned by Gemini.",
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = PakistanTime.Now
                 }, cancellationToken);
 
                 return new AiAssistantResponse { Success = false, ChatId = chatId, ErrorMessage = "No response from Gemini." };
@@ -409,7 +410,7 @@ public class GeminiAiAssistantService : IAiAssistantService
                 InputTokens = inputTokens,
                 OutputTokens = outputTokens,
                 TotalTokens = totalTokens,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = PakistanTime.Now
             }, cancellationToken);
 
             // If Gemini invoked a function call

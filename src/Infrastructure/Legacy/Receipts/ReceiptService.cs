@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Retailer.Shared.Common;
 using Retailer.Application.Common.Exceptions;
 using Retailer.Application.Common.Models;
 using Retailer.Application.Common.Persistence;
@@ -198,7 +199,7 @@ internal class ReceiptService : IReceiptService
             {
                 VDate = request.Date,
                 ClearingDate = request.ClearingDate,
-                VTime = TimeOnly.FromDateTime(DateTime.Now),
+                VTime = PakistanTime.CurrentTime,
                 VoucherNo = voucherNo,
                 VType = VType,
                 VSeq = line.Seq,
@@ -240,7 +241,7 @@ internal class ReceiptService : IReceiptService
                 {
                     VDate = request.Date,
                     ClearingDate = request.ClearingDate,
-                    VTime = TimeOnly.FromDateTime(DateTime.Now),
+                    VTime = PakistanTime.CurrentTime,
                     VoucherNo = voucherNo,
                     VType = VType,
                     VSeq = line.Seq,
@@ -261,7 +262,7 @@ internal class ReceiptService : IReceiptService
                 existing.DeletedBy = null;
                 existing.VDate = request.Date;
                 existing.ClearingDate = request.ClearingDate;
-                existing.VTime = TimeOnly.FromDateTime(DateTime.Now);
+                existing.VTime = PakistanTime.CurrentTime;
                 existing.DrAccountId = request.CashBankAccount;
                 existing.Amount = line.Amount;
                 existing.CrAccountId = line.Account;

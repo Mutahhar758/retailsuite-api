@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Retailer.Shared.Common;
 using Retailer.Application.Common.Exceptions;
 using Retailer.Application.Common.Interfaces;
 using Retailer.Application.Common.Persistence;
@@ -313,7 +314,7 @@ internal class RepairJobService : IRepairJobService
 
         job.Status = request.Status;
         if (request.Status == "Delivered")
-            job.DeliveredOn = DateTime.UtcNow;
+            job.DeliveredOn = PakistanTime.Now;
 
         if (!string.IsNullOrWhiteSpace(request.Remarks))
             job.Remarks = string.IsNullOrWhiteSpace(job.Remarks) ? request.Remarks : $"{job.Remarks}\n{request.Remarks}";
@@ -388,7 +389,7 @@ internal class RepairJobService : IRepairJobService
 
         job.SaleVNo = saleVoucherNo;
         job.Status = "Delivered";
-        job.DeliveredOn = DateTime.UtcNow;
+        job.DeliveredOn = PakistanTime.Now;
         await _jobRepository.UpdateAsync(job, true);
 
         return saleVoucherNo;

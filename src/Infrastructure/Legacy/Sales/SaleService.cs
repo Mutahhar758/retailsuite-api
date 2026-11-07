@@ -1,5 +1,6 @@
 using Hangfire;
 using Microsoft.EntityFrameworkCore;
+using Retailer.Shared.Common;
 using Retailer.Application.Common.Exceptions;
 using Retailer.Application.Common.Interfaces;
 using Retailer.Application.Common.Persistence;
@@ -321,7 +322,7 @@ internal class SaleService : ISaleService
         var master = new SaleMaster
         {
             VDate = request.Date,
-            VTime = TimeOnly.FromDateTime(DateTime.Now),
+            VTime = PakistanTime.CurrentTime,
             VType = VType,
             VNo = voucherNo,
             AccountId = request.Account,
@@ -459,7 +460,7 @@ internal class SaleService : ISaleService
             : request.CashBack;
 
         master.VDate = request.Date;
-        master.VTime = TimeOnly.FromDateTime(DateTime.Now);
+        master.VTime = PakistanTime.CurrentTime;
         master.AccountId = request.Account;
         master.Descr = request.Description;
         master.NarrationId = request.Narration;
@@ -620,7 +621,7 @@ internal class SaleService : ISaleService
             .Where(x => x.VType == VType && x.VNo == voucherNo)
             .ToListAsync(cancellationToken);
 
-        var oldDate = masters.FirstOrDefault()?.VDate ?? DateOnly.FromDateTime(DateTime.Today);
+        var oldDate = masters.FirstOrDefault()?.VDate ?? PakistanTime.Today;
         var affectedItemIds = itemTransactions.Select(x => x.ItemId).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
 
         await _saleRepository.DeleteRangeAsync(details, true);
@@ -694,7 +695,7 @@ internal class SaleService : ISaleService
         }
 
         var affectedItemId = itemTransaction?.ItemId;
-        var affectedDate = master?.VDate ?? DateOnly.FromDateTime(DateTime.Today);
+        var affectedDate = master?.VDate ?? PakistanTime.Today;
 
         await _saleMasterRepository.SaveChangesAsync(cancellationToken);
 
@@ -821,7 +822,7 @@ internal class SaleService : ISaleService
             await _glRepository.AddAsync(new GlEntry
             {
                 VDate = date,
-                VTime = TimeOnly.FromDateTime(DateTime.Now),
+                VTime = PakistanTime.CurrentTime,
                 VoucherNo = voucherNo,
                 VType = VType,
                 VSeq = seq,
@@ -838,7 +839,7 @@ internal class SaleService : ISaleService
             gl.DeletedOn = null;
             gl.DeletedBy = null;
             gl.VDate = date;
-            gl.VTime = TimeOnly.FromDateTime(DateTime.Now);
+            gl.VTime = PakistanTime.CurrentTime;
             gl.DrAccountId = drAccount;
             gl.CrAccountId = crAccount;
             gl.Amount = amount;
@@ -875,7 +876,7 @@ internal class SaleService : ISaleService
                 tx = new ItemTransaction
                 {
                     VDate = date,
-                    VTime = TimeOnly.FromDateTime(DateTime.Now),
+                    VTime = PakistanTime.CurrentTime,
                     VType = VType,
                     VNo = voucherNo,
                     Seq = line.Seq,
@@ -900,7 +901,7 @@ internal class SaleService : ISaleService
                 tx.DeletedOn = null;
                 tx.DeletedBy = null;
                 tx.VDate = date;
-                tx.VTime = TimeOnly.FromDateTime(DateTime.Now);
+                tx.VTime = PakistanTime.CurrentTime;
                 tx.TranType = "out";
                 tx.AccountId = accountId;
                 tx.ItemId = line.ItemId;

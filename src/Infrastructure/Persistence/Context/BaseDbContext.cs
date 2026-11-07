@@ -6,6 +6,7 @@ using Retailer.Domain.Legacy;
 using Retailer.Infrastructure.Auditing;
 using Retailer.Infrastructure.Persistence.Transactions;
 using Retailer.Infrastructure.State;
+using Retailer.Shared.Common;
 using Retailer.Shared.Common.Constants;
 using Finbuckle.MultiTenant.Abstractions;
 using Finbuckle.MultiTenant.EntityFrameworkCore;
@@ -178,7 +179,7 @@ public abstract class BaseDbContext : IdentityDbContext<ApplicationUser, Applica
                 case EntityState.Modified:
                     if (entry.Properties.Any(p => p.IsModified) && entry.Properties.Any(p => p.OriginalValue?.Equals(p.CurrentValue) == false))
                     {
-                        entry.Entity.LastModifiedOn = DateTime.UtcNow;
+                        entry.Entity.LastModifiedOn = PakistanTime.Now;
                         entry.Entity.LastModifiedBy = username;
                     }
 
@@ -188,7 +189,7 @@ public abstract class BaseDbContext : IdentityDbContext<ApplicationUser, Applica
                     if (entry.Entity is ISoftDelete softDelete)
                     {
                         softDelete.DeletedBy = userId;
-                        softDelete.DeletedOn = DateTime.UtcNow;
+                        softDelete.DeletedOn = PakistanTime.Now;
                         entry.State = EntityState.Modified;
                     }
 

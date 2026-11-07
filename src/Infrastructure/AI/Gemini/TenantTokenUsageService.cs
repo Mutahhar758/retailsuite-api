@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Microsoft.EntityFrameworkCore;
+using Retailer.Shared.Common;
 using Microsoft.Extensions.Logging;
 using Retailer.Application.Common.Interfaces;
 using Retailer.Domain.Multitenancy;
@@ -41,7 +42,7 @@ public class TenantTokenUsageService : ITenantTokenUsageService, IScopedService
 
         try
         {
-            var now = DateTime.UtcNow;
+            var now = PakistanTime.Now;
             var newId = Guid.NewGuid();
 
             // PostgreSQL atomic upsert with automatic row-level write lock.

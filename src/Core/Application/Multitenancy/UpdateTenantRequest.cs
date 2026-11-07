@@ -1,4 +1,5 @@
 using FluentValidation;
+using Retailer.Shared.Common;
 
 namespace Retailer.Application.Multitenancy;
 
@@ -36,7 +37,7 @@ public class UpdateTenantRequestValidator : AbstractValidator<UpdateTenantReques
             .When(r => !string.IsNullOrWhiteSpace(r.AdminEmail));
 
         RuleFor(r => r.ValidUntil)
-            .GreaterThan(r => r.ValidFrom ?? DateTime.UtcNow)
+            .GreaterThan(r => r.ValidFrom ?? PakistanTime.Now)
             .When(r => r.ValidUntil.HasValue)
             .WithMessage("ValidUntil must be after ValidFrom.");
     }

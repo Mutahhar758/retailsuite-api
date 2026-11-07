@@ -1,4 +1,5 @@
 using Finbuckle.MultiTenant.Abstractions;
+using Retailer.Shared.Common;
 using Microsoft.AspNetCore.Http;
 using AppTenantInfo = Retailer.Domain.Multitenancy.TenantInfo;
 
@@ -41,14 +42,14 @@ internal class TenantMiddleware : IMiddleware
             return;
         }
 
-        if (tenantInfo.ValidFrom > DateTime.UtcNow)
+        if (tenantInfo.ValidFrom > PakistanTime.Now)
         {
             context.Response.StatusCode = StatusCodes.Status403Forbidden;
             await context.Response.WriteAsJsonAsync(new { Message = $"Tenant '{tenantInfo.Identifier}' subscription has not started yet." });
             return;
         }
 
-        if (tenantInfo.ValidUntil.HasValue && tenantInfo.ValidUntil < DateTime.UtcNow)
+        if (tenantInfo.ValidUntil.HasValue && tenantInfo.ValidUntil < PakistanTime.Now)
         {
             context.Response.StatusCode = StatusCodes.Status403Forbidden;
             await context.Response.WriteAsJsonAsync(new { Message = $"Tenant '{tenantInfo.Identifier}' subscription has expired." });

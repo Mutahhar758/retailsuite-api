@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Retailer.Shared.Common;
 using Retailer.Application.Common.Exceptions;
 using Retailer.Application.Common.Interfaces;
 using Retailer.Application.Common.Models;
@@ -209,7 +210,7 @@ internal class SaleReturnService : ISaleReturnService
         var master = new SaleRetMaster
         {
             VDate = request.Date,
-            VTime = TimeOnly.FromDateTime(DateTime.Now),
+            VTime = PakistanTime.CurrentTime,
             VType = VType,
             VNo = voucherNo,
             AccountId = request.Account,
@@ -292,7 +293,7 @@ internal class SaleReturnService : ISaleReturnService
             : (((x.Qty * x.Rate) + ((x.SecQty ?? 0) * (x.SecRate ?? 0))) - x.Discount));
 
         master.VDate = request.Date;
-        master.VTime = TimeOnly.FromDateTime(DateTime.Now);
+        master.VTime = PakistanTime.CurrentTime;
         master.AccountId = request.Account;
         master.Descr = request.Description;
         master.NarrationId = request.Narration;
@@ -487,7 +488,7 @@ internal class SaleReturnService : ISaleReturnService
                 tx = new ItemTransaction
                 {
                     VDate = date,
-                    VTime = TimeOnly.FromDateTime(DateTime.Now),
+                    VTime = PakistanTime.CurrentTime,
                     VType = VType,
                     VNo = voucherNo,
                     Seq = line.Seq,
@@ -513,7 +514,7 @@ internal class SaleReturnService : ISaleReturnService
                 tx.DeletedOn = null;
                 tx.DeletedBy = null;
                 tx.VDate = date;
-                tx.VTime = TimeOnly.FromDateTime(DateTime.Now);
+                tx.VTime = PakistanTime.CurrentTime;
                 tx.TranType = "in";
                 tx.AccountId = accountId;
                 tx.ItemId = line.ItemId;
@@ -658,7 +659,7 @@ internal class SaleReturnService : ISaleReturnService
             await _glRepository.AddAsync(new GlEntry
             {
                 VDate = date,
-                VTime = TimeOnly.FromDateTime(DateTime.Now),
+                VTime = PakistanTime.CurrentTime,
                 VoucherNo = voucherNo,
                 VType = VType,
                 VSeq = seq,
@@ -675,7 +676,7 @@ internal class SaleReturnService : ISaleReturnService
             gl.DeletedOn = null;
             gl.DeletedBy = null;
             gl.VDate = date;
-            gl.VTime = TimeOnly.FromDateTime(DateTime.Now);
+            gl.VTime = PakistanTime.CurrentTime;
             gl.DrAccountId = drAccount;
             gl.CrAccountId = crAccount;
             gl.Amount = amount;

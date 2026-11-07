@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Retailer.Shared.Common;
 using Retailer.Application.Common.Exceptions;
 using Retailer.Application.Common.Persistence;
 using Retailer.Application.Common.Interfaces;
@@ -515,12 +516,12 @@ internal class InventoryService : IInventoryService
 
     private async Task CreateOpeningStockTransactionAsync(string itemId, string unit, decimal qty, decimal rate, CancellationToken cancellationToken)
     {
-        var today = DateOnly.FromDateTime(DateTime.Today);
+        var today = PakistanTime.Today;
 
         var tx = new ItemTransaction
         {
             VDate = today,
-            VTime = TimeOnly.FromDateTime(DateTime.Now),
+            VTime = PakistanTime.CurrentTime,
             VType = "OP",
             VNo = itemId,
             Seq = 1,
@@ -542,7 +543,7 @@ internal class InventoryService : IInventoryService
 
     private async Task UpsertOpeningStockTransactionAsync(string itemId, string unit, decimal qty, decimal rate, CancellationToken cancellationToken)
     {
-        var today = DateOnly.FromDateTime(DateTime.Today);
+        var today = PakistanTime.Today;
         var tx = await _itemTransactionRepository.GetAll()
             .IgnoreQueryFilters([GlobalQueryFilterConstants.SoftDelete])
             .FirstOrDefaultAsync(x => x.VType == "OP" && x.VNo == itemId && x.Seq == 1, cancellationToken);
@@ -556,7 +557,7 @@ internal class InventoryService : IInventoryService
             tx.DeletedOn = null;
             tx.DeletedBy = null;
             tx.VDate = today;
-            tx.VTime = TimeOnly.FromDateTime(DateTime.Now);
+            tx.VTime = PakistanTime.CurrentTime;
             tx.UnitId = unit;
             tx.QtyIn = qty;
             tx.QtyOut = 0;

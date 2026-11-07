@@ -1,5 +1,6 @@
 using Hangfire;
 using Microsoft.EntityFrameworkCore;
+using Retailer.Shared.Common;
 using Retailer.Application.Common.Exceptions;
 using Retailer.Application.Common.Interfaces;
 using Retailer.Application.Common.Persistence;
@@ -314,7 +315,7 @@ internal class PurchaseService : IPurchaseService
         var master = new PurchaseMaster
         {
             VDate = request.Date,
-            VTime = TimeOnly.FromDateTime(DateTime.Now),
+            VTime = PakistanTime.CurrentTime,
             VType = VType,
             VNo = voucherNo,
             AccountId = request.Account,
@@ -441,7 +442,7 @@ internal class PurchaseService : IPurchaseService
             : request.CashBack;
 
         master.VDate = request.Date;
-        master.VTime = TimeOnly.FromDateTime(DateTime.Now);
+        master.VTime = PakistanTime.CurrentTime;
         master.AccountId = request.Account;
         master.Descr = request.Description;
         master.NarrationId = request.Narration;
@@ -596,7 +597,7 @@ internal class PurchaseService : IPurchaseService
             .Where(x => x.VType == VType && x.VNo == voucherNo)
             .ToListAsync(cancellationToken);
 
-        var oldDate = masters.FirstOrDefault()?.VDate ?? DateOnly.FromDateTime(DateTime.Today);
+        var oldDate = masters.FirstOrDefault()?.VDate ?? PakistanTime.Today;
         var affectedItemIds = itemTransactions.Select(x => x.ItemId).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
 
         await _purchaseDetailRepository.DeleteRangeAsync(details, true);
@@ -656,7 +657,7 @@ internal class PurchaseService : IPurchaseService
         }
 
         var affectedItemId = itemTransaction?.ItemId;
-        var affectedDate = master?.VDate ?? DateOnly.FromDateTime(DateTime.Today);
+        var affectedDate = master?.VDate ?? PakistanTime.Today;
 
         await _purchaseMasterRepository.SaveChangesAsync(cancellationToken);
 
@@ -694,7 +695,7 @@ internal class PurchaseService : IPurchaseService
                 tx = new ItemTransaction
                 {
                     VDate = date,
-                    VTime = TimeOnly.FromDateTime(DateTime.Now),
+                    VTime = PakistanTime.CurrentTime,
                     VType = VType,
                     VNo = voucherNo,
                     Seq = line.Seq,
@@ -720,7 +721,7 @@ internal class PurchaseService : IPurchaseService
                 tx.DeletedOn = null;
                 tx.DeletedBy = null;
                 tx.VDate = date;
-                tx.VTime = TimeOnly.FromDateTime(DateTime.Now);
+                tx.VTime = PakistanTime.CurrentTime;
                 tx.TranType = "in";
                 tx.AccountId = accountId;
                 tx.ItemId = line.ItemId;
@@ -847,7 +848,7 @@ internal class PurchaseService : IPurchaseService
             await _glRepository.AddAsync(new GlEntry
             {
                 VDate = date,
-                VTime = TimeOnly.FromDateTime(DateTime.Now),
+                VTime = PakistanTime.CurrentTime,
                 VoucherNo = voucherNo,
                 VType = VType,
                 VSeq = seq,
@@ -864,7 +865,7 @@ internal class PurchaseService : IPurchaseService
             gl.DeletedOn = null;
             gl.DeletedBy = null;
             gl.VDate = date;
-            gl.VTime = TimeOnly.FromDateTime(DateTime.Now);
+            gl.VTime = PakistanTime.CurrentTime;
             gl.DrAccountId = drAccount;
             gl.CrAccountId = crAccount;
             gl.Amount = amount;

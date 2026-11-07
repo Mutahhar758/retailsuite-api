@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Retailer.Shared.Common;
 using Retailer.Application.Common.Persistence;
 using Retailer.Application.Legacy.Units;
 using Retailer.Domain.Legacy;
@@ -60,7 +61,7 @@ internal class UnitService : IUnitService
         if (!request.Active)
         {
             unit.DeletedBy = "system";
-            unit.DeletedOn = DateTime.UtcNow;
+            unit.DeletedOn = PakistanTime.Now;
         }
 
         await _unitRepository.AddAsync(unit);
@@ -101,7 +102,7 @@ internal class UnitService : IUnitService
         else
         {
             existing.DeletedBy = existing.DeletedBy ?? "system";
-            existing.DeletedOn = existing.DeletedOn ?? DateTime.UtcNow;
+            existing.DeletedOn = existing.DeletedOn ?? PakistanTime.Now;
         }
 
         await _unitRepository.UpdateAsync(existing);

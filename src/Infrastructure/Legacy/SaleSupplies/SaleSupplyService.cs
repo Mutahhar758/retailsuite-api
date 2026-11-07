@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Retailer.Shared.Common;
 using Retailer.Application.Common.Exceptions;
 using Retailer.Application.Common.Interfaces;
 using Retailer.Application.Common.Models;
@@ -202,7 +203,7 @@ internal class SaleSupplyService : ISaleSupplyService
         var master = new SaleSupplyMaster
         {
             VDate = request.Date,
-            VTime = TimeOnly.FromDateTime(DateTime.Now),
+            VTime = PakistanTime.CurrentTime,
             VType = VType,
             VNo = voucherNo,
             ItemId = request.ItemId,
@@ -294,7 +295,7 @@ internal class SaleSupplyService : ISaleSupplyService
             : (((x.Qty * x.Rate) + ((x.SecQty ?? 0) * (x.SecRate ?? 0))) - x.Discount) + (x.Carriage ?? 0) + x.AddLess);
 
         master.VDate = request.Date;
-        master.VTime = TimeOnly.FromDateTime(DateTime.Now);
+        master.VTime = PakistanTime.CurrentTime;
         master.ItemId = request.ItemId;
         master.Descr = request.Description;
         master.NarrationId = request.Narration;
@@ -507,7 +508,7 @@ internal class SaleSupplyService : ISaleSupplyService
                 await _glRepository.AddAsync(new GlEntry
                 {
                     VDate = date,
-                    VTime = TimeOnly.FromDateTime(DateTime.Now),
+                    VTime = PakistanTime.CurrentTime,
                     VoucherNo = voucherNo,
                     VType = VType,
                     VSeq = line.Seq,
@@ -522,7 +523,7 @@ internal class SaleSupplyService : ISaleSupplyService
             else
             {
                 gl.VDate = date;
-                gl.VTime = TimeOnly.FromDateTime(DateTime.Now);
+                gl.VTime = PakistanTime.CurrentTime;
                 gl.DrAccountId = line.CustomerId;
                 gl.CrAccountId = saleSupplyAccount;
                 gl.Amount = amount;
@@ -572,7 +573,7 @@ internal class SaleSupplyService : ISaleSupplyService
                 tx = new ItemTransaction
                 {
                     VDate = date,
-                    VTime = TimeOnly.FromDateTime(DateTime.Now),
+                    VTime = PakistanTime.CurrentTime,
                     VType = VType,
                     VNo = voucherNo,
                     Seq = line.Seq,
@@ -595,7 +596,7 @@ internal class SaleSupplyService : ISaleSupplyService
             else
             {
                 tx.VDate = date;
-                tx.VTime = TimeOnly.FromDateTime(DateTime.Now);
+                tx.VTime = PakistanTime.CurrentTime;
                 tx.TranType = "out";
                 tx.AccountId = line.CustomerId;
                 tx.ItemId = itemId;
@@ -824,7 +825,7 @@ internal class SaleSupplyService : ISaleSupplyService
                 await _glRepository.AddAsync(new GlEntry
                 {
                     VDate = master.VDate,
-                    VTime = TimeOnly.FromDateTime(DateTime.Now),
+                    VTime = PakistanTime.CurrentTime,
                     VoucherNo = voucherNo,
                     VType = VType,
                     VSeq = seq,

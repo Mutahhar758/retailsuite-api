@@ -1,3 +1,5 @@
+using Retailer.Shared.Common;
+
 namespace Retailer.Domain.Multitenancy;
 
 public class GeminiApiLog
@@ -23,5 +25,5 @@ public class GeminiApiLog
     public int? OutputTokens { get; set; }
     public int? TotalTokens { get; set; }
     public string? ErrorMessage { get; set; }
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime CreatedAt { get; set; } = PakistanTime.Now;
 }
