@@ -1,12 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using Retailer.Application.Common.Exceptions;
+using Retailer.Application.Common.Persistence;
 using Retailer.Application.Legacy.Common;
 using Retailer.Application.Legacy.DailyStockClosings;
 using Retailer.Application.Legacy.Purchases;
 using Retailer.Application.Legacy.Sales;
 using Retailer.Domain.Common.Enums;
 using Retailer.Domain.Legacy;
-using Retailer.Application.Common.Persistence;
 
 namespace Retailer.Infrastructure.Legacy.DailyStockClosings;
 
@@ -19,12 +19,9 @@ public class DailyStockClosingService : IDailyStockClosingService
     private readonly IRepository<ItemTransaction> _itemTransactionRepository;
     private readonly IRepository<PurchaseMaster> _purchaseMasterRepository;
     private readonly IRepository<PurchaseDetail> _purchaseDetailRepository;
-    private readonly IRepository<PurchasePayment> _purchasePaymentRepository;
     private readonly IRepository<SaleMaster> _saleMasterRepository;
     private readonly IRepository<Sale> _saleRepository;
-    private readonly IRepository<SalePayment> _salePaymentRepository;
     private readonly IRepository<DefaultAccount> _defaultAccountRepository;
-    private readonly IRepository<ChartOfAccount> _chartOfAccountRepository;
     private readonly IRepository<CustomerDetail> _customerDetailRepository;
     private readonly IRepository<SupplierDetail> _supplierDetailRepository;
     private readonly IPurchaseService _purchaseService;
@@ -35,12 +32,9 @@ public class DailyStockClosingService : IDailyStockClosingService
         IRepository<ItemTransaction> itemTransactionRepository,
         IRepository<PurchaseMaster> purchaseMasterRepository,
         IRepository<PurchaseDetail> purchaseDetailRepository,
-        IRepository<PurchasePayment> purchasePaymentRepository,
         IRepository<SaleMaster> saleMasterRepository,
         IRepository<Sale> saleRepository,
-        IRepository<SalePayment> salePaymentRepository,
         IRepository<DefaultAccount> defaultAccountRepository,
-        IRepository<ChartOfAccount> chartOfAccountRepository,
         IRepository<CustomerDetail> customerDetailRepository,
         IRepository<SupplierDetail> supplierDetailRepository,
         IPurchaseService purchaseService,
@@ -50,12 +44,9 @@ public class DailyStockClosingService : IDailyStockClosingService
         _itemTransactionRepository = itemTransactionRepository;
         _purchaseMasterRepository = purchaseMasterRepository;
         _purchaseDetailRepository = purchaseDetailRepository;
-        _purchasePaymentRepository = purchasePaymentRepository;
         _saleMasterRepository = saleMasterRepository;
         _saleRepository = saleRepository;
-        _salePaymentRepository = salePaymentRepository;
         _defaultAccountRepository = defaultAccountRepository;
-        _chartOfAccountRepository = chartOfAccountRepository;
         _customerDetailRepository = customerDetailRepository;
         _supplierDetailRepository = supplierDetailRepository;
         _purchaseService = purchaseService;
@@ -203,78 +194,6 @@ public class DailyStockClosingService : IDailyStockClosingService
                 .Select(x => x.Id)
                 .FirstOrDefaultAsync(cancellationToken);
 
-        var creditCustomers = new List<DailyStockClosingCreditLineDto>();
-        if (existingSl != null)
-        {
-            var slPayments = await _salePaymentRepository.GetAll()
-                .AsNoTracking()
-                .Where(x => x.VType == "SL" && x.VNo == existingSl.VNo)
-                .OrderBy(x => x.Seq)
-                .ToListAsync(cancellationToken);
-
-            var nonCashPayments = slPayments
-                .Where(p => !string.Equals(p.AccountId, defaultCashAccountId, StringComparison.OrdinalIgnoreCase))
-                .ToList();
-
-            if (nonCashPayments.Count > 0)
-            {
-                var accIds = nonCashPayments.Select(p => p.AccountId).Distinct().ToList();
-                var titles = await _chartOfAccountRepository.GetAll()
-                    .AsNoTracking()
-                    .Where(a => accIds.Contains(a.Id))
-                    .ToDictionaryAsync(a => a.Id, a => a.Title, cancellationToken);
-
-                var seq = 1;
-                foreach (var p in nonCashPayments)
-                {
-                    creditCustomers.Add(new DailyStockClosingCreditLineDto
-                    {
-                        Seq = seq++,
-                        AccountId = p.AccountId,
-                        AccountTitle = titles.GetValueOrDefault(p.AccountId, p.AccountId),
-                        Amount = p.Amount,
-                        Remarks = p.Reference
-                    });
-                }
-            }
-        }
-
-        var creditSuppliers = new List<DailyStockClosingCreditLineDto>();
-        if (existingPu != null)
-        {
-            var puPayments = await _purchasePaymentRepository.GetAll()
-                .AsNoTracking()
-                .Where(x => x.VType == "PU" && x.VNo == existingPu.VNo)
-                .OrderBy(x => x.Seq)
-                .ToListAsync(cancellationToken);
-
-            var nonCashPayments = puPayments
-                .Where(p => !string.Equals(p.AccountId, defaultCashAccountId, StringComparison.OrdinalIgnoreCase))
-                .ToList();
-
-            if (nonCashPayments.Count > 0)
-            {
-                var accIds = nonCashPayments.Select(p => p.AccountId).Distinct().ToList();
-                var titles = await _chartOfAccountRepository.GetAll()
-                    .AsNoTracking()
-                    .Where(a => accIds.Contains(a.Id))
-                    .ToDictionaryAsync(a => a.Id, a => a.Title, cancellationToken);
-
-                var seq = 1;
-                foreach (var p in nonCashPayments)
-                {
-                    creditSuppliers.Add(new DailyStockClosingCreditLineDto
-                    {
-                        Seq = seq++,
-                        AccountId = p.AccountId,
-                        AccountTitle = titles.GetValueOrDefault(p.AccountId, p.AccountId),
-                        Amount = p.Amount,
-                        Remarks = p.Reference
-                    });
-                }
-            }
-        }
-
         var itemsQuery = _itemRepository.GetAll()
             .AsNoTracking()
             .Where(x => x.ItemType != ItemType.Service);
@@ -392,9 +311,7 @@ public class DailyStockClosingService : IDailyStockClosingService
             EnteredPurchaseAmount = existingPu?.Amount,
             EnteredSaleAmount = existingSl?.NetAmount ?? existingSl?.Amount,
             Remarks = cleanRemarks,
-            Items = sheetLines,
-            CreditCustomers = creditCustomers,
-            CreditSuppliers = creditSuppliers
+            Items = sheetLines
         };
     }
 
@@ -424,14 +341,6 @@ public class DailyStockClosingService : IDailyStockClosingService
             .OrderByDescending(x => x.VNo)
             .FirstOrDefaultAsync(cancellationToken);
 
-        var cashAccountId = !string.IsNullOrWhiteSpace(request.CashAccountId)
-            ? request.CashAccountId
-            : await _defaultAccountRepository.GetAll()
-                .AsNoTracking()
-                .Where(x => x.Title == CashDefaultAccountTitle)
-                .Select(x => x.AccountId)
-                .FirstOrDefaultAsync(cancellationToken);
-
         // 1. Prepare Purchase Lines
         var rawPuLines = request.Lines
             .Where(x => !string.IsNullOrWhiteSpace(x.ItemId) && x.PurchasedQty > 0)
@@ -442,23 +351,13 @@ public class DailyStockClosingService : IDailyStockClosingService
             ? Math.Round(request.EnteredPurchaseAmount.Value, 2)
             : calcPuGross;
 
-        var validCreditSuppliers = (request.CreditSuppliers ?? [])
-            .Where(x => !string.IsNullOrWhiteSpace(x.AccountId) && x.Amount > 0)
-            .ToList();
-
-        var totalSupplierCredit = validCreditSuppliers.Sum(x => Math.Round(x.Amount, 2));
-        if (rawPuLines.Count > 0 && totalSupplierCredit > targetPuTotal)
-        {
-            throw new BadRequestException("Total Credit Supplier amount cannot exceed Total Purchase Amount.");
-        }
-
-        var cashPaid = rawPuLines.Count > 0 ? Math.Max(0m, targetPuTotal - totalSupplierCredit) : 0m;
+        var cashPaid = rawPuLines.Count > 0 ? targetPuTotal : 0m;
         string? savedPuVoucherNo = existingPu?.VNo;
 
         if (rawPuLines.Count > 0)
         {
             var puLineRequests = BuildReconciledPurchaseLines(rawPuLines, calcPuGross, targetPuTotal, isProRate);
-            var puPayments = BuildPaymentRecords(cashAccountId, cashPaid, "Cash Paid", validCreditSuppliers, "Daily Closing Credit Purchase");
+            var puPayments = BuildSingleCashPayment(request.CashAccountId, cashPaid, "Daily Closing Cash Paid");
 
             if (existingPu != null)
             {
@@ -509,23 +408,13 @@ public class DailyStockClosingService : IDailyStockClosingService
             ? Math.Round(request.EnteredSaleAmount.Value, 2)
             : calcSlGross;
 
-        var validCreditCustomers = (request.CreditCustomers ?? [])
-            .Where(x => !string.IsNullOrWhiteSpace(x.AccountId) && x.Amount > 0)
-            .ToList();
-
-        var totalCustomerCredit = validCreditCustomers.Sum(x => Math.Round(x.Amount, 2));
-        if (rawSlLines.Count > 0 && totalCustomerCredit > targetSlTotal)
-        {
-            throw new BadRequestException("Total Credit Customer amount cannot exceed Total Sale Amount.");
-        }
-
-        var cashReceived = rawSlLines.Count > 0 ? Math.Max(0m, targetSlTotal - totalCustomerCredit) : 0m;
+        var cashReceived = rawSlLines.Count > 0 ? targetSlTotal : 0m;
         string? savedSlVoucherNo = existingSl?.VNo;
 
         if (rawSlLines.Count > 0)
         {
             var slLineRequests = BuildReconciledSaleLines(rawSlLines, calcSlGross, targetSlTotal, isProRate);
-            var slPayments = BuildPaymentRecords(cashAccountId, cashReceived, "Cash Received", validCreditCustomers, "Daily Closing Credit Sale");
+            var slPayments = BuildSingleCashPayment(request.CashAccountId, cashReceived, "Daily Closing Cash Received");
 
             if (existingSl != null)
             {
@@ -713,44 +602,26 @@ public class DailyStockClosingService : IDailyStockClosingService
         return result;
     }
 
-    private static List<PaymentRecordRequest>? BuildPaymentRecords(
+    private static List<PaymentRecordRequest>? BuildSingleCashPayment(
         string? cashAccountId,
         decimal cashAmount,
-        string cashLabel,
-        List<DailyStockClosingCreditLineDto> creditLines,
-        string defaultCreditLabel)
+        string referenceLabel)
     {
-        if (creditLines.Count == 0)
+        if (string.IsNullOrWhiteSpace(cashAccountId) || cashAmount <= 0)
         {
-            // When there are no credit lines, let PurchaseService / SaleService use standard CashPaid / CashReceipt
+            // When no explicit CashAccountId is specified, PurchaseService / SaleService uses DefaultAccount "Cash"
             return null;
         }
 
-        var payments = new List<PaymentRecordRequest>();
-        var seq = 1;
-
-        if (cashAmount > 0 && !string.IsNullOrWhiteSpace(cashAccountId))
-        {
-            payments.Add(new PaymentRecordRequest
+        return
+        [
+            new PaymentRecordRequest
             {
-                Seq = seq++,
+                Seq = 1,
                 AccountId = cashAccountId,
                 Amount = Math.Round(cashAmount, 2),
-                Reference = cashLabel
-            });
-        }
-
-        foreach (var c in creditLines)
-        {
-            payments.Add(new PaymentRecordRequest
-            {
-                Seq = seq++,
-                AccountId = c.AccountId,
-                Amount = Math.Round(c.Amount, 2),
-                Reference = string.IsNullOrWhiteSpace(c.Remarks) ? defaultCreditLabel : c.Remarks.Trim()
-            });
-        }
-
-        return payments;
+                Reference = referenceLabel
+            }
+        ];
     }
 }

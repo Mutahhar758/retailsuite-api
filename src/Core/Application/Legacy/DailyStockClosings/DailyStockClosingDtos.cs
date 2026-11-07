@@ -27,8 +27,6 @@ public class DailyStockClosingSheetResponse
     public decimal? EnteredPurchaseAmount { get; set; }
     public string? Remarks { get; set; }
     public List<DailyStockClosingItemLineDto> Items { get; set; } = [];
-    public List<DailyStockClosingCreditLineDto> CreditCustomers { get; set; } = [];
-    public List<DailyStockClosingCreditLineDto> CreditSuppliers { get; set; } = [];
 }
 
 public class DailyStockClosingItemLineDto
@@ -49,15 +47,6 @@ public class DailyStockClosingItemLineDto
     public decimal SaleRate { get; set; }
 }
 
-public class DailyStockClosingCreditLineDto
-{
-    public int Seq { get; set; }
-    public string AccountId { get; set; } = default!;
-    public string? AccountTitle { get; set; }
-    public decimal Amount { get; set; }
-    public string? Remarks { get; set; }
-}
-
 public class DailyStockClosingSaveRequest
 {
     public DateOnly Date { get; set; }
@@ -69,8 +58,6 @@ public class DailyStockClosingSaveRequest
     public decimal? EnteredPurchaseAmount { get; set; }
     public string? Remarks { get; set; }
     public List<DailyStockClosingSaveLineRequest> Lines { get; set; } = [];
-    public List<DailyStockClosingCreditLineDto>? CreditCustomers { get; set; }
-    public List<DailyStockClosingCreditLineDto>? CreditSuppliers { get; set; }
 }
 
 public class DailyStockClosingSaveLineRequest
