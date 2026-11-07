@@ -11,11 +11,12 @@ public static class PakistanTime
     public static readonly TimeSpan Offset = TimeSpan.FromHours(5);
 
     /// <summary>
-    /// Returns current PKT DateTime with DateTimeKind.Unspecified to represent pure wall-clock time.
+    /// Returns current PKT DateTime with DateTimeKind.Utc to satisfy PostgreSQL 'timestamp with time zone'
+    /// requirements while storing PKT wall-clock values consistently across PostgreSQL and SQL Server.
     /// </summary>
     public static DateTime Now => DateTime.SpecifyKind(
         TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _pktZone),
-        DateTimeKind.Unspecified);
+        DateTimeKind.Utc);
 
     public static DateOnly Today => DateOnly.FromDateTime(Now);
 

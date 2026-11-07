@@ -20,7 +20,7 @@ public class PakistanDateTimeJsonConverter : JsonConverter<DateTime>
 
             if (DateTime.TryParse(stringValue, CultureInfo.InvariantCulture, DateTimeStyles.None, out var dt))
             {
-                return DateTime.SpecifyKind(dt, DateTimeKind.Unspecified);
+                return DateTime.SpecifyKind(dt, DateTimeKind.Utc);
             }
         }
 
@@ -54,7 +54,7 @@ public class NullablePakistanDateTimeJsonConverter : JsonConverter<DateTime?>
 
             if (DateTime.TryParse(stringValue, CultureInfo.InvariantCulture, DateTimeStyles.None, out var dt))
             {
-                return DateTime.SpecifyKind(dt, DateTimeKind.Unspecified);
+                return DateTime.SpecifyKind(dt, DateTimeKind.Utc);
             }
         }
 

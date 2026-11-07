@@ -15,6 +15,8 @@ using System.Text.Json.Serialization;
 
 [assembly: ApiConventionType(typeof(ApiConventions))]
 
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
 StaticLogger.EnsureInitialized();
 Log.Information("Server Booting Up...");
 try
