@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using QuestPDF.Fluent;
 using Retailer.Application.Common.Exceptions;
 using Retailer.Application.Common.Interfaces;
@@ -2347,6 +2347,731 @@ internal partial class ReportService : IReportService
         var batchDoc = new WandaCustomerBillBatchDocument(batchList);
         return batchDoc.GeneratePdf();
     }
+
+    public async Task<VendorBillResponse> GetVendorBillAsync(VendorBillFilter filter, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(filter.Account))
+            throw new BadRequestException("Account is required.");
+
+        if (filter.ToDate < filter.FromDate)
+            throw new BadRequestException("To date must be greater than or equal to from date.");
+
+        var unitMap = await _itemTransactionRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => !string.IsNullOrWhiteSpace(x.UnitId))
+            .Select(x => new { Code = x.UnitId!, Title = x.Unit != null ? (x.Unit.ShortTitle ?? x.Unit.Title) : x.UnitId! })
+            .Distinct()
+            .ToDictionaryAsync(x => x.Code, x => x.Title, cancellationToken);
+
+        var rawPurchaseLines = await (
+            from pd in _purchaseDetailRepository.GetAll().AsNoTracking()
+            join pm in _purchaseMasterRepository.GetAll().AsNoTracking()
+                on new { pd.VType, pd.VNo } equals new { pm.VType, VNo = pm.VNo }
+            where pm.AccountId == filter.Account
+                  && pm.VDate >= filter.FromDate && pm.VDate <= filter.ToDate
+            orderby pm.VDate, pd.VType, pd.VNo, pd.Seq
+            select new
+            {
+                Date = pm.VDate,
+                VNo = pd.VType + "-" + pd.VNo,
+                Item = pd.Item != null ? pd.Item.Title : (pd.ItemId ?? string.Empty),
+                UnitId = pd.UnitId ?? string.Empty,
+                PrimaryUnitId = pd.Item != null ? (pd.Item.PrimaryUnitId ?? pd.UnitId) : pd.UnitId,
+                AdditionalUnits = pd.Item != null ? pd.Item.AdditionalUnits : null,
+                UnitTitle = pd.Unit != null ? (pd.Unit.ShortTitle ?? pd.Unit.Title) : (!string.IsNullOrWhiteSpace(pd.UnitId) && unitMap.ContainsKey(pd.UnitId) ? unitMap[pd.UnitId] : (pd.Item != null && pd.Item.DefaultUnit != null ? (pd.Item.DefaultUnit.ShortTitle ?? pd.Item.DefaultUnit.Title) : (pd.Item != null && pd.Item.PrimaryUnit != null ? (pd.Item.PrimaryUnit.ShortTitle ?? pd.Item.PrimaryUnit.Title) : (pd.UnitId ?? string.Empty)))),
+                Qty = pd.Qty,
+                Rate = pd.Rate,
+                AddLess = pd.AddLess,
+                Carriage = 0m,
+                Amount = pd.Amount ?? 0m,
+                Imei = pd.Imei,
+                Imei2 = pd.Imei2,
+                PtaStatus = pd.PtaStatus,
+                WarrantyMonths = (int?)null,
+                ConditionNote = pd.ConditionNote
+            }).ToListAsync(cancellationToken);
+
+        var rawPurchaseRetLines = await (
+            from prd in _purchaseRetDetailRepository.GetAll().AsNoTracking()
+            join prm in _purchaseRetMasterRepository.GetAll().AsNoTracking()
+                on new { prd.VType, prd.VNo } equals new { prm.VType, VNo = prm.VNo }
+            where prm.AccountId == filter.Account
+                  && prm.VDate >= filter.FromDate && prm.VDate <= filter.ToDate
+            orderby prm.VDate, prd.VType, prd.VNo, prd.Seq
+            select new
+            {
+                Date = prm.VDate,
+                VNo = prd.VType + "-" + prd.VNo,
+                Item = "[Purchase Return] " + (prd.Item != null ? prd.Item.Title : (prd.ItemId ?? string.Empty)),
+                UnitId = prd.UnitId ?? string.Empty,
+                PrimaryUnitId = prd.Item != null ? (prd.Item.PrimaryUnitId ?? prd.UnitId) : prd.UnitId,
+                AdditionalUnits = prd.Item != null ? prd.Item.AdditionalUnits : null,
+                UnitTitle = prd.Unit != null ? (prd.Unit.ShortTitle ?? prd.Unit.Title) : (!string.IsNullOrWhiteSpace(prd.UnitId) && unitMap.ContainsKey(prd.UnitId) ? unitMap[prd.UnitId] : (prd.Item != null && prd.Item.DefaultUnit != null ? (prd.Item.DefaultUnit.ShortTitle ?? prd.Item.DefaultUnit.Title) : (prd.Item != null && prd.Item.PrimaryUnit != null ? (prd.Item.PrimaryUnit.ShortTitle ?? prd.Item.PrimaryUnit.Title) : (prd.UnitId ?? string.Empty)))),
+                Qty = prd.Qty,
+                Rate = prd.Rate,
+                AddLess = 0m,
+                Carriage = 0m,
+                Amount = -(prd.Amount ?? 0m),
+                Imei = prd.Imei,
+                Imei2 = prd.Imei2,
+                PtaStatus = (string?)null,
+                WarrantyMonths = (int?)null,
+                ConditionNote = (string?)null
+            }).ToListAsync(cancellationToken);
+
+        var primaryUnitIds = rawPurchaseLines
+            .Where(x => string.IsNullOrWhiteSpace(x.AdditionalUnits) && !string.IsNullOrWhiteSpace(x.PrimaryUnitId))
+            .Select(x => x.PrimaryUnitId!)
+            .Concat(rawPurchaseRetLines
+                .Where(x => string.IsNullOrWhiteSpace(x.AdditionalUnits) && !string.IsNullOrWhiteSpace(x.PrimaryUnitId))
+                .Select(x => x.PrimaryUnitId!))
+            .Distinct()
+            .ToList();
+
+        var subUnits = primaryUnitIds.Count == 0
+            ? new List<Unit>()
+            : await _unitRepository.GetAll()
+                .AsNoTracking()
+                .Where(u => u.ParentUnitId != null && u.ConversionRatio > 1m && primaryUnitIds.Contains(u.ParentUnitId))
+                .ToListAsync(cancellationToken);
+
+        var purchaseLines = rawPurchaseLines.Select(x =>
+        {
+            var (displayQty, displayUnit, _) = ItemUnitDisplayHelper.FormatQty(
+                x.Qty, x.PrimaryUnitId, x.UnitTitle, x.AdditionalUnits, subUnits);
+            return new VendorBillLineResponse
+            {
+                Date = x.Date,
+                VNo = x.VNo,
+                Item = x.Item,
+                UnitId = x.UnitId,
+                UnitTitle = displayUnit,
+                Qty = displayQty,
+                Rate = x.Rate,
+                AddLess = x.AddLess,
+                Carriage = x.Carriage,
+                Amount = x.Amount,
+                Imei = x.Imei,
+                Imei2 = x.Imei2,
+                PtaStatus = x.PtaStatus,
+                WarrantyMonths = x.WarrantyMonths,
+                ConditionNote = x.ConditionNote
+            };
+        }).ToList();
+
+        var purchaseRetLines = rawPurchaseRetLines.Select(x =>
+        {
+            var (displayQty, displayUnit, _) = ItemUnitDisplayHelper.FormatQty(
+                x.Qty, x.PrimaryUnitId, x.UnitTitle, x.AdditionalUnits, subUnits);
+            return new VendorBillLineResponse
+            {
+                Date = x.Date,
+                VNo = x.VNo,
+                Item = x.Item,
+                UnitId = x.UnitId,
+                UnitTitle = displayUnit,
+                Qty = displayQty,
+                Rate = x.Rate,
+                AddLess = x.AddLess,
+                Carriage = x.Carriage,
+                Amount = x.Amount,
+                Imei = x.Imei,
+                Imei2 = x.Imei2,
+                PtaStatus = x.PtaStatus,
+                WarrantyMonths = x.WarrantyMonths,
+                ConditionNote = x.ConditionNote
+            };
+        }).ToList();
+
+        bool useClearingDate = string.Equals(filter.DateBasis, "ClearingDate", StringComparison.OrdinalIgnoreCase);
+
+        var lines = purchaseLines
+            .Concat(purchaseRetLines)
+            .OrderBy(x => x.Date)
+            .ThenBy(x => x.VNo)
+            .ToList();
+
+        var previousBalance = await _glRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => (x.DrAccountId == filter.Account || x.CrAccountId == filter.Account)
+                        && (x.VType == "Op" || (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) < filter.FromDate))
+            .Select(x => x.CrAccountId == filter.Account ? x.Amount : -x.Amount)
+            .SumAsync(cancellationToken);
+
+        var payments = await _glRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => x.DrAccountId == filter.Account
+                        && (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) >= filter.FromDate
+                        && (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) <= filter.ToDate
+                        && (x.VType == "PU" || x.VType == "PV" || x.VType == "JV" || x.VType == "CP" || x.VType == "BP"))
+            .SumAsync(x => x.Amount, cancellationToken);
+
+        var refunds = await _glRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => x.CrAccountId == filter.Account
+                        && (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) >= filter.FromDate
+                        && (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) <= filter.ToDate
+                        && x.VType == "RV")
+            .SumAsync(x => x.Amount, cancellationToken);
+
+        var netPayments = payments - refunds;
+
+        var balance = await _glRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => (x.DrAccountId == filter.Account || x.CrAccountId == filter.Account)
+                        && (x.VType == "Op" || (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) <= filter.ToDate))
+            .Select(x => x.CrAccountId == filter.Account ? x.Amount : -x.Amount)
+            .SumAsync(cancellationToken);
+
+        decimal totalPurchases = lines.Sum(x => x.Amount);
+
+        return new VendorBillResponse
+        {
+            Lines = lines,
+            Summary = new VendorBillSummaryResponse
+            {
+                PreviousBalance = previousBalance,
+                TotalPurchases = totalPurchases,
+                Payment = netPayments,
+                Balance = balance
+            }
+        };
+    }
+
+    public async Task<byte[]> GetVendorBillPdfAsync(VendorBillFilter filter, CancellationToken cancellationToken)
+    {
+        var billResponse = await GetVendorBillAsync(filter, cancellationToken);
+
+        var company = await _companyDetailRepository.GetAll()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var vendor = await (from c in _chartOfAccountRepository.GetAll().AsNoTracking()
+                            join sd in _supplierDetailRepository.GetAll().AsNoTracking() on c.Id equals sd.Id into sdj
+                            from sd in sdj.DefaultIfEmpty()
+                            where c.Id == filter.Account
+                            select new
+                            {
+                                Title = c.Title,
+                                Phone = sd != null ? (sd.Phone1 ?? sd.SmsNumber) : null,
+                                Address = sd != null ? sd.Address : null
+                            }).FirstOrDefaultAsync(cancellationToken);
+
+        var layout = string.Equals(filter.Layout, "Thermal", StringComparison.OrdinalIgnoreCase)
+            ? VendorBillPrintLayout.Thermal80mm
+            : VendorBillPrintLayout.A4Sheet;
+
+        var header = new VendorBillHeader
+        {
+            CompanyName = company?.CompanyName ?? "Retail Suite Enterprise",
+            CompanyAddress = company?.Address,
+            CompanyPhone = company?.Phone,
+            VendorAccount = filter.Account,
+            VendorTitle = vendor?.Title ?? filter.Account,
+            VendorPhone = vendor?.Phone,
+            VendorAddress = vendor?.Address,
+            FromDate = filter.FromDate,
+            ToDate = filter.ToDate,
+            DateBasis = string.Equals(filter.DateBasis, "ClearingDate", StringComparison.OrdinalIgnoreCase) ? "Clearing Date" : "Voucher Date",
+            GeneratedAt = DateTime.Now,
+            PreviousBalance = billResponse.Summary.PreviousBalance,
+            TotalPurchases = billResponse.Summary.TotalPurchases,
+            TotalBilling = billResponse.Summary.TotalPurchases,
+            Payment = billResponse.Summary.Payment,
+            ClosingBalance = billResponse.Summary.Balance,
+            Layout = layout
+        };
+
+        var doc = new VendorBillDocument(header, billResponse.Lines);
+        return doc.GeneratePdf();
+    }
+
+    public async Task<byte[]> GetVendorBillBatchPdfAsync(VendorBillBatchFilter filter, CancellationToken cancellationToken)
+    {
+        if (filter.ToDate < filter.FromDate)
+            throw new BadRequestException("To date must be greater than or equal to from date.");
+
+        var accounts = filter.Accounts ?? new List<string>();
+        if (accounts.Count == 0)
+        {
+            accounts = await _chartOfAccountRepository.GetAll()
+                .AsNoTracking()
+                .Where(x => x.AccLevel == 5 && x.Id.StartsWith("02"))
+                .Select(x => x.Id)
+                .ToListAsync(cancellationToken);
+        }
+
+        var company = await _companyDetailRepository.GetAll().AsNoTracking().FirstOrDefaultAsync(cancellationToken);
+        var vendorDetails = await (from c in _chartOfAccountRepository.GetAll().AsNoTracking()
+                                   join sd in _supplierDetailRepository.GetAll().AsNoTracking() on c.Id equals sd.Id into sdj
+                                   from sd in sdj.DefaultIfEmpty()
+                                   where accounts.Contains(c.Id)
+                                   select new
+                                   {
+                                       c.Id,
+                                       c.Title,
+                                       Phone = sd != null ? (sd.Phone1 ?? sd.SmsNumber) : null,
+                                       Address = sd != null ? sd.Address : null
+                                   }).ToListAsync(cancellationToken);
+
+        var vendorMap = vendorDetails.ToDictionary(x => x.Id, x => x);
+
+        var layout = string.Equals(filter.Layout, "Thermal", StringComparison.OrdinalIgnoreCase)
+            ? VendorBillPrintLayout.Thermal80mm
+            : VendorBillPrintLayout.A4Sheet;
+
+        var batchList = new List<(VendorBillHeader Header, List<VendorBillLineResponse> Lines)>();
+
+        foreach (var accountId in accounts)
+        {
+            try
+            {
+                var billFilter = new VendorBillFilter
+                {
+                    Account = accountId,
+                    FromDate = filter.FromDate,
+                    ToDate = filter.ToDate,
+                    DateBasis = filter.DateBasis,
+                    Layout = filter.Layout,
+                    IsWandaLayout = false
+                };
+
+                var billResponse = await GetVendorBillAsync(billFilter, cancellationToken);
+                vendorMap.TryGetValue(accountId, out var vInfo);
+
+                var header = new VendorBillHeader
+                {
+                    CompanyName = company?.CompanyName ?? "Retail Suite Enterprise",
+                    CompanyAddress = company?.Address,
+                    CompanyPhone = company?.Phone,
+                    VendorAccount = accountId,
+                    VendorTitle = vInfo?.Title ?? accountId,
+                    VendorPhone = vInfo?.Phone,
+                    VendorAddress = vInfo?.Address,
+                    FromDate = filter.FromDate,
+                    ToDate = filter.ToDate,
+                    DateBasis = string.Equals(filter.DateBasis, "ClearingDate", StringComparison.OrdinalIgnoreCase) ? "Clearing Date" : "Voucher Date",
+                    GeneratedAt = DateTime.Now,
+                    PreviousBalance = billResponse.Summary.PreviousBalance,
+                    TotalPurchases = billResponse.Summary.TotalPurchases,
+                    TotalBilling = billResponse.Summary.TotalPurchases,
+                    Payment = billResponse.Summary.Payment,
+                    ClosingBalance = billResponse.Summary.Balance,
+                    Layout = layout
+                };
+
+                batchList.Add((header, billResponse.Lines));
+            }
+            catch
+            {
+                // Skip vendor on failure
+            }
+        }
+
+        var batchDoc = new VendorBillBatchDocument(batchList);
+        return batchDoc.GeneratePdf();
+    }
+
+    public async Task<WandaVendorBillResponse> GetWandaVendorBillAsync(VendorBillFilter filter, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(filter.Account))
+            throw new BadRequestException("Account is required.");
+
+        if (filter.ToDate < filter.FromDate)
+            throw new BadRequestException("To date must be greater than or equal to from date.");
+
+        var unitMap = await _itemTransactionRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => !string.IsNullOrWhiteSpace(x.UnitId))
+            .Select(x => new { Code = x.UnitId!, Title = x.Unit != null ? x.Unit.Title : x.UnitId! })
+            .Distinct()
+            .ToDictionaryAsync(x => x.Code, x => x.Title, cancellationToken);
+
+        var purchaseLinesRaw = await (
+            from pd in _purchaseDetailRepository.GetAll().AsNoTracking()
+            join pm in _purchaseMasterRepository.GetAll().AsNoTracking()
+                on new { pd.VType, pd.VNo } equals new { pm.VType, VNo = pm.VNo }
+            where pm.AccountId == filter.Account
+                  && pm.VDate >= filter.FromDate && pm.VDate <= filter.ToDate
+            select new
+            {
+                Date = pm.VDate,
+                VNo = pd.VType + "-" + pd.VNo,
+                Seq = pd.Seq,
+                Item = pd.Item != null ? pd.Item.Title : (pd.ItemId ?? string.Empty),
+                UnitId = pd.UnitId ?? string.Empty,
+                UnitTitle = pd.Unit != null ? pd.Unit.Title : (!string.IsNullOrWhiteSpace(pd.UnitId) && unitMap.ContainsKey(pd.UnitId) ? unitMap[pd.UnitId] : (pd.Item != null && pd.Item.DefaultUnit != null ? pd.Item.DefaultUnit.Title : (pd.Item != null && pd.Item.PrimaryUnit != null ? pd.Item.PrimaryUnit.Title : (pd.UnitId ?? string.Empty)))),
+                Qty = pd.Qty,
+                Rate = pd.Rate,
+                AddLess = pd.AddLess,
+                Carriage = 0m,
+                Amount = pd.Amount ?? 0m,
+                SecQty = pd.SecQty,
+                SecRate = pd.SecRate,
+                QtyInPack = pd.QtyInPack,
+                SecUnitTitle = pd.SecUnit != null ? pd.SecUnit.Title : (!string.IsNullOrWhiteSpace(pd.SecUnitId) && unitMap.ContainsKey(pd.SecUnitId) ? unitMap[pd.SecUnitId] : (pd.Item != null && pd.Item.SecondaryUnit != null ? pd.Item.SecondaryUnit.Title : (pd.SecUnitId ?? string.Empty))),
+                PaymentAmount = pm.CashPaid - (pm.CashBack ?? 0m),
+                Imei = pd.Imei,
+                Imei2 = pd.Imei2,
+                PtaStatus = pd.PtaStatus,
+                ConditionNote = pd.ConditionNote
+            }).ToListAsync(cancellationToken);
+
+        var purchaseLines = new List<WandaVendorBillLineResponse>();
+        foreach (var group in purchaseLinesRaw.GroupBy(x => x.VNo))
+        {
+            bool first = true;
+            foreach (var item in group.OrderBy(x => x.Seq))
+            {
+                purchaseLines.Add(new WandaVendorBillLineResponse
+                {
+                    Date = item.Date,
+                    VNo = item.VNo,
+                    Item = item.Item,
+                    UnitId = item.UnitId,
+                    UnitTitle = item.UnitTitle,
+                    Qty = item.Qty,
+                    Rate = item.Rate,
+                    AddLess = item.AddLess,
+                    Carriage = item.Carriage,
+                    Amount = item.Amount,
+                    SecQty = item.SecQty,
+                    SecRate = item.SecRate,
+                    QtyInPack = item.QtyInPack,
+                    SecUnitTitle = item.SecUnitTitle,
+                    ReceiptDate = first && item.PaymentAmount > 0 ? item.Date : null,
+                    ReceiptAmount = first && item.PaymentAmount > 0 ? item.PaymentAmount : null,
+                    Imei = item.Imei,
+                    Imei2 = item.Imei2,
+                    PtaStatus = item.PtaStatus,
+                    ConditionNote = item.ConditionNote,
+                    TransactionType = "Purchase"
+                });
+                first = false;
+            }
+        }
+
+        bool useClearingDate = string.Equals(filter.DateBasis, "ClearingDate", StringComparison.OrdinalIgnoreCase);
+
+        var purchaseRetLines = await (
+            from prd in _purchaseRetDetailRepository.GetAll().AsNoTracking()
+            join prm in _purchaseRetMasterRepository.GetAll().AsNoTracking()
+                on new { prd.VType, prd.VNo } equals new { prm.VType, VNo = prm.VNo }
+            where prm.AccountId == filter.Account
+                  && prm.VDate >= filter.FromDate && prm.VDate <= filter.ToDate
+            select new WandaVendorBillLineResponse
+            {
+                Date = prm.VDate,
+                VNo = prd.VType + "-" + prd.VNo,
+                Item = "[Purchase Return] " + (prd.Item != null ? prd.Item.Title : (prd.ItemId ?? string.Empty)),
+                UnitId = prd.UnitId ?? string.Empty,
+                UnitTitle = prd.Unit != null ? prd.Unit.Title : (!string.IsNullOrWhiteSpace(prd.UnitId) && unitMap.ContainsKey(prd.UnitId) ? unitMap[prd.UnitId] : (prd.Item != null && prd.Item.DefaultUnit != null ? prd.Item.DefaultUnit.Title : (prd.Item != null && prd.Item.PrimaryUnit != null ? prd.Item.PrimaryUnit.Title : (prd.UnitId ?? string.Empty)))),
+                Qty = prd.Qty,
+                Rate = prd.Rate,
+                AddLess = 0m,
+                Carriage = 0m,
+                Amount = -(prd.Amount ?? 0m),
+                SecQty = prd.SecQty,
+                SecRate = prd.SecRate,
+                QtyInPack = prd.QtyInPack,
+                SecUnitTitle = prd.SecUnit != null ? prd.SecUnit.Title : (!string.IsNullOrWhiteSpace(prd.SecUnitId) && unitMap.ContainsKey(prd.SecUnitId) ? unitMap[prd.SecUnitId] : (prd.Item != null && prd.Item.SecondaryUnit != null ? prd.Item.SecondaryUnit.Title : (prd.SecUnitId ?? string.Empty))),
+                ReceiptDate = null,
+                ReceiptAmount = null,
+                Imei = prd.Imei,
+                Imei2 = prd.Imei2,
+                TransactionType = "PurchaseReturn"
+            }).ToListAsync(cancellationToken);
+
+        var saleLines = await (
+            from sd in _saleRepository.GetAll().AsNoTracking()
+            join sm in _saleMasterRepository.GetAll().AsNoTracking()
+                on new { sd.VType, sd.VNo } equals new { sm.VType, VNo = sm.VNo }
+            where sm.AccountId == filter.Account
+                  && sm.VDate >= filter.FromDate && sm.VDate <= filter.ToDate
+            select new WandaVendorBillLineResponse
+            {
+                Date = sm.VDate,
+                VNo = sd.VType + "-" + sd.VNo,
+                Item = "[Sale] " + (sd.Item != null ? sd.Item.Title : (sd.ItemId ?? string.Empty)),
+                UnitId = sd.UnitId ?? string.Empty,
+                UnitTitle = sd.Unit != null ? sd.Unit.Title : (!string.IsNullOrWhiteSpace(sd.UnitId) && unitMap.ContainsKey(sd.UnitId) ? unitMap[sd.UnitId] : (sd.Item != null && sd.Item.DefaultUnit != null ? sd.Item.DefaultUnit.Title : (sd.Item != null && sd.Item.PrimaryUnit != null ? sd.Item.PrimaryUnit.Title : (sd.UnitId ?? string.Empty)))),
+                Qty = sd.Qty,
+                Rate = sd.GrossRate,
+                AddLess = 0m,
+                Carriage = sd.Carriage,
+                Amount = -(sd.Amount),
+                SecQty = sd.SecQty,
+                SecRate = sd.SecRate,
+                QtyInPack = sd.QtyInPack,
+                SecUnitTitle = sd.SecUnit != null ? sd.SecUnit.Title : (!string.IsNullOrWhiteSpace(sd.SecUnitId) && unitMap.ContainsKey(sd.SecUnitId) ? unitMap[sd.SecUnitId] : (sd.Item != null && sd.Item.SecondaryUnit != null ? sd.Item.SecondaryUnit.Title : (sd.SecUnitId ?? string.Empty))),
+                ReceiptDate = null,
+                ReceiptAmount = null,
+                Imei = sd.Imei,
+                Imei2 = sd.Imei2,
+                TransactionType = "Sale"
+            }).ToListAsync(cancellationToken);
+
+        var saleRetLines = await (
+            from srd in _saleRetDetailRepository.GetAll().AsNoTracking()
+            join srm in _saleRetMasterRepository.GetAll().AsNoTracking()
+                on new { srd.VType, srd.VNo } equals new { srm.VType, VNo = srm.VNo }
+            where srm.AccountId == filter.Account
+                  && srm.VDate >= filter.FromDate && srm.VDate <= filter.ToDate
+            select new WandaVendorBillLineResponse
+            {
+                Date = srm.VDate,
+                VNo = srd.VType + "-" + srd.VNo,
+                Item = "[Sale Return] " + (srd.Item != null ? srd.Item.Title : (srd.ItemId ?? string.Empty)),
+                UnitId = srd.UnitId ?? string.Empty,
+                UnitTitle = srd.Unit != null ? srd.Unit.Title : (!string.IsNullOrWhiteSpace(srd.UnitId) && unitMap.ContainsKey(srd.UnitId) ? unitMap[srd.UnitId] : (srd.Item != null && srd.Item.DefaultUnit != null ? srd.Item.DefaultUnit.Title : (srd.Item != null && srd.Item.PrimaryUnit != null ? srd.Item.PrimaryUnit.Title : (srd.UnitId ?? string.Empty)))),
+                Qty = srd.Qty,
+                Rate = srd.GrossRate ?? 0m,
+                AddLess = 0m,
+                Carriage = 0m,
+                Amount = srd.Amount ?? 0m,
+                SecQty = srd.SecQty,
+                SecRate = srd.SecRate,
+                QtyInPack = srd.QtyInPack,
+                SecUnitTitle = srd.SecUnit != null ? srd.SecUnit.Title : (!string.IsNullOrWhiteSpace(srd.SecUnitId) && unitMap.ContainsKey(srd.SecUnitId) ? unitMap[srd.SecUnitId] : (srd.Item != null && srd.Item.SecondaryUnit != null ? srd.Item.SecondaryUnit.Title : (srd.SecUnitId ?? string.Empty))),
+                ReceiptDate = null,
+                ReceiptAmount = null,
+                Imei = srd.Imei,
+                Imei2 = srd.Imei2,
+                TransactionType = "SaleReturn"
+            }).ToListAsync(cancellationToken);
+
+        var standalonePayments = await _glRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => x.DrAccountId == filter.Account
+                        && (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) >= filter.FromDate
+                        && (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) <= filter.ToDate
+                        && (x.VType == "PV" || x.VType == "JV"))
+            .Select(x => new WandaVendorBillLineResponse
+            {
+                Date = useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate,
+                VNo = x.VType + "-" + x.VoucherNo,
+                Item = !string.IsNullOrWhiteSpace(x.Remarks) ? x.Remarks : (x.Narration != null ? x.Narration.Title : "Payment Made"),
+                UnitId = string.Empty,
+                UnitTitle = string.Empty,
+                Qty = 0,
+                Rate = 0,
+                AddLess = 0,
+                Carriage = 0,
+                Amount = 0,
+                ReceiptDate = useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate,
+                ReceiptAmount = x.Amount,
+                TransactionType = "Payment"
+            })
+            .ToListAsync(cancellationToken);
+
+        var combinedLines = purchaseLines
+            .Concat(purchaseRetLines)
+            .Concat(saleLines)
+            .Concat(saleRetLines)
+            .Concat(standalonePayments);
+
+        var lines = combinedLines
+            .OrderBy(x => x.Date)
+            .ThenBy(x => x.VNo)
+            .ToList();
+
+        var previousBalance = await _glRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => (x.DrAccountId == filter.Account || x.CrAccountId == filter.Account)
+                        && (x.VType == "Op" || (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) < filter.FromDate))
+            .Select(x => x.CrAccountId == filter.Account ? x.Amount : -x.Amount)
+            .SumAsync(cancellationToken);
+
+        var payments = await _glRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => x.DrAccountId == filter.Account
+                        && (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) >= filter.FromDate
+                        && (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) <= filter.ToDate
+                        && (x.VType == "PU" || x.VType == "PV" || x.VType == "JV" || x.VType == "CP" || x.VType == "BP"))
+            .SumAsync(x => x.Amount, cancellationToken);
+
+        var refunds = await _glRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => x.CrAccountId == filter.Account
+                        && (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) >= filter.FromDate
+                        && (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) <= filter.ToDate
+                        && x.VType == "RV")
+            .SumAsync(x => x.Amount, cancellationToken);
+
+        var netPayments = payments - refunds;
+
+        var balance = await _glRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => (x.DrAccountId == filter.Account || x.CrAccountId == filter.Account)
+                        && (x.VType == "Op" || (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) <= filter.ToDate))
+            .Select(x => x.CrAccountId == filter.Account ? x.Amount : -x.Amount)
+            .SumAsync(cancellationToken);
+
+        decimal totalPurchases = purchaseLines.Sum(x => x.Amount);
+        decimal totalPurchaseReturns = purchaseRetLines.Sum(x => Math.Abs(x.Amount));
+        decimal totalSales = saleLines.Sum(x => Math.Abs(x.Amount));
+        decimal totalSaleReturns = saleRetLines.Sum(x => x.Amount);
+        decimal totalBill = totalPurchases - totalPurchaseReturns - totalSales + totalSaleReturns;
+
+        return new WandaVendorBillResponse
+        {
+            Lines = lines,
+            Summary = new WandaVendorBillSummaryResponse
+            {
+                PreviousBalance = previousBalance,
+                TotalPurchases = totalPurchases,
+                TotalPurchaseReturns = totalPurchaseReturns,
+                TotalSales = totalSales,
+                TotalSaleReturns = totalSaleReturns,
+                TotalBill = totalBill,
+                Payment = netPayments,
+                Balance = balance
+            }
+        };
+    }
+
+    public async Task<byte[]> GetWandaVendorBillPdfAsync(VendorBillFilter filter, CancellationToken cancellationToken)
+    {
+        var billResponse = await GetWandaVendorBillAsync(filter, cancellationToken);
+
+        var company = await _companyDetailRepository.GetAll()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var vendor = await (from c in _chartOfAccountRepository.GetAll().AsNoTracking()
+                            join sd in _supplierDetailRepository.GetAll().AsNoTracking() on c.Id equals sd.Id into sdj
+                            from sd in sdj.DefaultIfEmpty()
+                            where c.Id == filter.Account
+                            select new
+                            {
+                                Title = c.Title,
+                                Phone = sd != null ? (sd.Phone1 ?? sd.SmsNumber) : null,
+                                Address = sd != null ? sd.Address : null
+                            }).FirstOrDefaultAsync(cancellationToken);
+
+        var layout = string.Equals(filter.Layout, "Thermal", StringComparison.OrdinalIgnoreCase)
+            ? VendorBillPrintLayout.Thermal80mm
+            : VendorBillPrintLayout.A4Sheet;
+
+        var header = new VendorBillHeader
+        {
+            CompanyName = company?.CompanyName ?? "Retail Suite Enterprise",
+            CompanyAddress = company?.Address,
+            CompanyPhone = company?.Phone,
+            VendorAccount = filter.Account,
+            VendorTitle = vendor?.Title ?? filter.Account,
+            VendorPhone = vendor?.Phone,
+            VendorAddress = vendor?.Address,
+            FromDate = filter.FromDate,
+            ToDate = filter.ToDate,
+            DateBasis = string.Equals(filter.DateBasis, "ClearingDate", StringComparison.OrdinalIgnoreCase) ? "Clearing Date" : "Voucher Date",
+            GeneratedAt = DateTime.Now,
+            PreviousBalance = billResponse.Summary.PreviousBalance,
+            TotalPurchases = billResponse.Summary.TotalPurchases,
+            TotalPurchaseReturns = billResponse.Summary.TotalPurchaseReturns,
+            TotalSales = billResponse.Summary.TotalSales,
+            TotalSaleReturns = billResponse.Summary.TotalSaleReturns,
+            TotalBilling = billResponse.Summary.TotalBill,
+            Payment = billResponse.Summary.Payment,
+            ClosingBalance = billResponse.Summary.Balance,
+            Layout = layout,
+            IsWandaLayout = true
+        };
+
+        var doc = new WandaVendorBillDocument(header, billResponse.Lines);
+        return doc.GeneratePdf();
+    }
+
+    public async Task<byte[]> GetWandaVendorBillBatchPdfAsync(VendorBillBatchFilter filter, CancellationToken cancellationToken)
+    {
+        if (filter.ToDate < filter.FromDate)
+            throw new BadRequestException("To date must be greater than or equal to from date.");
+
+        var accounts = filter.Accounts ?? new List<string>();
+        if (accounts.Count == 0)
+        {
+            accounts = await _chartOfAccountRepository.GetAll()
+                .AsNoTracking()
+                .Where(x => x.AccLevel == 5 && x.Id.StartsWith("02"))
+                .Select(x => x.Id)
+                .ToListAsync(cancellationToken);
+        }
+
+        var company = await _companyDetailRepository.GetAll().AsNoTracking().FirstOrDefaultAsync(cancellationToken);
+        var vendorDetails = await (from c in _chartOfAccountRepository.GetAll().AsNoTracking()
+                                   join sd in _supplierDetailRepository.GetAll().AsNoTracking() on c.Id equals sd.Id into sdj
+                                   from sd in sdj.DefaultIfEmpty()
+                                   where accounts.Contains(c.Id)
+                                   select new
+                                   {
+                                       c.Id,
+                                       c.Title,
+                                       Phone = sd != null ? (sd.Phone1 ?? sd.SmsNumber) : null,
+                                       Address = sd != null ? sd.Address : null
+                                   }).ToListAsync(cancellationToken);
+
+        var vendorMap = vendorDetails.ToDictionary(x => x.Id, x => x);
+
+        var layout = string.Equals(filter.Layout, "Thermal", StringComparison.OrdinalIgnoreCase)
+            ? VendorBillPrintLayout.Thermal80mm
+            : VendorBillPrintLayout.A4Sheet;
+
+        var batchList = new List<(VendorBillHeader Header, List<WandaVendorBillLineResponse> Lines)>();
+
+        foreach (var accountId in accounts)
+        {
+            try
+            {
+                var billFilter = new VendorBillFilter
+                {
+                    Account = accountId,
+                    FromDate = filter.FromDate,
+                    ToDate = filter.ToDate,
+                    DateBasis = filter.DateBasis,
+                    Layout = filter.Layout,
+                    IsWandaLayout = true
+                };
+
+                var billResponse = await GetWandaVendorBillAsync(billFilter, cancellationToken);
+                vendorMap.TryGetValue(accountId, out var vInfo);
+
+                var header = new VendorBillHeader
+                {
+                    CompanyName = company?.CompanyName ?? "Retail Suite Enterprise",
+                    CompanyAddress = company?.Address,
+                    CompanyPhone = company?.Phone,
+                    VendorAccount = accountId,
+                    VendorTitle = vInfo?.Title ?? accountId,
+                    VendorPhone = vInfo?.Phone,
+                    VendorAddress = vInfo?.Address,
+                    FromDate = filter.FromDate,
+                    ToDate = filter.ToDate,
+                    DateBasis = string.Equals(filter.DateBasis, "ClearingDate", StringComparison.OrdinalIgnoreCase) ? "Clearing Date" : "Voucher Date",
+                    GeneratedAt = DateTime.Now,
+                    PreviousBalance = billResponse.Summary.PreviousBalance,
+                    TotalPurchases = billResponse.Summary.TotalPurchases,
+                    TotalPurchaseReturns = billResponse.Summary.TotalPurchaseReturns,
+                    TotalSales = billResponse.Summary.TotalSales,
+                    TotalSaleReturns = billResponse.Summary.TotalSaleReturns,
+                    TotalBilling = billResponse.Summary.TotalBill,
+                    Payment = billResponse.Summary.Payment,
+                    ClosingBalance = billResponse.Summary.Balance,
+                    Layout = layout,
+                    IsWandaLayout = true
+                };
+
+                batchList.Add((header, billResponse.Lines));
+            }
+            catch
+            {
+                // Skip vendor on query failure
+            }
+        }
+
+        var batchDoc = new WandaVendorBillBatchDocument(batchList);
+        return batchDoc.GeneratePdf();
+    }
+
 
     public async Task<List<EnvelopeLineResponse>> GetEnvelopeAsync(EnvelopeFilter filter, CancellationToken cancellationToken)
     {

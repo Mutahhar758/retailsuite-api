@@ -1,4 +1,4 @@
-using Retailer.Application.Legacy.Reports;
+﻿using Retailer.Application.Legacy.Reports;
 using Retailer.Infrastructure.Common.Extensions;
 using Retailer.Infrastructure.Auth.Permissions;
 using Retailer.Shared.Authorization;
@@ -327,6 +327,81 @@ public class ReportsController : VersionNeutralApiController
         Response.Headers.Append("Content-Disposition", $"inline; filename=\"{fileName}\"");
         return File(pdfBytes, "application/pdf", fileName);
     }
+
+    [HttpGet("vendor-bill")]
+    [MustHavePermission(AppAction.View, AppResource.VendorBill)]
+    [OpenApiOperation("Get vendor bill report data.", "")]
+    public async Task<HttpResponseDto<VendorBillResponse>> GetVendorBillAsync(
+        [FromQuery] VendorBillFilter filter,
+        CancellationToken cancellationToken)
+    {
+        var result = await _reportService.GetVendorBillAsync(filter, cancellationToken);
+        return result.ToInformationResponse();
+    }
+
+    [HttpGet("vendor-bill/pdf")]
+    [MustHavePermission(AppAction.View, AppResource.VendorBill)]
+    [OpenApiOperation("Get vendor bill report as a vector PDF document.", "")]
+    public async Task<IActionResult> GetVendorBillPdfAsync(
+        [FromQuery] VendorBillFilter filter,
+        CancellationToken cancellationToken)
+    {
+        var pdfBytes = await _reportService.GetVendorBillPdfAsync(filter, cancellationToken);
+        string fileName = $"VendorBill_{filter.Account}_{filter.FromDate:yyyyMMdd}_{filter.ToDate:yyyyMMdd}.pdf";
+        Response.Headers.Append("Content-Disposition", $"inline; filename=\"{fileName}\"");
+        return File(pdfBytes, "application/pdf", fileName);
+    }
+
+    [HttpPost("vendor-bill/batch/pdf")]
+    [MustHavePermission(AppAction.View, AppResource.VendorBill)]
+    [OpenApiOperation("Get batch/bulk vendor bills compiled into a single vector PDF document.", "")]
+    public async Task<IActionResult> GetVendorBillBatchPdfAsync(
+        [FromBody] VendorBillBatchFilter filter,
+        CancellationToken cancellationToken)
+    {
+        var pdfBytes = await _reportService.GetVendorBillBatchPdfAsync(filter, cancellationToken);
+        string fileName = $"VendorBillBatch_{filter.FromDate:yyyyMMdd}_{filter.ToDate:yyyyMMdd}.pdf";
+        Response.Headers.Append("Content-Disposition", $"inline; filename=\"{fileName}\"");
+        return File(pdfBytes, "application/pdf", fileName);
+    }
+
+    [HttpGet("wanda-vendor-bill")]
+    [MustHavePermission(AppAction.View, AppResource.VendorBill)]
+    [OpenApiOperation("Get Wanda vendor bill report data.", "")]
+    public async Task<HttpResponseDto<WandaVendorBillResponse>> GetWandaVendorBillAsync(
+        [FromQuery] VendorBillFilter filter,
+        CancellationToken cancellationToken)
+    {
+        var result = await _reportService.GetWandaVendorBillAsync(filter, cancellationToken);
+        return result.ToInformationResponse();
+    }
+
+    [HttpGet("wanda-vendor-bill/pdf")]
+    [MustHavePermission(AppAction.View, AppResource.VendorBill)]
+    [OpenApiOperation("Get Wanda vendor bill report as a vector PDF document.", "")]
+    public async Task<IActionResult> GetWandaVendorBillPdfAsync(
+        [FromQuery] VendorBillFilter filter,
+        CancellationToken cancellationToken)
+    {
+        var pdfBytes = await _reportService.GetWandaVendorBillPdfAsync(filter, cancellationToken);
+        string fileName = $"WandaVendorBill_{filter.Account}_{filter.FromDate:yyyyMMdd}_{filter.ToDate:yyyyMMdd}.pdf";
+        Response.Headers.Append("Content-Disposition", $"inline; filename=\"{fileName}\"");
+        return File(pdfBytes, "application/pdf", fileName);
+    }
+
+    [HttpPost("wanda-vendor-bill/batch/pdf")]
+    [MustHavePermission(AppAction.View, AppResource.VendorBill)]
+    [OpenApiOperation("Get batch/bulk Wanda vendor bills compiled into a single vector PDF document.", "")]
+    public async Task<IActionResult> GetWandaVendorBillBatchPdfAsync(
+        [FromBody] VendorBillBatchFilter filter,
+        CancellationToken cancellationToken)
+    {
+        var pdfBytes = await _reportService.GetWandaVendorBillBatchPdfAsync(filter, cancellationToken);
+        string fileName = $"WandaVendorBillBatch_{filter.FromDate:yyyyMMdd}_{filter.ToDate:yyyyMMdd}.pdf";
+        Response.Headers.Append("Content-Disposition", $"inline; filename=\"{fileName}\"");
+        return File(pdfBytes, "application/pdf", fileName);
+    }
+
 
     [HttpGet("envelope")]
     [MustHavePermission(AppAction.View, AppResource.MiscReports, AppResource.EnvelopeReport)]

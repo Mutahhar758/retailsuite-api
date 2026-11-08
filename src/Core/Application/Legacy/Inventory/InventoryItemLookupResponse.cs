@@ -5,6 +5,7 @@ public class InventoryItemLookupResponse
     public string Id { get; set; } = string.Empty;
     public string? Barcode { get; set; }
     public string ItemCategoryCode { get; set; } = string.Empty;
+    public string? ItemCategoryTitle { get; set; }
     public string Title { get; set; } = string.Empty;
     public string? ItemKey { get; set; }
     public decimal PriRate { get; set; }

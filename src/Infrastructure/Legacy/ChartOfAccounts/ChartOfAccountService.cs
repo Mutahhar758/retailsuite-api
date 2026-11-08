@@ -309,6 +309,7 @@ internal class ChartOfAccountService : IChartOfAccountService
                 {
                     x.Id,
                     x.CustomerCategoryId,
+                    CustomerCategoryTitle = x.CustomerCategory != null ? x.CustomerCategory.Title : null,
                     x.ParentCustomerAccountId,
                     ParentTitle = x.ParentCustomerAccount != null ? x.ParentCustomerAccount.Title : null
                 })
@@ -321,6 +322,7 @@ internal class ChartOfAccountService : IChartOfAccountService
                 if (detailMap.TryGetValue(acc.Account, out var d))
                 {
                     acc.CustomerCategoryId = d.CustomerCategoryId;
+                    acc.CustomerCategoryTitle = d.CustomerCategoryTitle;
                     acc.ParentCustomerAccountId = d.ParentCustomerAccountId;
                     acc.ParentCustomerTitle = d.ParentTitle;
                 }

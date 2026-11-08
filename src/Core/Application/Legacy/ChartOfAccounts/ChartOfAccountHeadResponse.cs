@@ -6,6 +6,7 @@ public class ChartOfAccountHeadResponse
     public string Title { get; set; } = string.Empty;
     public string AccountType { get; set; } = "Customer";
     public string? CustomerCategoryId { get; set; }
+    public string? CustomerCategoryTitle { get; set; }
     public string? ParentCustomerAccountId { get; set; }
     public string? ParentCustomerTitle { get; set; }
     public bool IsSubAccount => !string.IsNullOrEmpty(ParentCustomerAccountId);
