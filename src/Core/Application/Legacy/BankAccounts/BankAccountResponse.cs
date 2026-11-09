@@ -15,6 +15,7 @@ public class BankAccountResponse
     public string? Notes { get; set; }
     public bool Active { get; set; } = true;
     public decimal OpeningBalance { get; set; }
+    public decimal CurrentBalance { get; set; }
     public string? CreatedBy { get; set; }
     public DateTime? CreatedOn { get; set; }
     public string? LastModifiedBy { get; set; }

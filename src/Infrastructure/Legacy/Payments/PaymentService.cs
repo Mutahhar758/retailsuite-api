@@ -41,7 +41,7 @@ internal class PaymentService : IPaymentService
         if (!string.IsNullOrWhiteSpace(filter.Narration))
             query = query.Where(x => x.NarrationId == filter.Narration);
 
-        return await query
+        var items = await query
             .GroupBy(x => new
             {
                 x.VoucherNo,
@@ -66,6 +66,9 @@ internal class PaymentService : IPaymentService
             .OrderByDescending(x => x.Date)
             .ThenByDescending(x => x.VoucherNo)
             .ToListAsync(cancellationToken);
+
+        await PopulateAccountsAndCashBankAsync(items, cancellationToken);
+        return items;
     }
 
     public async Task<PaginationResponse<PaymentResponse>> GetPagedListAsync(PaymentPagedListFilter filter, CancellationToken cancellationToken)
@@ -129,7 +132,44 @@ internal class PaymentService : IPaymentService
             .Take(pageSize)
             .ToListAsync(cancellationToken);
 
+        await PopulateAccountsAndCashBankAsync(items, cancellationToken);
+
         return new PaginationResponse<PaymentResponse>(items, totalCount, pageNumber, pageSize);
+    }
+
+    private async Task PopulateAccountsAndCashBankAsync(List<PaymentResponse> items, CancellationToken cancellationToken)
+    {
+        if (items.Count == 0) return;
+
+        var voucherNos = items.Select(x => x.VoucherNo).ToList();
+        var glLines = await _glRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => x.VType == VType && voucherNos.Contains(x.VoucherNo))
+            .Include(x => x.DrAccount)
+            .Include(x => x.CrAccount)
+            .OrderBy(x => x.VSeq)
+            .ToListAsync(cancellationToken);
+
+        var linesByVoucher = glLines.GroupBy(x => x.VoucherNo).ToDictionary(g => g.Key, g => g.ToList());
+
+        foreach (var item in items)
+        {
+            if (linesByVoucher.TryGetValue(item.VoucherNo, out var lines))
+            {
+                var firstCr = lines.FirstOrDefault(x => x.CrAccount != null);
+                item.CashBankAccountId = firstCr?.CrAccountId ?? lines.FirstOrDefault()?.CrAccountId;
+                item.CashBankAccountTitle = firstCr?.CrAccount?.Title ?? item.CashBankAccountId;
+
+                item.Accounts = lines.Select(l => new PaymentAccountSummaryDto
+                {
+                    AccountId = l.DrAccountId ?? string.Empty,
+                    AccountTitle = l.DrAccount?.Title ?? l.DrAccountId ?? string.Empty,
+                    Amount = l.Amount,
+                    CheckNum = l.CheckNum,
+                    Remarks = l.Remarks
+                }).ToList();
+            }
+        }
     }
 
     public async Task<List<PaymentLineResponse>> GetDetailAsync(string voucherNo, string? cashBankAccount, CancellationToken cancellationToken)

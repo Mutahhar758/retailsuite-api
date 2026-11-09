@@ -100,10 +100,43 @@ internal class BankAccountService : IBankAccountService
             _logger.LogWarning(ex, "Could not query opening balance GL entries.");
         }
 
+        // Fetch current balances (net Dr - Cr from all GL entries)
+        Dictionary<string, decimal> curMap = [];
+        try
+        {
+            var drEntries = await _glRepository.GetAll()
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .Where(x => x.DrAccountId != null && accountIds.Contains(x.DrAccountId))
+                .GroupBy(x => x.DrAccountId!)
+                .Select(g => new { AccountId = g.Key, Total = g.Sum(x => x.Amount) })
+                .ToDictionaryAsync(x => x.AccountId, x => x.Total, cancellationToken);
+
+            var crEntries = await _glRepository.GetAll()
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .Where(x => x.CrAccountId != null && accountIds.Contains(x.CrAccountId))
+                .GroupBy(x => x.CrAccountId!)
+                .Select(g => new { AccountId = g.Key, Total = g.Sum(x => x.Amount) })
+                .ToDictionaryAsync(x => x.AccountId, x => x.Total, cancellationToken);
+
+            foreach (var accId in accountIds)
+            {
+                drEntries.TryGetValue(accId, out var dr);
+                crEntries.TryGetValue(accId, out var cr);
+                curMap[accId] = dr - cr;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not query current balance GL entries.");
+        }
+
         return accounts.Select(x =>
         {
             detailMap.TryGetValue(x.Id, out var detail);
             opMap.TryGetValue(x.Id, out var opBal);
+            curMap.TryGetValue(x.Id, out var curBal);
             var isCash = x.ParentId == cashPrefix || x.Id.StartsWith(cashPrefix);
 
             return new BankAccountResponse
@@ -121,6 +154,7 @@ internal class BankAccountService : IBankAccountService
                 Notes = detail?.Notes,
                 Active = detail?.Active ?? true,
                 OpeningBalance = opBal,
+                CurrentBalance = curBal,
                 CreatedBy = detail?.CreatedBy ?? x.CreatedBy,
                 CreatedOn = detail?.CreatedOn ?? x.CreatedOn,
                 LastModifiedBy = detail?.LastModifiedBy ?? x.LastModifiedBy,

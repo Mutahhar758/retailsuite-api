@@ -41,7 +41,7 @@ internal class ReceiptService : IReceiptService
         if (!string.IsNullOrWhiteSpace(filter.Narration))
             query = query.Where(x => x.NarrationId == filter.Narration);
 
-        return await query
+        var items = await query
             .GroupBy(x => new
             {
                 x.VoucherNo,
@@ -66,6 +66,9 @@ internal class ReceiptService : IReceiptService
             .OrderByDescending(x => x.Date)
             .ThenByDescending(x => x.VoucherNo)
             .ToListAsync(cancellationToken);
+
+        await PopulateAccountsAndCashBankAsync(items, cancellationToken);
+        return items;
     }
 
     public async Task<PaginationResponse<ReceiptResponse>> GetPagedListAsync(ReceiptPagedListFilter filter, CancellationToken cancellationToken)
@@ -129,8 +132,46 @@ internal class ReceiptService : IReceiptService
             .Take(pageSize)
             .ToListAsync(cancellationToken);
 
+        await PopulateAccountsAndCashBankAsync(items, cancellationToken);
+
         return new PaginationResponse<ReceiptResponse>(items, totalCount, pageNumber, pageSize);
     }
+
+    private async Task PopulateAccountsAndCashBankAsync(List<ReceiptResponse> items, CancellationToken cancellationToken)
+    {
+        if (items.Count == 0) return;
+
+        var voucherNos = items.Select(x => x.VoucherNo).ToList();
+        var glLines = await _glRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => x.VType == VType && voucherNos.Contains(x.VoucherNo))
+            .Include(x => x.DrAccount)
+            .Include(x => x.CrAccount)
+            .OrderBy(x => x.VSeq)
+            .ToListAsync(cancellationToken);
+
+        var linesByVoucher = glLines.GroupBy(x => x.VoucherNo).ToDictionary(g => g.Key, g => g.ToList());
+
+        foreach (var item in items)
+        {
+            if (linesByVoucher.TryGetValue(item.VoucherNo, out var lines))
+            {
+                var firstDr = lines.FirstOrDefault(x => x.DrAccount != null);
+                item.CashBankAccountId = firstDr?.DrAccountId ?? lines.FirstOrDefault()?.DrAccountId;
+                item.CashBankAccountTitle = firstDr?.DrAccount?.Title ?? item.CashBankAccountId;
+
+                item.Accounts = lines.Select(l => new ReceiptAccountSummaryDto
+                {
+                    AccountId = l.CrAccountId ?? string.Empty,
+                    AccountTitle = l.CrAccount?.Title ?? l.CrAccountId ?? string.Empty,
+                    Amount = l.Amount,
+                    CheckNum = l.CheckNum,
+                    Remarks = l.Remarks
+                }).ToList();
+            }
+        }
+    }
+
     public async Task<List<ReceiptLineResponse>> GetDetailAsync(string voucherNo, string? cashBankAccount, CancellationToken cancellationToken)
     {
         var query = _glRepository.GetAll()

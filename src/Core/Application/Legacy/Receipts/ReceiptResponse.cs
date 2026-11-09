@@ -12,6 +12,18 @@ public class ReceiptResponse
     public DateTime CreatedOn { get; set; }
     public string? LastModifiedBy { get; set; }
     public DateTime? LastModifiedOn { get; set; }
+    public string? CashBankAccountId { get; set; }
+    public string? CashBankAccountTitle { get; set; }
+    public List<ReceiptAccountSummaryDto> Accounts { get; set; } = new();
+}
+
+public class ReceiptAccountSummaryDto
+{
+    public string AccountId { get; set; } = default!;
+    public string AccountTitle { get; set; } = default!;
+    public decimal Amount { get; set; }
+    public string? CheckNum { get; set; }
+    public string? Remarks { get; set; }
 }
 
 public class ReceiptBalanceResponse
