@@ -84,7 +84,6 @@ internal class BankAccountService : IBankAccountService
         try
         {
             var opEntries = await _glRepository.GetAll()
-                .IgnoreQueryFilters()
                 .AsNoTracking()
                 .Where(x => x.VType == OpeningVType &&
                             (accountIds.Contains(x.DrAccountId!) || accountIds.Contains(x.CrAccountId!)))
@@ -100,12 +99,11 @@ internal class BankAccountService : IBankAccountService
             _logger.LogWarning(ex, "Could not query opening balance GL entries.");
         }
 
-        // Fetch current balances (net Dr - Cr from all GL entries)
+        // Fetch current balances (net Dr - Cr from active GL entries)
         Dictionary<string, decimal> curMap = [];
         try
         {
             var drEntries = await _glRepository.GetAll()
-                .IgnoreQueryFilters()
                 .AsNoTracking()
                 .Where(x => x.DrAccountId != null && accountIds.Contains(x.DrAccountId))
                 .GroupBy(x => x.DrAccountId!)
@@ -113,7 +111,6 @@ internal class BankAccountService : IBankAccountService
                 .ToDictionaryAsync(x => x.AccountId, x => x.Total, cancellationToken);
 
             var crEntries = await _glRepository.GetAll()
-                .IgnoreQueryFilters()
                 .AsNoTracking()
                 .Where(x => x.CrAccountId != null && accountIds.Contains(x.CrAccountId))
                 .GroupBy(x => x.CrAccountId!)
