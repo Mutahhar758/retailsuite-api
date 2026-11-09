@@ -222,17 +222,37 @@ CREATE SCHEMA IF NOT EXISTS auditing;
 DO $$
 DECLARE
     s text;
+    r record;
 BEGIN
     FOR s IN SELECT nspname FROM pg_namespace WHERE nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast') AND nspname NOT LIKE 'pg_temp%' AND nspname NOT LIKE 'pg_toast_temp%'
     LOOP
         EXECUTE format('GRANT ALL ON SCHEMA %I TO ""{escapedUser}""', s);
+        EXECUTE format('ALTER SCHEMA %I OWNER TO ""{escapedUser}""', s);
         EXECUTE format('GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA %I TO ""{escapedUser}""', s);
         EXECUTE format('GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA %I TO ""{escapedUser}""', s);
         EXECUTE format('ALTER DEFAULT PRIVILEGES IN SCHEMA %I GRANT ALL ON TABLES TO ""{escapedUser}""', s);
         EXECUTE format('ALTER DEFAULT PRIVILEGES IN SCHEMA %I GRANT ALL ON SEQUENCES TO ""{escapedUser}""', s);
     END LOOP;
+
+    FOR r IN (SELECT schemaname, tablename FROM pg_tables WHERE schemaname NOT IN ('pg_catalog', 'information_schema')) LOOP
+        EXECUTE format('ALTER TABLE %I.%I OWNER TO ""{escapedUser}"";', r.schemaname, r.tablename);
+    END LOOP;
+
+    FOR r IN (SELECT sequence_schema, sequence_name FROM information_schema.sequences WHERE sequence_schema NOT IN ('pg_catalog', 'information_schema')) LOOP
+        EXECUTE format('ALTER SEQUENCE %I.%I OWNER TO ""{escapedUser}"";', r.sequence_schema, r.sequence_name);
+    END LOOP;
+
+    FOR r IN (SELECT schemaname, viewname FROM pg_views WHERE schemaname NOT IN ('pg_catalog', 'information_schema')) LOOP
+        EXECUTE format('ALTER VIEW %I.%I OWNER TO ""{escapedUser}"";', r.schemaname, r.viewname);
+    END LOOP;
 END
-$$;";
+$$;
+
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres GRANT ALL ON SCHEMAS TO ""{escapedUser}"";
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres GRANT ALL ON TABLES TO ""{escapedUser}"";
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres GRANT ALL ON SEQUENCES TO ""{escapedUser}"";
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres GRANT ALL ON ROUTINES TO ""{escapedUser}"";
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres GRANT ALL ON TYPES TO ""{escapedUser}"";";
 
         await using var schemaCmd = new NpgsqlCommand(schemaScript, targetConnection);
         try
