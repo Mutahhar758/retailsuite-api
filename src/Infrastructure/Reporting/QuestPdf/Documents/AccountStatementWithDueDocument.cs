@@ -131,7 +131,21 @@ public class AccountStatementWithDueDocument : IDocument
                 var bg = isEven ? Colors.White : Colors.Grey.Lighten5;
 
                 table.Cell().Element(c => BodyCell(c, bg)).Text(item.Date.ToString("dd-MMM-yyyy"));
-                table.Cell().Element(c => BodyCell(c, bg)).Text(item.VoucherNo ?? string.Empty).SemiBold();
+                var voucherLink = GetVoucherWebRoute(item.VoucherNo);
+                if (!string.IsNullOrEmpty(voucherLink))
+                {
+                    table.Cell().Element(c => BodyCell(c, bg))
+                        .Hyperlink(voucherLink)
+                        .Text(item.VoucherNo ?? string.Empty)
+                        .SemiBold()
+                        .FontColor(Colors.Blue.Darken2);
+                }
+                else
+                {
+                    table.Cell().Element(c => BodyCell(c, bg))
+                        .Text(item.VoucherNo ?? string.Empty)
+                        .SemiBold();
+                }
                 table.Cell().Element(c => BodyCell(c, bg)).Text(item.Particular ?? string.Empty);
 
                 // Due Days
@@ -228,5 +242,76 @@ public class AccountStatementWithDueDocument : IDocument
                 });
             });
         });
+    }
+
+    private static string? GetVoucherWebRoute(string? rawVoucherNo)
+    {
+        if (string.IsNullOrWhiteSpace(rawVoucherNo)) return null;
+
+        string trimmed = rawVoucherNo.Trim();
+        string prefix = string.Empty;
+        string cleanNo = trimmed;
+
+        int dashIdx = trimmed.IndexOf('-');
+        if (dashIdx > 0)
+        {
+            prefix = trimmed.Substring(0, dashIdx).ToUpperInvariant();
+            cleanNo = trimmed.Substring(dashIdx + 1).Trim();
+        }
+        else
+        {
+            var match = System.Text.RegularExpressions.Regex.Match(trimmed, @"^([A-Za-z]+)(\d+)$");
+            if (match.Success)
+            {
+                prefix = match.Groups[1].Value.ToUpperInvariant();
+                cleanNo = match.Groups[2].Value;
+            }
+        }
+
+        string routeSegment;
+        switch (prefix)
+        {
+            case "PV":
+            case "CPV":
+            case "BPV":
+                routeSegment = "payment-voucher";
+                break;
+            case "RV":
+            case "CRV":
+            case "BRV":
+                routeSegment = "receipt-voucher";
+                break;
+            case "JV":
+                routeSegment = "journal-voucher";
+                break;
+            case "SL":
+            case "SI":
+                routeSegment = "sale";
+                break;
+            case "PU":
+            case "PI":
+                routeSegment = "purchase";
+                break;
+            case "SR":
+                routeSegment = "sale-return";
+                break;
+            case "PR":
+                routeSegment = "purchase-return";
+                break;
+            case "SA":
+                routeSegment = "stock-adjustment";
+                break;
+            case "SS":
+            case "SP":
+                routeSegment = "sale-supply";
+                break;
+            case "MF":
+                routeSegment = "manufacturing";
+                break;
+            default:
+                return null;
+        }
+
+        return $"/daily-entries/{routeSegment}/{Uri.EscapeDataString(cleanNo)}";
     }
 }
