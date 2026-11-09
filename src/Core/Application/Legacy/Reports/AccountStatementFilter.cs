@@ -6,4 +6,5 @@ public class AccountStatementFilter
     public DateOnly ToDate { get; set; }
     public string Account { get; set; } = string.Empty;
     public string? DateBasis { get; set; }
+    public string? BaseUrl { get; set; }
 }

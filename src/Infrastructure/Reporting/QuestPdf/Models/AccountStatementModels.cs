@@ -26,6 +26,7 @@ public class AccountStatementHeader
     public decimal ClosingBalance { get; set; }
     public string DateBasis { get; set; } = "Voucher Date";
     public DateTime GeneratedAt { get; set; } = DateTime.Now;
+    public string? BaseUrl { get; set; }
 }
 
 public class AccountStatementWithDueReportItem
@@ -53,4 +54,5 @@ public class AccountStatementWithDueHeader
     public decimal ClosingBalance { get; set; }
     public string DateBasis { get; set; } = "Voucher Date";
     public DateTime GeneratedAt { get; set; } = DateTime.Now;
+    public string? BaseUrl { get; set; }
 }

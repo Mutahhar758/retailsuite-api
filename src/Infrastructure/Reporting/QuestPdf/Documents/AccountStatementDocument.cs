@@ -127,7 +127,7 @@ public class AccountStatementDocument : IDocument
                 var bg = isEven ? Colors.White : Colors.Grey.Lighten5;
 
                 table.Cell().Element(c => BodyCell(c, bg)).Text(item.Date.ToString("dd-MMM-yyyy"));
-                var voucherLink = GetVoucherWebRoute(item.VoucherNo);
+                var voucherLink = GetVoucherWebRoute(item.VoucherNo, _header?.BaseUrl);
                 if (!string.IsNullOrEmpty(voucherLink))
                 {
                     table.Cell().Element(c => BodyCell(c, bg))
@@ -225,7 +225,7 @@ public class AccountStatementDocument : IDocument
         });
     }
 
-    private static string? GetVoucherWebRoute(string? rawVoucherNo)
+    private static string? GetVoucherWebRoute(string? rawVoucherNo, string? baseUrl)
     {
         if (string.IsNullOrWhiteSpace(rawVoucherNo)) return null;
 
@@ -293,6 +293,11 @@ public class AccountStatementDocument : IDocument
                 return null;
         }
 
-        return $"/daily-entries/{routeSegment}/{Uri.EscapeDataString(cleanNo)}";
+        string relativePath = $"/daily-entries/{routeSegment}/{Uri.EscapeDataString(cleanNo)}";
+        if (!string.IsNullOrWhiteSpace(baseUrl))
+        {
+            return $"{baseUrl.TrimEnd('/')}{relativePath}";
+        }
+        return relativePath;
     }
 }

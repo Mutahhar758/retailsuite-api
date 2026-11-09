@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using QuestPDF.Fluent;
 using Retailer.Application.Common.Exceptions;
 using Retailer.Application.Common.Interfaces;
@@ -229,7 +229,8 @@ internal partial class ReportService : IReportService
             TotalDebit = items.Sum(x => x.Debit),
             TotalCredit = items.Sum(x => x.Credit),
             ClosingBalance = runningBalance,
-            GeneratedAt = DateTime.Now
+            GeneratedAt = DateTime.Now,
+            BaseUrl = filter.BaseUrl
         };
 
         var document = new AccountStatementDocument(header, items);
@@ -418,7 +419,8 @@ internal partial class ReportService : IReportService
             TotalDebit = items.Sum(x => x.Debit),
             TotalCredit = items.Sum(x => x.Credit),
             ClosingBalance = runningBalance,
-            GeneratedAt = DateTime.Now
+            GeneratedAt = DateTime.Now,
+            BaseUrl = filter.BaseUrl
         };
 
         var document = new AccountStatementWithDueDocument(header, items);

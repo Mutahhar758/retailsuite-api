@@ -1,4 +1,4 @@
-﻿using Retailer.Application.Legacy.Reports;
+using Retailer.Application.Legacy.Reports;
 using Retailer.Infrastructure.Common.Extensions;
 using Retailer.Infrastructure.Auth.Permissions;
 using Retailer.Shared.Authorization;
@@ -32,6 +32,7 @@ public class ReportsController : VersionNeutralApiController
         [FromQuery] AccountStatementFilter filter,
         CancellationToken cancellationToken)
     {
+        ResolveBaseUrl(filter);
         var pdfBytes = await _reportService.GetAccountStatementPdfAsync(filter, cancellationToken);
         string fileName = $"AccountStatement_{filter.Account}_{filter.FromDate:yyyyMMdd}_{filter.ToDate:yyyyMMdd}.pdf";
         Response.Headers.Append("Content-Disposition", $"inline; filename=\"{fileName}\"");
@@ -56,6 +57,7 @@ public class ReportsController : VersionNeutralApiController
         [FromQuery] AccountStatementFilter filter,
         CancellationToken cancellationToken)
     {
+        ResolveBaseUrl(filter);
         var pdfBytes = await _reportService.GetAccountStatementWithDuePdfAsync(filter, cancellationToken);
         string fileName = $"AccountStatementWithDue_{filter.Account}_{filter.FromDate:yyyyMMdd}_{filter.ToDate:yyyyMMdd}.pdf";
         Response.Headers.Append("Content-Disposition", $"inline; filename=\"{fileName}\"");
@@ -550,5 +552,17 @@ public class ReportsController : VersionNeutralApiController
         Response.Headers.Append("Content-Disposition", $"inline; filename=\"{fileName}\"");
         return File(pdfBytes, "application/pdf", fileName);
     }
-}
 
+    private void ResolveBaseUrl(AccountStatementFilter filter)
+    {
+        if (string.IsNullOrWhiteSpace(filter.BaseUrl))
+        {
+            string? origin = Request.Headers["Origin"].FirstOrDefault() ?? Request.Headers["Referer"].FirstOrDefault();
+            if (!string.IsNullOrWhiteSpace(origin) && Uri.TryCreate(origin, UriKind.Absolute, out var uri))
+            {
+                filter.BaseUrl = "$($uri.Scheme)://$($uri.Authority)";
+            }
+        }
+    }
+
+}
