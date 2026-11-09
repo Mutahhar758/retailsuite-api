@@ -228,7 +228,6 @@ public class ItemTransactionConfig : IEntityTypeConfiguration<ItemTransaction>
         builder.Property(x => x.QtyOut).HasPrecision(18, 4);
         builder.Property(x => x.SecQtyIn).HasPrecision(18, 4);
         builder.Property(x => x.SecQtyOut).HasPrecision(18, 4);
-        builder.Property(x => x.QtyInPack).HasPrecision(18, 4);
 
         builder.HasIndex(x => new { x.VType, x.VNo, x.Seq }).IsUnique().HasSoftDeleteFilter();
         builder.HasIndex(x => new { x.ItemId, x.TranType, x.VDate, x.Id });
@@ -722,8 +721,6 @@ public class SupplyOrderDetailConfig : IEntityTypeConfiguration<SupplyOrderDetai
     {
         builder.IsMultiTenant();
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
-        builder.Property(x => x.Qty).HasPrecision(18, 4);
-        builder.Property(x => x.SecQty).HasPrecision(18, 4);
 
         builder.HasOne(x => x.SupplyOrderMaster)
             .WithMany(x => x.Details)
