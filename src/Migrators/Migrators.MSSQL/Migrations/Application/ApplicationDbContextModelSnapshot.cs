@@ -2044,11 +2044,13 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasColumnName("last_modified_on");
 
                     b.Property<decimal>("QtyIn")
-                        .HasColumnType("decimal(18,2)")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
                         .HasColumnName("qty_in");
 
                     b.Property<decimal>("QtyOut")
-                        .HasColumnType("decimal(18,2)")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
                         .HasColumnName("qty_out");
 
                     b.Property<decimal>("Rate")
@@ -2071,11 +2073,13 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasColumnName("running_qty_balance");
 
                     b.Property<decimal?>("SecQtyIn")
-                        .HasColumnType("decimal(18,2)")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
                         .HasColumnName("sec_qty_in");
 
                     b.Property<decimal?>("SecQtyOut")
-                        .HasColumnType("decimal(18,2)")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
                         .HasColumnName("sec_qty_out");
 
                     b.Property<decimal?>("SecRate")
@@ -2293,7 +2297,8 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasColumnName("notes");
 
                     b.Property<decimal>("Qty")
-                        .HasColumnType("decimal(18,2)")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
                         .HasColumnName("qty");
 
                     b.Property<decimal>("Rate")
@@ -2904,11 +2909,13 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasColumnName("purchase_master_id");
 
                     b.Property<decimal>("Qty")
-                        .HasColumnType("decimal(18,2)")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
                         .HasColumnName("qty");
 
                     b.Property<decimal?>("QtyInPack")
-                        .HasColumnType("decimal(18,2)")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
                         .HasColumnName("qty_in_pack");
 
                     b.Property<decimal>("Rate")
@@ -2916,7 +2923,8 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasColumnName("rate");
 
                     b.Property<decimal?>("SecQty")
-                        .HasColumnType("decimal(18,2)")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
                         .HasColumnName("sec_qty");
 
                     b.Property<decimal?>("SecRate")
@@ -3238,11 +3246,13 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasColumnName("purchase_ret_master_id");
 
                     b.Property<decimal>("Qty")
-                        .HasColumnType("decimal(18,2)")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
                         .HasColumnName("qty");
 
                     b.Property<decimal?>("QtyInPack")
-                        .HasColumnType("decimal(18,2)")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
                         .HasColumnName("qty_in_pack");
 
                     b.Property<decimal>("Rate")
@@ -3250,7 +3260,8 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasColumnName("rate");
 
                     b.Property<decimal?>("SecQty")
-                        .HasColumnType("decimal(18,2)")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
                         .HasColumnName("sec_qty");
 
                     b.Property<decimal?>("SecRate")
@@ -3819,7 +3830,8 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasColumnName("last_modified_on");
 
                     b.Property<decimal?>("Packing")
-                        .HasColumnType("decimal(18,2)")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
                         .HasColumnName("packing");
 
                     b.Property<string>("PtaStatus")
@@ -3827,11 +3839,13 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasColumnName("pta_status");
 
                     b.Property<decimal>("Qty")
-                        .HasColumnType("decimal(18,2)")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
                         .HasColumnName("qty");
 
                     b.Property<decimal?>("QtyInPack")
-                        .HasColumnType("decimal(18,2)")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
                         .HasColumnName("qty_in_pack");
 
                     b.Property<int?>("SaleMasterId")
@@ -3839,7 +3853,8 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasColumnName("sale_master_id");
 
                     b.Property<decimal?>("SecQty")
-                        .HasColumnType("decimal(18,2)")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
                         .HasColumnName("sec_qty");
 
                     b.Property<decimal?>("SecRate")
@@ -4169,15 +4184,18 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasColumnName("last_modified_on");
 
                     b.Property<decimal?>("Packing")
-                        .HasColumnType("decimal(18,2)")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
                         .HasColumnName("packing");
 
                     b.Property<decimal>("Qty")
-                        .HasColumnType("decimal(18,2)")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
                         .HasColumnName("qty");
 
                     b.Property<decimal?>("QtyInPack")
-                        .HasColumnType("decimal(18,2)")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
                         .HasColumnName("qty_in_pack");
 
                     b.Property<int?>("SaleRetMasterId")
@@ -4185,7 +4203,8 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasColumnName("sale_ret_master_id");
 
                     b.Property<decimal?>("SecQty")
-                        .HasColumnType("decimal(18,2)")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
                         .HasColumnName("sec_qty");
 
                     b.Property<decimal?>("SecRate")
@@ -4506,15 +4525,18 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasColumnName("last_modified_on");
 
                     b.Property<decimal?>("Packing")
-                        .HasColumnType("decimal(18,2)")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
                         .HasColumnName("packing");
 
                     b.Property<decimal>("Qty")
-                        .HasColumnType("decimal(18,2)")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
                         .HasColumnName("qty");
 
                     b.Property<decimal?>("QtyInPack")
-                        .HasColumnType("decimal(18,2)")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
                         .HasColumnName("qty_in_pack");
 
                     b.Property<int?>("SaleSupplyMasterId")
@@ -4522,7 +4544,8 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasColumnName("sale_supply_master_id");
 
                     b.Property<decimal?>("SecQty")
-                        .HasColumnType("decimal(18,2)")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
                         .HasColumnName("sec_qty");
 
                     b.Property<decimal?>("SecRate")
@@ -4823,19 +4846,23 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasColumnName("last_modified_on");
 
                     b.Property<decimal?>("Packing")
-                        .HasColumnType("decimal(18,2)")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
                         .HasColumnName("packing");
 
                     b.Property<decimal>("QtyIn")
-                        .HasColumnType("decimal(18,2)")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
                         .HasColumnName("qty_in");
 
                     b.Property<decimal?>("QtyInPack")
-                        .HasColumnType("decimal(18,2)")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
                         .HasColumnName("qty_in_pack");
 
                     b.Property<decimal>("QtyOut")
-                        .HasColumnType("decimal(18,2)")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
                         .HasColumnName("qty_out");
 
                     b.Property<decimal>("Rate")
@@ -4843,11 +4870,13 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasColumnName("rate");
 
                     b.Property<decimal?>("SecQtyIn")
-                        .HasColumnType("decimal(18,2)")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
                         .HasColumnName("sec_qty_in");
 
                     b.Property<decimal?>("SecQtyOut")
-                        .HasColumnType("decimal(18,2)")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
                         .HasColumnName("sec_qty_out");
 
                     b.Property<decimal?>("SecRate")

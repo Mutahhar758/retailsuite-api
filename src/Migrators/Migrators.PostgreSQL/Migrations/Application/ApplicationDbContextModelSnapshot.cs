@@ -216,7 +216,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("RoleId")
@@ -323,7 +323,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("refresh_token");
 
                     b.Property<DateTime>("RefreshTokenExpiryTime")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("refresh_token_expiry_time");
 
                     b.Property<string>("SecurityStamp")
@@ -379,7 +379,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
@@ -387,7 +387,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("DeviceId")
@@ -399,7 +399,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("device_name");
 
                     b.Property<DateTime?>("ExpiryDate")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("expiry_date");
 
                     b.Property<bool>("ExplicitLogout")
@@ -420,7 +420,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("Token")
@@ -491,7 +491,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("Currency")
@@ -504,7 +504,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("Iban")
@@ -518,7 +518,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("Notes")
@@ -562,7 +562,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
@@ -570,7 +570,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<bool>("IsOptional")
@@ -583,7 +583,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<decimal>("Qty")
@@ -651,7 +651,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
@@ -659,7 +659,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("FinishedItemId")
@@ -686,7 +686,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("Notes")
@@ -752,7 +752,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
@@ -760,7 +760,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("LastModifiedBy")
@@ -769,7 +769,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("Title")
@@ -811,7 +811,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
@@ -819,7 +819,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("LastModifiedBy")
@@ -828,7 +828,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("ParentId")
@@ -891,7 +891,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
@@ -899,7 +899,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("Descr")
@@ -912,7 +912,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("Phone")
@@ -951,7 +951,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
@@ -959,7 +959,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("Description")
@@ -973,7 +973,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("Title")
@@ -1018,7 +1018,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("CustomerCategoryId")
@@ -1030,7 +1030,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("Email")
@@ -1059,7 +1059,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("MediaId")
@@ -1133,7 +1133,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("CustomerAccountId")
@@ -1146,7 +1146,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<decimal?>("Discount")
@@ -1165,7 +1165,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<decimal>("Qty")
@@ -1229,7 +1229,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
@@ -1237,7 +1237,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("LastModifiedBy")
@@ -1246,7 +1246,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("MapAccountId")
@@ -1298,7 +1298,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
@@ -1306,7 +1306,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("LastModifiedBy")
@@ -1315,7 +1315,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("Name")
@@ -1383,7 +1383,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
@@ -1391,7 +1391,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("DrAccountId")
@@ -1404,7 +1404,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("NarrationId")
@@ -1490,7 +1490,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
@@ -1498,7 +1498,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("Designation")
@@ -1536,7 +1536,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<decimal>("LeaveCharges")
@@ -1621,7 +1621,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<DateOnly>("Date")
@@ -1684,7 +1684,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
@@ -1692,7 +1692,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("ItemType")
@@ -1705,7 +1705,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("MediaId")
@@ -1751,7 +1751,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("CustomerCategoryId")
@@ -1764,7 +1764,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("ItemId")
@@ -1778,7 +1778,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<decimal>("PriRate")
@@ -1847,7 +1847,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DefaultUnitId")
@@ -1859,7 +1859,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("ItemCategoryId")
@@ -1881,7 +1881,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<bool?>("LowStockAlert")
@@ -2018,7 +2018,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
@@ -2026,7 +2026,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("ItemId")
@@ -2039,15 +2039,17 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<decimal>("QtyIn")
-                        .HasColumnType("numeric")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
                         .HasColumnName("qty_in");
 
                     b.Property<decimal>("QtyOut")
-                        .HasColumnType("numeric")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
                         .HasColumnName("qty_out");
 
                     b.Property<decimal>("Rate")
@@ -2070,11 +2072,13 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("running_qty_balance");
 
                     b.Property<decimal?>("SecQtyIn")
-                        .HasColumnType("numeric")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
                         .HasColumnName("sec_qty_in");
 
                     b.Property<decimal?>("SecQtyOut")
-                        .HasColumnType("numeric")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
                         .HasColumnName("sec_qty_out");
 
                     b.Property<decimal?>("SecRate")
@@ -2166,7 +2170,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("CustomerId")
@@ -2178,7 +2182,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("LastModifiedBy")
@@ -2187,7 +2191,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<DateOnly>("OrderDate")
@@ -2258,7 +2262,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
@@ -2266,7 +2270,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("ItemId")
@@ -2284,7 +2288,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("Notes")
@@ -2292,7 +2296,8 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("notes");
 
                     b.Property<decimal>("Qty")
-                        .HasColumnType("numeric")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
                         .HasColumnName("qty");
 
                     b.Property<decimal>("Rate")
@@ -2334,7 +2339,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
@@ -2342,7 +2347,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("LastModifiedBy")
@@ -2351,7 +2356,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("Title")
@@ -2390,7 +2395,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
@@ -2398,7 +2403,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("Description")
@@ -2419,7 +2424,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<decimal>("LeaveCharges")
@@ -2514,7 +2519,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
@@ -2522,7 +2527,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("LastModifiedBy")
@@ -2531,7 +2536,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("Name")
@@ -2571,7 +2576,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
@@ -2579,7 +2584,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<bool>("IsIssued")
@@ -2592,7 +2597,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<decimal>("PlannedQty")
@@ -2683,7 +2688,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("bom_master_id");
 
                     b.Property<DateTime?>("CompletedDate")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("completed_date");
 
                     b.Property<string>("CreatedBy")
@@ -2692,7 +2697,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("CurrentStage")
@@ -2704,7 +2709,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<DateOnly?>("ExpiryDate")
@@ -2717,7 +2722,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("finished_item_id");
 
                     b.Property<DateTime?>("IssuedDate")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("issued_date");
 
                     b.Property<string>("LastModifiedBy")
@@ -2726,7 +2731,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("NarrationId")
@@ -2858,7 +2863,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
@@ -2866,7 +2871,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("Imei")
@@ -2887,7 +2892,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<decimal?>("Packing")
@@ -2903,11 +2908,13 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("purchase_master_id");
 
                     b.Property<decimal>("Qty")
-                        .HasColumnType("numeric")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
                         .HasColumnName("qty");
 
                     b.Property<decimal?>("QtyInPack")
-                        .HasColumnType("numeric")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
                         .HasColumnName("qty_in_pack");
 
                     b.Property<decimal>("Rate")
@@ -2915,7 +2922,8 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("rate");
 
                     b.Property<decimal?>("SecQty")
-                        .HasColumnType("numeric")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
                         .HasColumnName("sec_qty");
 
                     b.Property<decimal?>("SecRate")
@@ -3008,7 +3016,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
@@ -3016,7 +3024,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("Descr")
@@ -3029,7 +3037,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("NarrationId")
@@ -3118,7 +3126,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
@@ -3126,7 +3134,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("LastModifiedBy")
@@ -3135,7 +3143,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("Reference")
@@ -3196,7 +3204,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
@@ -3204,7 +3212,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("Imei")
@@ -3225,7 +3233,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<decimal?>("Packing")
@@ -3237,11 +3245,13 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("purchase_ret_master_id");
 
                     b.Property<decimal>("Qty")
-                        .HasColumnType("numeric")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
                         .HasColumnName("qty");
 
                     b.Property<decimal?>("QtyInPack")
-                        .HasColumnType("numeric")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
                         .HasColumnName("qty_in_pack");
 
                     b.Property<decimal>("Rate")
@@ -3249,7 +3259,8 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("rate");
 
                     b.Property<decimal?>("SecQty")
-                        .HasColumnType("numeric")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
                         .HasColumnName("sec_qty");
 
                     b.Property<decimal?>("SecRate")
@@ -3334,7 +3345,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
@@ -3342,7 +3353,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("Descr")
@@ -3355,7 +3366,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("NarrationId")
@@ -3418,7 +3429,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<int?>("DayOfMonth")
@@ -3434,7 +3445,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("Frequency")
@@ -3453,7 +3464,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<DateOnly?>("LastRunDate")
@@ -3518,7 +3529,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("CustomerAcc")
@@ -3539,11 +3550,11 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<DateTime?>("DeliveredOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("delivered_on");
 
                     b.Property<string>("DeviceModel")
@@ -3557,7 +3568,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("estimated_cost");
 
                     b.Property<DateTime?>("ExpectedDelivery")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("expected_delivery");
 
                     b.Property<string>("FaultDescription")
@@ -3581,7 +3592,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("PasscodeOrPattern")
@@ -3645,7 +3656,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("ItemId")
@@ -3771,7 +3782,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
@@ -3779,7 +3790,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<decimal>("Discount")
@@ -3814,11 +3825,12 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<decimal?>("Packing")
-                        .HasColumnType("numeric")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
                         .HasColumnName("packing");
 
                     b.Property<string>("PtaStatus")
@@ -3826,11 +3838,13 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("pta_status");
 
                     b.Property<decimal>("Qty")
-                        .HasColumnType("numeric")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
                         .HasColumnName("qty");
 
                     b.Property<decimal?>("QtyInPack")
-                        .HasColumnType("numeric")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
                         .HasColumnName("qty_in_pack");
 
                     b.Property<int?>("SaleMasterId")
@@ -3838,7 +3852,8 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("sale_master_id");
 
                     b.Property<decimal?>("SecQty")
-                        .HasColumnType("numeric")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
                         .HasColumnName("sec_qty");
 
                     b.Property<decimal?>("SecRate")
@@ -3939,7 +3954,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
@@ -3947,7 +3962,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("Descr")
@@ -3964,7 +3979,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("NarrationId")
@@ -4049,7 +4064,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
@@ -4057,7 +4072,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("LastModifiedBy")
@@ -4066,7 +4081,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("Reference")
@@ -4127,7 +4142,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
@@ -4135,7 +4150,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<decimal?>("Discount")
@@ -4164,19 +4179,22 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<decimal?>("Packing")
-                        .HasColumnType("numeric")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
                         .HasColumnName("packing");
 
                     b.Property<decimal>("Qty")
-                        .HasColumnType("numeric")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
                         .HasColumnName("qty");
 
                     b.Property<decimal?>("QtyInPack")
-                        .HasColumnType("numeric")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
                         .HasColumnName("qty_in_pack");
 
                     b.Property<int?>("SaleRetMasterId")
@@ -4184,7 +4202,8 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("sale_ret_master_id");
 
                     b.Property<decimal?>("SecQty")
-                        .HasColumnType("numeric")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
                         .HasColumnName("sec_qty");
 
                     b.Property<decimal?>("SecRate")
@@ -4277,7 +4296,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
@@ -4285,7 +4304,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("Descr")
@@ -4302,7 +4321,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("NarrationId")
@@ -4369,7 +4388,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
@@ -4377,7 +4396,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("Description")
@@ -4396,7 +4415,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("MediaId")
@@ -4466,7 +4485,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("CustomerAccountId")
@@ -4478,7 +4497,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<decimal>("Discount")
@@ -4501,19 +4520,22 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<decimal?>("Packing")
-                        .HasColumnType("numeric")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
                         .HasColumnName("packing");
 
                     b.Property<decimal>("Qty")
-                        .HasColumnType("numeric")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
                         .HasColumnName("qty");
 
                     b.Property<decimal?>("QtyInPack")
-                        .HasColumnType("numeric")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
                         .HasColumnName("qty_in_pack");
 
                     b.Property<int?>("SaleSupplyMasterId")
@@ -4521,7 +4543,8 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("sale_supply_master_id");
 
                     b.Property<decimal?>("SecQty")
-                        .HasColumnType("numeric")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
                         .HasColumnName("sec_qty");
 
                     b.Property<decimal?>("SecRate")
@@ -4602,7 +4625,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
@@ -4610,7 +4633,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("Descr")
@@ -4631,7 +4654,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("NarrationId")
@@ -4717,7 +4740,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
@@ -4725,7 +4748,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("Description")
@@ -4745,7 +4768,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("Value")
@@ -4789,7 +4812,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
@@ -4797,7 +4820,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("Imei")
@@ -4818,23 +4841,27 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<decimal?>("Packing")
-                        .HasColumnType("numeric")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
                         .HasColumnName("packing");
 
                     b.Property<decimal>("QtyIn")
-                        .HasColumnType("numeric")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
                         .HasColumnName("qty_in");
 
                     b.Property<decimal?>("QtyInPack")
-                        .HasColumnType("numeric")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
                         .HasColumnName("qty_in_pack");
 
                     b.Property<decimal>("QtyOut")
-                        .HasColumnType("numeric")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
                         .HasColumnName("qty_out");
 
                     b.Property<decimal>("Rate")
@@ -4842,11 +4869,13 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("rate");
 
                     b.Property<decimal?>("SecQtyIn")
-                        .HasColumnType("numeric")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
                         .HasColumnName("sec_qty_in");
 
                     b.Property<decimal?>("SecQtyOut")
-                        .HasColumnType("numeric")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
                         .HasColumnName("sec_qty_out");
 
                     b.Property<decimal?>("SecRate")
@@ -4919,7 +4948,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
@@ -4927,7 +4956,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("Descr")
@@ -4940,7 +4969,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("NarrationId")
@@ -5013,7 +5042,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
@@ -5021,7 +5050,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("Email")
@@ -5050,7 +5079,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("MediaId")
@@ -5108,7 +5137,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("CustomerAccountId")
@@ -5120,7 +5149,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("LastModifiedBy")
@@ -5129,7 +5158,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<int?>("SortOrder")
@@ -5173,7 +5202,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
@@ -5181,7 +5210,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("LastModifiedBy")
@@ -5190,7 +5219,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("Title")
@@ -5234,7 +5263,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
@@ -5242,7 +5271,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<int>("InTransactionId")
@@ -5255,7 +5284,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<int>("OutTransactionId")
@@ -5308,7 +5337,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
@@ -5316,7 +5345,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("LastModifiedBy")
@@ -5325,7 +5354,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("ParentUnitId")
@@ -5378,7 +5407,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("created_by");
 
                     b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_on");
 
                     b.Property<string>("DeletedBy")
@@ -5386,7 +5415,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("deleted_by");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
                     b.Property<string>("FileType")
@@ -5400,7 +5429,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("last_modified_by");
 
                     b.Property<DateTime?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("last_modified_on");
 
                     b.Property<string>("OriginalFileName")
@@ -5435,7 +5464,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("affected_columns");
 
                     b.Property<DateTime>("DateTime")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("date_time");
 
                     b.Property<string>("NewValues")
