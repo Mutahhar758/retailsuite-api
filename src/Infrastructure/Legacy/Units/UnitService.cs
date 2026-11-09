@@ -83,7 +83,6 @@ internal class UnitService : IUnitService
             throw new Application.Common.Exceptions.BadRequestException("Conversion ratio must be greater than 1 when a parent unit is selected.");
 
         var existing = await _unitRepository.GetAll()
-            .IgnoreQueryFilters()
             .FirstOrDefaultAsync(x => x.Id == code, cancellationToken);
 
         if (existing == null)

@@ -2,6 +2,7 @@ using Retailer.Application.Common.Exceptions;
 using Retailer.Application.Common.Persistence;
 using Retailer.Application.Legacy.OpeningBalances;
 using Retailer.Domain.Legacy;
+using Retailer.Shared.Common.Constants;
 using Microsoft.EntityFrameworkCore;
 
 namespace Retailer.Infrastructure.Legacy.OpeningBalances;
@@ -42,7 +43,6 @@ internal class OpeningBalanceService : IOpeningBalanceService
 
         // Fetch opening GL entries for these accounts (Dr or Cr side)
         var glEntries = await _glRepository.GetAll()
-            .IgnoreQueryFilters()
             .AsNoTracking()
             .Where(x => x.VType == VType &&
                         (accountIds.Contains(x.DrAccountId!) || accountIds.Contains(x.CrAccountId!)))
@@ -73,7 +73,6 @@ internal class OpeningBalanceService : IOpeningBalanceService
         var netAmount = dr - cr;
 
         var existing = await _glRepository.GetAll()
-            .IgnoreQueryFilters()
             .FirstOrDefaultAsync(
                 x => x.VType == VType &&
                      (x.DrAccountId == request.Account || x.CrAccountId == request.Account),
@@ -88,7 +87,7 @@ internal class OpeningBalanceService : IOpeningBalanceService
             var voucherNo = "00001";
 
             var maxSeq = await _glRepository.GetAll()
-                .IgnoreQueryFilters()
+                .IgnoreQueryFilters([GlobalQueryFilterConstants.SoftDelete])
                 .AsNoTracking()
                 .Where(x => x.VType == VType && x.VoucherNo == voucherNo)
                 .MaxAsync(x => (int?)x.VSeq, cancellationToken) ?? 0;
@@ -136,7 +135,6 @@ internal class OpeningBalanceService : IOpeningBalanceService
         var accountIds = validRequests.Select(r => r.Account.Trim()).Distinct().ToList();
 
         var existingEntries = await _glRepository.GetAll()
-            .IgnoreQueryFilters()
             .Where(x => x.VType == VType &&
                         ((x.DrAccountId != null && accountIds.Contains(x.DrAccountId)) ||
                          (x.CrAccountId != null && accountIds.Contains(x.CrAccountId))))
@@ -154,7 +152,7 @@ internal class OpeningBalanceService : IOpeningBalanceService
 
         var voucherNo = "00001";
         var maxSeq = await _glRepository.GetAll()
-            .IgnoreQueryFilters()
+            .IgnoreQueryFilters([GlobalQueryFilterConstants.SoftDelete])
             .AsNoTracking()
             .Where(x => x.VType == VType && x.VoucherNo == voucherNo)
             .MaxAsync(x => (int?)x.VSeq, cancellationToken) ?? 0;
