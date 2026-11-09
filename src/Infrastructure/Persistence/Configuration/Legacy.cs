@@ -224,6 +224,11 @@ public class ItemTransactionConfig : IEntityTypeConfiguration<ItemTransaction>
         builder.Property(x => x.RemainingQty).HasPrecision(18, 4).HasDefaultValue(0m);
         builder.Property(x => x.RunningQtyBalance).HasPrecision(18, 4).HasDefaultValue(0m);
         builder.Property(x => x.Rate).HasPrecision(18, 8);
+        builder.Property(x => x.QtyIn).HasPrecision(18, 4);
+        builder.Property(x => x.QtyOut).HasPrecision(18, 4);
+        builder.Property(x => x.SecQtyIn).HasPrecision(18, 4);
+        builder.Property(x => x.SecQtyOut).HasPrecision(18, 4);
+        builder.Property(x => x.QtyInPack).HasPrecision(18, 4);
 
         builder.HasIndex(x => new { x.VType, x.VNo, x.Seq }).IsUnique().HasSoftDeleteFilter();
         builder.HasIndex(x => new { x.ItemId, x.TranType, x.VDate, x.Id });
@@ -333,6 +338,9 @@ public class PurchaseDetailConfig : IEntityTypeConfiguration<PurchaseDetail>
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
         builder.HasIndex(x => new { x.VType, x.VNo, x.Seq }).IsUnique().HasSoftDeleteFilter();
         mtBuilder.AdjustUniqueIndexes();
+        builder.Property(x => x.Qty).HasPrecision(18, 4);
+        builder.Property(x => x.SecQty).HasPrecision(18, 4);
+        builder.Property(x => x.QtyInPack).HasPrecision(18, 4);
         builder.Property(x => x.Amount).HasPrecision(18, 2);
 
         builder.HasOne(x => x.PurchaseMaster)
@@ -386,6 +394,9 @@ public class PurchaseRetDetailConfig : IEntityTypeConfiguration<PurchaseRetDetai
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
         builder.HasIndex(x => new { x.VType, x.VNo, x.Seq }).IsUnique().HasSoftDeleteFilter();
         mtBuilder.AdjustUniqueIndexes();
+        builder.Property(x => x.Qty).HasPrecision(18, 4);
+        builder.Property(x => x.SecQty).HasPrecision(18, 4);
+        builder.Property(x => x.QtyInPack).HasPrecision(18, 4);
         builder.Property(x => x.Amount).HasPrecision(18, 2);
 
         builder.HasOne(x => x.PurchaseRetMaster)
@@ -439,6 +450,10 @@ public class SaleConfig : IEntityTypeConfiguration<Sale>
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
         builder.HasIndex(x => new { x.VType, x.VNo, x.Seq }).IsUnique().HasSoftDeleteFilter();
         mtBuilder.AdjustUniqueIndexes();
+        builder.Property(x => x.Qty).HasPrecision(18, 4);
+        builder.Property(x => x.SecQty).HasPrecision(18, 4);
+        builder.Property(x => x.QtyInPack).HasPrecision(18, 4);
+        builder.Property(x => x.Packing).HasPrecision(18, 4);
         builder.Property(x => x.GrossRate).HasPrecision(18, 8).HasDefaultValue(0m);
         builder.Property(x => x.Discount).HasPrecision(18, 2).HasDefaultValue(0m);
         builder.Property(x => x.Carriage).HasPrecision(18, 2).HasDefaultValue(0m);
@@ -529,6 +544,10 @@ public class SaleRetDetailConfig : IEntityTypeConfiguration<SaleRetDetail>
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
         builder.HasIndex(x => new { x.VType, x.VNo, x.Seq }).IsUnique().HasSoftDeleteFilter();
         mtBuilder.AdjustUniqueIndexes();
+        builder.Property(x => x.Qty).HasPrecision(18, 4);
+        builder.Property(x => x.SecQty).HasPrecision(18, 4);
+        builder.Property(x => x.QtyInPack).HasPrecision(18, 4);
+        builder.Property(x => x.Packing).HasPrecision(18, 4);
         builder.Property(x => x.Amount).HasPrecision(18, 2);
 
         builder.HasOne(x => x.SaleRetMaster)
@@ -589,6 +608,10 @@ public class SaleSupplyDetailConfig : IEntityTypeConfiguration<SaleSupplyDetail>
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
         builder.HasIndex(x => new { x.VType, x.VNo, x.Seq }).IsUnique().HasSoftDeleteFilter();
         mtBuilder.AdjustUniqueIndexes();
+        builder.Property(x => x.Qty).HasPrecision(18, 4);
+        builder.Property(x => x.SecQty).HasPrecision(18, 4);
+        builder.Property(x => x.QtyInPack).HasPrecision(18, 4);
+        builder.Property(x => x.Packing).HasPrecision(18, 4);
         builder.Property(x => x.GrossRate).HasPrecision(18, 8).HasDefaultValue(0m);
         builder.Property(x => x.Discount).HasPrecision(18, 2).HasDefaultValue(0m);
         builder.Property(x => x.AddLess).HasPrecision(18, 2).HasDefaultValue(0m);
@@ -655,6 +678,12 @@ public class StockAdjDetailConfig : IEntityTypeConfiguration<StockAdjDetail>
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
         builder.HasIndex(x => new { x.VType, x.VNo, x.Seq }).IsUnique().HasSoftDeleteFilter();
         mtBuilder.AdjustUniqueIndexes();
+        builder.Property(x => x.QtyIn).HasPrecision(18, 4);
+        builder.Property(x => x.QtyOut).HasPrecision(18, 4);
+        builder.Property(x => x.SecQtyIn).HasPrecision(18, 4);
+        builder.Property(x => x.SecQtyOut).HasPrecision(18, 4);
+        builder.Property(x => x.QtyInPack).HasPrecision(18, 4);
+        builder.Property(x => x.Packing).HasPrecision(18, 4);
 
         builder.HasOne(x => x.StockAdjMaster)
             .WithMany(x => x.Details)
@@ -693,6 +722,8 @@ public class SupplyOrderDetailConfig : IEntityTypeConfiguration<SupplyOrderDetai
     {
         builder.IsMultiTenant();
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
+        builder.Property(x => x.Qty).HasPrecision(18, 4);
+        builder.Property(x => x.SecQty).HasPrecision(18, 4);
 
         builder.HasOne(x => x.SupplyOrderMaster)
             .WithMany(x => x.Details)
@@ -789,6 +820,7 @@ public class KotOrderItemConfig : IEntityTypeConfiguration<KotOrderItem>
         var mtBuilder = builder.IsMultiTenant();
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
         mtBuilder.AdjustUniqueIndexes();
+        builder.Property(x => x.Qty).HasPrecision(18, 4);
 
         builder.HasOne(x => x.KotOrder)
             .WithMany(x => x.Details)
