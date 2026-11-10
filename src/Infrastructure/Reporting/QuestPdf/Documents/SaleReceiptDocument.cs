@@ -111,23 +111,6 @@ public class SaleReceiptDocument : IDocument
                     });
                 }
 
-                if (!string.IsNullOrWhiteSpace(_header.Counter))
-                {
-                    col.Item().Row(r =>
-                    {
-                        r.AutoItem().Text("Counter: ").FontSize(7.5f);
-                        r.RelativeItem().Text(_header.Counter).FontSize(7.5f);
-                    });
-                }
-
-                if (!string.IsNullOrWhiteSpace(_header.Narration))
-                {
-                    col.Item().Row(r =>
-                    {
-                        r.AutoItem().Text("Narration: ").FontSize(7.5f);
-                        r.RelativeItem().Text(_header.Narration).FontSize(7.5f);
-                    });
-                }
 
                 if (!string.IsNullOrWhiteSpace(_header.Description))
                 {
@@ -193,7 +176,7 @@ public class SaleReceiptDocument : IDocument
                 col.Item().Row(r =>
                 {
                     r.RelativeItem().Text("Gross Total:").FontSize(8f).SemiBold();
-                    r.AutoItem().Text($"Rs. {_header.GrossTotal:N2}").FontSize(8.5f).SemiBold();
+                    r.AutoItem().Text($"Rs. {_header.GrossTotal:N0}").FontSize(8.5f).SemiBold();
                 });
 
                 if (_header.TotalDiscount > 0)
@@ -201,7 +184,7 @@ public class SaleReceiptDocument : IDocument
                     col.Item().Row(r =>
                     {
                         r.RelativeItem().Text("Discount:").FontSize(8f).SemiBold();
-                        r.AutoItem().Text($"-Rs. {_header.TotalDiscount:N2}").FontSize(8.5f).SemiBold();
+                        r.AutoItem().Text($"-Rs. {_header.TotalDiscount:N0}").FontSize(8.5f).SemiBold();
                     });
                 }
 
@@ -210,7 +193,7 @@ public class SaleReceiptDocument : IDocument
                 col.Item().Row(r =>
                 {
                     r.RelativeItem().Text("NET TOTAL:").FontSize(9.5f).Bold();
-                    r.AutoItem().Text($"Rs. {_header.NetAmount:N2}").FontSize(10f).Bold();
+                    r.AutoItem().Text($"Rs. {_header.NetAmount:N0}").FontSize(10f).Bold();
                 });
 
                 col.Item().PaddingVertical(1).LineHorizontal(0.5f).LineColor(Colors.Grey.Darken1);
@@ -220,7 +203,7 @@ public class SaleReceiptDocument : IDocument
                     col.Item().Row(r =>
                     {
                         r.RelativeItem().Text("Cash Received:").FontSize(8f).SemiBold();
-                        r.AutoItem().Text($"Rs. {_header.CashReceipt:N2}").FontSize(8.5f).SemiBold();
+                        r.AutoItem().Text($"Rs. {_header.CashReceipt:N0}").FontSize(8.5f).SemiBold();
                     });
                 }
 
@@ -229,7 +212,7 @@ public class SaleReceiptDocument : IDocument
                     col.Item().Row(r =>
                     {
                         r.RelativeItem().Text("Change Return:").FontSize(8f).SemiBold();
-                        r.AutoItem().Text($"Rs. {_header.CashBack:N2}").FontSize(8.5f).SemiBold();
+                        r.AutoItem().Text($"Rs. {_header.CashBack:N0}").FontSize(8.5f).SemiBold();
                     });
                 }
 
@@ -238,7 +221,7 @@ public class SaleReceiptDocument : IDocument
                     col.Item().PaddingTop(1).Row(r =>
                     {
                         r.RelativeItem().Text("Remaining Due:").FontSize(8.5f).Bold();
-                        r.AutoItem().Text($"Rs. {_header.Balance:N2}").FontSize(9f).Bold();
+                        r.AutoItem().Text($"Rs. {_header.Balance:N0}").FontSize(9f).Bold();
                     });
                 }
 
@@ -484,7 +467,7 @@ public class SaleReceiptDocument : IDocument
                     c.Item().Row(r =>
                     {
                         r.RelativeItem().Text("Gross Total:").FontSize(8.5f);
-                        r.AutoItem().Text($"Rs. {_header.GrossTotal:N2}").FontSize(8.5f).SemiBold();
+                        r.AutoItem().Text($"Rs. {_header.GrossTotal:N0}").FontSize(8.5f).SemiBold();
                     });
 
                     if (_header.TotalDiscount > 0)
@@ -492,7 +475,7 @@ public class SaleReceiptDocument : IDocument
                         c.Item().PaddingTop(2).Row(r =>
                         {
                             r.RelativeItem().Text("Discount:").FontSize(8.5f);
-                            r.AutoItem().Text($"-Rs. {_header.TotalDiscount:N2}").FontSize(8.5f).SemiBold();
+                            r.AutoItem().Text($"-Rs. {_header.TotalDiscount:N0}").FontSize(8.5f).SemiBold();
                         });
                     }
 
@@ -501,7 +484,7 @@ public class SaleReceiptDocument : IDocument
                     c.Item().Row(r =>
                     {
                         r.RelativeItem().Text("Net Amount:").Bold().FontSize(9.5f);
-                        r.AutoItem().Text($"Rs. {_header.NetAmount:N2}").Bold().FontSize(10f);
+                        r.AutoItem().Text($"Rs. {_header.NetAmount:N0}").Bold().FontSize(10f);
                     });
 
                     if (_header.CashReceipt > 0)
@@ -509,7 +492,7 @@ public class SaleReceiptDocument : IDocument
                         c.Item().PaddingTop(3).Row(r =>
                         {
                             r.RelativeItem().Text("Cash Received:").FontSize(8.5f);
-                            r.AutoItem().Text($"Rs. {_header.CashReceipt:N2}").FontSize(8.5f).SemiBold();
+                            r.AutoItem().Text($"Rs. {_header.CashReceipt:N0}").FontSize(8.5f).SemiBold();
                         });
                     }
 
@@ -518,7 +501,7 @@ public class SaleReceiptDocument : IDocument
                         c.Item().PaddingTop(2).Row(r =>
                         {
                             r.RelativeItem().Text("Change:").FontSize(8.5f);
-                            r.AutoItem().Text($"Rs. {_header.CashBack:N2}").FontSize(8.5f).SemiBold();
+                            r.AutoItem().Text($"Rs. {_header.CashBack:N0}").FontSize(8.5f).SemiBold();
                         });
                     }
 
@@ -527,7 +510,7 @@ public class SaleReceiptDocument : IDocument
                         c.Item().PaddingTop(3).Row(r =>
                         {
                             r.RelativeItem().Text("Balance Due:").Bold().FontSize(9f);
-                            r.AutoItem().Text($"Rs. {_header.Balance:N2}").Bold().FontSize(9.5f);
+                            r.AutoItem().Text($"Rs. {_header.Balance:N0}").Bold().FontSize(9.5f);
                         });
                     }
                 });

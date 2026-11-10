@@ -63,7 +63,7 @@ public class SaleReceiptLine
     public string FormattedQtyWithUnit => !string.IsNullOrWhiteSpace(Unit)
         ? $"{Qty:#,##0.##} {Unit}"
         : Qty.ToString("#,##0.##");
-    public string FormattedRate => Rate.ToString("#,##0.00");
-    public string FormattedDiscount => Discount > 0 ? Discount.ToString("#,##0.00") : "-";
-    public string FormattedAmount => Amount.ToString("#,##0.00");
+    public string FormattedRate => Rate.ToString("#,##0");
+    public string FormattedDiscount => Discount > 0 ? Discount.ToString("#,##0") : "-";
+    public string FormattedAmount => Amount.ToString("#,##0");
 }
