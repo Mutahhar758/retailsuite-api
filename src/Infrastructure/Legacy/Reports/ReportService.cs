@@ -3112,9 +3112,13 @@ internal partial class ReportService : IReportService
         if (string.IsNullOrWhiteSpace(filter.VoucherNo))
             throw new BadRequestException("VoucherNo is required.");
 
+        string vNo = filter.VoucherNo.StartsWith("SL-", StringComparison.OrdinalIgnoreCase)
+            ? filter.VoucherNo.Substring(3)
+            : filter.VoucherNo;
+
         var rawLines = await (
             from sd in _saleRepository.GetAll().AsNoTracking()
-            where sd.VType == "SL" && sd.VNo == filter.VoucherNo
+            where sd.VType == "SL" && (sd.VNo == vNo || sd.VNo == filter.VoucherNo)
             select new
             {
                 ItemName = sd.Item != null ? sd.Item.Title : string.Empty,
@@ -3127,7 +3131,8 @@ internal partial class ReportService : IReportService
                 GrossRate = sd.GrossRate,
                 Disc = sd.Discount,
                 Carriage = sd.Carriage,
-                TAmount = (sd.Qty * sd.GrossRate) - sd.Discount
+                TAmount = (sd.Qty * sd.GrossRate) - sd.Discount,
+                Imei = sd.Imei
             }).ToListAsync(cancellationToken);
 
         var primaryUnitIds = rawLines
@@ -3157,23 +3162,27 @@ internal partial class ReportService : IReportService
                 GrossRate = x.GrossRate,
                 Disc = x.Disc,
                 Carriage = x.Carriage,
-                TAmount = x.TAmount
+                TAmount = x.TAmount,
+                Imei = x.Imei
             };
         }).ToList();
 
         var master = await _saleMasterRepository.GetAll()
         .AsNoTracking()
-        .Where(x => x.VType == "SL" && x.VNo == filter.VoucherNo)
+        .Where(x => x.VType == "SL" && (x.VNo == vNo || x.VNo == filter.VoucherNo))
         .Select(x => new
         {
             x.VDate,
+            x.VTime,
             AccountTitle = x.Account != null ? x.Account.Title : string.Empty,
+            NarrationTitle = x.Narration != null ? x.Narration.Title : string.Empty,
             x.Amount,
             x.Discount,
             x.NetAmount,
             x.CashReceipt,
             x.CashBack,
             x.Descr,
+            x.Counter,
             x.AccountId
         })
         .FirstOrDefaultAsync(cancellationToken);
@@ -3200,17 +3209,114 @@ internal partial class ReportService : IReportService
             Header = new SaleBillHeaderResponse
             {
                 VDate = master.VDate,
+                VTime = master.VTime,
                 Title = master.AccountTitle ?? string.Empty,
+                Narration = master.NarrationTitle,
                 Amount = master.Amount ?? 0m,
                 Discount = master.Discount ?? 0m,
                 NetAmount = master.NetAmount ?? 0m,
                 CashReceipt = master.CashReceipt,
                 CashBack = master.CashBack ?? 0m,
                 Descr = master.Descr ?? string.Empty,
+                Counter = master.Counter,
                 Balance = balance
             },
             AccAddress = accAddress
         };
+    }
+
+    public async Task<byte[]> GetSaleBillPdfAsync(SaleBillFilter filter, CancellationToken cancellationToken)
+    {
+        var billResponse = await GetSaleBillAsync(filter, cancellationToken);
+        if (billResponse == null || billResponse.Header == null)
+            throw new NotFoundException($"Sale bill #{filter.VoucherNo} was not found.");
+
+        var company = await _companyDetailRepository.GetAll()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var settings = await _settingRepository.GetAll()
+            .AsNoTracking()
+            .Where(s => s.Key.StartsWith("Bill."))
+            .ToDictionaryAsync(s => s.Key, s => s.Value, cancellationToken);
+
+        bool qrEnabled = filter.QrEnabled ?? (settings.TryGetValue("Bill.QrPayment.Enabled", out var qe) && string.Equals(qe, "true", StringComparison.OrdinalIgnoreCase));
+        string qrTitle = settings.TryGetValue("Bill.QrPayment.AccountTitle", out var qt) ? (qt ?? string.Empty) : string.Empty;
+        string qrAcc = settings.TryGetValue("Bill.QrPayment.AccountNumber", out var qa) ? (qa ?? string.Empty) : string.Empty;
+        string qrBank = settings.TryGetValue("Bill.QrPayment.BankName", out var qb) ? (qb ?? string.Empty) : string.Empty;
+        string thankYou = settings.TryGetValue("Bill.ThankYouMessage", out var ty) ? (ty ?? "Thank you for your business!") : "Thank you for your business!";
+
+        string defaultFormat = settings.TryGetValue("Bill.DefaultFormat", out var df) ? (df ?? "Thermal") : "Thermal";
+        string targetLayout = !string.IsNullOrWhiteSpace(filter.Layout) ? filter.Layout : defaultFormat;
+
+        SaleReceiptPrintLayout layout = SaleReceiptPrintLayout.Thermal80mm;
+        if (targetLayout.IndexOf("A4", StringComparison.OrdinalIgnoreCase) >= 0)
+        {
+            layout = SaleReceiptPrintLayout.A4Sheet;
+        }
+        else if (targetLayout.IndexOf("A5", StringComparison.OrdinalIgnoreCase) >= 0)
+        {
+            layout = SaleReceiptPrintLayout.A5Sheet;
+        }
+
+        string cleanVoucher = filter.VoucherNo.StartsWith("SL-", StringComparison.OrdinalIgnoreCase) ? filter.VoucherNo : $"SL-{filter.VoucherNo}";
+
+        DateTime receiptDate = DateTime.Now;
+        if (billResponse.Header.VDate != default)
+        {
+            var date = billResponse.Header.VDate;
+            var time = billResponse.Header.VTime ?? new TimeOnly(12, 0);
+            receiptDate = date.ToDateTime(time);
+        }
+
+        var header = new SaleReceiptHeader
+        {
+            VoucherNo = cleanVoucher,
+            Date = receiptDate,
+            CompanyName = company?.CompanyName ?? "Retail Suite Enterprise",
+            CompanyAddress = company?.Address,
+            CompanyPhone = company?.Phone,
+            CustomerName = !string.IsNullOrWhiteSpace(billResponse.Header.Title) ? billResponse.Header.Title : "Walk-in Customer",
+            CustomerAddress = billResponse.AccAddress,
+            Narration = billResponse.Header.Narration,
+            Description = billResponse.Header.Descr,
+            Counter = billResponse.Header.Counter,
+            ThankyouLine = thankYou,
+            GrossTotal = billResponse.Header.Amount,
+            TotalDiscount = billResponse.Header.Discount,
+            NetAmount = billResponse.Header.NetAmount,
+            CashReceipt = billResponse.Header.CashReceipt,
+            CashBack = billResponse.Header.CashBack,
+            Balance = billResponse.Header.Balance,
+            IsDuplicate = filter.IsDuplicate ?? false,
+            Layout = layout,
+            QrPayment = new QrPaymentInfo
+            {
+                IsEnabled = qrEnabled,
+                AccountTitle = qrTitle,
+                AccountNumber = qrAcc,
+                BankName = qrBank
+            }
+        };
+
+        var lines = (billResponse.Lines ?? new List<SaleBillLineResponse>())
+            .Select((l, idx) => new SaleReceiptLine
+            {
+                Seq = idx + 1,
+                Item = l.ItemName,
+                Unit = l.UnitTitle,
+                Qty = l.Qty,
+                Rate = l.Rate,
+                GrossRate = l.GrossRate,
+                Discount = l.Disc,
+                Carriage = l.Carriage,
+                Amount = l.TAmount,
+                Imei = l.Imei
+            })
+            .ToList();
+
+        var document = new SaleReceiptDocument(header, lines);
+        return document.GeneratePdf();
     }
 
     public async Task<PurchaseBillResponse> GetPurchaseBillAsync(PurchaseBillFilter filter, CancellationToken cancellationToken)

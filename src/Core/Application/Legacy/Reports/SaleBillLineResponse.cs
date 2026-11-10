@@ -11,4 +11,5 @@ public class SaleBillLineResponse
     public decimal Disc { get; set; }
     public decimal Carriage { get; set; }
     public decimal TAmount { get; set; }
+    public string? Imei { get; set; }
 }

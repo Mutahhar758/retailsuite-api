@@ -427,6 +427,20 @@ public class ReportsController : VersionNeutralApiController
         return result.ToInformationResponse();
     }
 
+    [HttpGet("sale-bill/pdf")]
+    [MustHavePermission(AppAction.View, AppResource.Sales)]
+    [OpenApiOperation("Get sale bill / receipt report as a vector PDF document.", "")]
+    public async Task<IActionResult> GetSaleBillPdfAsync(
+        [FromQuery] SaleBillFilter filter,
+        CancellationToken cancellationToken)
+    {
+        var pdfBytes = await _reportService.GetSaleBillPdfAsync(filter, cancellationToken);
+        string vNo = !string.IsNullOrWhiteSpace(filter.VoucherNo) ? filter.VoucherNo.Replace("/", "_").Replace("\\", "_") : "Sale";
+        string fileName = $"SaleReceipt_{vNo}_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
+        Response.Headers.Append("Content-Disposition", $"inline; filename=\"{fileName}\"");
+        return File(pdfBytes, "application/pdf", fileName);
+    }
+
     [HttpGet("purchase-bill")]
     [MustHavePermission(AppAction.View, AppResource.Purchases)]
     [OpenApiOperation("Get purchase bill report data.", "")]
