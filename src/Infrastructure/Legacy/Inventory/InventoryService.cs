@@ -13,6 +13,7 @@ namespace Retailer.Infrastructure.Legacy.Inventory;
 
 internal class InventoryService : IInventoryService
 {
+    private static readonly DateOnly OpeningDate = new DateOnly(2026, 1, 1);
     private readonly IRepository<ItemDetail> _itemRepository;
     private readonly IRepository<PurchaseDetail> _purchaseDetailRepository;
     private readonly IRepository<PurchaseMaster> _purchaseMasterRepository;
@@ -222,6 +223,7 @@ internal class InventoryService : IInventoryService
         }).ToList();
 
         await PopulateMediaUrlsAsync(mappedItems, cancellationToken);
+        await PopulateOpeningStockAsync(mappedItems, cancellationToken);
 
         return mappedItems;
     }
@@ -304,6 +306,7 @@ internal class InventoryService : IInventoryService
         }).ToList();
 
         await PopulateMediaUrlsAsync(mappedItems, cancellationToken);
+        await PopulateOpeningStockAsync(mappedItems, cancellationToken);
 
         return new PaginationResponse<InventoryItemResponse>(mappedItems, totalCount, pageNumber, pageSize);
     }
@@ -355,11 +358,12 @@ internal class InventoryService : IInventoryService
             Ram = item.Ram,
             Color = item.Color
         };
-
         if (!string.IsNullOrEmpty(response.MediaId))
         {
             await PopulateMediaUrlsAsync(new List<InventoryItemResponse> { response }, cancellationToken);
         }
+
+        await PopulateOpeningStockAsync(new List<InventoryItemResponse> { response }, cancellationToken);
 
         return response;
     }
@@ -518,12 +522,10 @@ internal class InventoryService : IInventoryService
 
     private async Task CreateOpeningStockTransactionAsync(string itemId, string unit, decimal qty, decimal rate, CancellationToken cancellationToken)
     {
-        var today = PakistanTime.Today;
-
         var tx = new ItemTransaction
         {
-            VDate = today,
-            VTime = PakistanTime.CurrentTime,
+            VDate = OpeningDate,
+            VTime = TimeOnly.MinValue,
             VType = "OP",
             VNo = itemId,
             Seq = 1,
@@ -539,13 +541,12 @@ internal class InventoryService : IInventoryService
         };
 
         await _itemTransactionRepository.AddAsync(tx, false);
-        await _balanceService.ProcessVoucherRunningBalancesAsync(_currentTenant.Id, "OP", itemId, today, new[] { tx }, cancellationToken);
+        await _balanceService.ProcessVoucherRunningBalancesAsync(_currentTenant.Id, "OP", itemId, OpeningDate, new[] { tx }, cancellationToken);
         await _itemTransactionRepository.SaveChangesAsync(cancellationToken);
     }
 
     private async Task UpsertOpeningStockTransactionAsync(string itemId, string unit, decimal qty, decimal rate, CancellationToken cancellationToken)
     {
-        var today = PakistanTime.Today;
         var tx = await _itemTransactionRepository.GetAll()
             .IgnoreQueryFilters([GlobalQueryFilterConstants.SoftDelete])
             .FirstOrDefaultAsync(x => x.VType == "OP" && x.VNo == itemId && x.Seq == 1, cancellationToken);
@@ -558,8 +559,11 @@ internal class InventoryService : IInventoryService
         {
             tx.DeletedOn = null;
             tx.DeletedBy = null;
-            tx.VDate = today;
-            tx.VTime = PakistanTime.CurrentTime;
+            if (tx.VDate == default)
+            {
+                tx.VDate = OpeningDate;
+            }
+
             tx.UnitId = unit;
             tx.QtyIn = qty;
             tx.QtyOut = 0;
@@ -568,7 +572,7 @@ internal class InventoryService : IInventoryService
             tx.Amount = qty * rate;
 
             await _itemTransactionRepository.UpdateAsync(tx, false);
-            await _balanceService.ProcessVoucherRunningBalancesAsync(_currentTenant.Id, "OP", itemId, today, new[] { tx }, cancellationToken);
+            await _balanceService.ProcessVoucherRunningBalancesAsync(_currentTenant.Id, "OP", itemId, tx.VDate, new[] { tx }, cancellationToken);
             await _itemTransactionRepository.SaveChangesAsync(cancellationToken);
         }
     }
@@ -587,6 +591,35 @@ internal class InventoryService : IInventoryService
 
         var response = await _mediaServiceClient.GetUploadUrlAsync(cleanFileName, "product", cancellationToken);
         return response ?? throw new InternalServerException("Failed to generate upload URL for product image.");
+    }
+    private async Task PopulateOpeningStockAsync(List<InventoryItemResponse> items, CancellationToken cancellationToken)
+    {
+        if (items == null || items.Count == 0) return;
+
+        var itemIds = items.Select(x => x.Id).Distinct().ToList();
+        var opnTxs = await _itemTransactionRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => x.VType == "OP" && x.ItemId != null && itemIds.Contains(x.ItemId))
+            .Select(x => new { x.ItemId, x.QtyIn, x.Rate })
+            .ToListAsync(cancellationToken);
+
+        if (opnTxs.Count == 0) return;
+
+        var opnMap = opnTxs
+            .GroupBy(x => x.ItemId!)
+            .ToDictionary(g => g.Key, g => g.First());
+
+        foreach (var item in items)
+        {
+            if (opnMap.TryGetValue(item.Id, out var opn))
+            {
+                item.OpnStock = opn.QtyIn;
+                if (opn.Rate > 0 || item.OpnRate == null || item.OpnRate == 0)
+                {
+                    item.OpnRate = opn.Rate;
+                }
+            }
+        }
     }
 
     private async Task PopulateMediaUrlsAsync(List<InventoryItemResponse> items, CancellationToken cancellationToken)

@@ -9,7 +9,7 @@ namespace Retailer.Infrastructure.Legacy.OpeningBalances;
 
 internal class OpeningBalanceService : IOpeningBalanceService
 {
-    private static readonly DateOnly OpeningDate = new DateOnly(2018, 1, 1);
+    private static readonly DateOnly OpeningDate = new DateOnly(2026, 1, 1);
     private const string VType = "Op";
 
     private readonly IRepository<ChartOfAccount> _chartRepository;
