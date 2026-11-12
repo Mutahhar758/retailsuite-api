@@ -1,3 +1,4 @@
+using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Retailer.Shared.Common;
 using Retailer.Application.Common.Exceptions;
@@ -437,7 +438,7 @@ internal class InventoryService : IInventoryService
             throw new NotFoundException($"Item id '{normalizedId}' not found.");
 
         var isExistingService = existing.ItemType == ItemType.Service;
-        var opnStockChanged = existing.OpnStock != request.OpnStock || existing.OpnRate != request.OpnRate;
+        var opnStockChanged = (existing.OpnStock ?? 0) != (request.OpnStock ?? 0) || (existing.OpnRate ?? 0) != (request.OpnRate ?? 0);
 
         existing.ItemCategoryId = request.ItemCategoryCode;
         if (!string.IsNullOrWhiteSpace(request.Barcode))
@@ -472,9 +473,9 @@ internal class InventoryService : IInventoryService
 
         await _itemRepository.UpdateAsync(existing);
 
-        if (!isExistingService && opnStockChanged && request.OpnStock > 0)
+        if (!isExistingService && opnStockChanged)
         {
-            await UpsertOpeningStockTransactionAsync(normalizedId, request.PrimaryUnit, request.OpnStock.Value, request.OpnRate ?? 0, cancellationToken);
+            await UpsertOpeningStockTransactionAsync(normalizedId, request.PrimaryUnit, request.OpnStock ?? 0, request.OpnRate ?? 0, cancellationToken);
         }
 
         return existing.Id;
@@ -548,33 +549,48 @@ internal class InventoryService : IInventoryService
     private async Task UpsertOpeningStockTransactionAsync(string itemId, string unit, decimal qty, decimal rate, CancellationToken cancellationToken)
     {
         var tx = await _itemTransactionRepository.GetAll()
-            .IgnoreQueryFilters([GlobalQueryFilterConstants.SoftDelete])
             .FirstOrDefaultAsync(x => x.VType == "OP" && x.VNo == itemId && x.Seq == 1, cancellationToken);
 
         if (tx is null)
         {
-            await CreateOpeningStockTransactionAsync(itemId, unit, qty, rate, cancellationToken);
-        }
-        else
-        {
-            tx.DeletedOn = null;
-            tx.DeletedBy = null;
-            if (tx.VDate == default)
+            if (qty > 0)
             {
-                tx.VDate = OpeningDate;
+                await CreateOpeningStockTransactionAsync(itemId, unit, qty, rate, cancellationToken);
             }
-
-            tx.UnitId = unit;
-            tx.QtyIn = qty;
-            tx.QtyOut = 0;
-            tx.RemainingQty = qty;
-            tx.Rate = rate;
-            tx.Amount = qty * rate;
-
-            await _itemTransactionRepository.UpdateAsync(tx, false);
-            await _balanceService.ProcessVoucherRunningBalancesAsync(_currentTenant.Id, "OP", itemId, tx.VDate, new[] { tx }, cancellationToken);
-            await _itemTransactionRepository.SaveChangesAsync(cancellationToken);
+            return;
         }
+
+        if (qty <= 0)
+        {
+            var date = tx.VDate != default ? tx.VDate : OpeningDate;
+            await _itemTransactionRepository.DeleteAsync(tx);
+            await _itemTransactionRepository.SaveChangesAsync(cancellationToken);
+            BackgroundJob.Schedule<IFifoCostingService>(x =>
+                x.RebuildItemFifoAsync(_currentTenant.Id, itemId, date, CancellationToken.None),
+                TimeSpan.FromSeconds(5));
+            return;
+        }
+
+        if (tx.QtyIn == qty && tx.Rate == rate && tx.UnitId == unit)
+        {
+            return;
+        }
+
+        if (tx.VDate == default)
+        {
+            tx.VDate = OpeningDate;
+        }
+
+        tx.UnitId = unit;
+        tx.QtyIn = qty;
+        tx.QtyOut = 0;
+        tx.RemainingQty = qty;
+        tx.Rate = rate;
+        tx.Amount = qty * rate;
+
+        await _itemTransactionRepository.UpdateAsync(tx, false);
+        await _balanceService.ProcessVoucherRunningBalancesAsync(_currentTenant.Id, "OP", itemId, tx.VDate, new[] { tx }, cancellationToken);
+        await _itemTransactionRepository.SaveChangesAsync(cancellationToken);
     }
 
     public async Task<PresignedUploadUrlResponse?> GetPresignedUploadUrlAsync(string fileName, CancellationToken cancellationToken)
