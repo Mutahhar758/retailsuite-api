@@ -34,6 +34,7 @@ internal partial class ReportService
         var defaultUnitTitle = useDefaultSecUnit
             ? (itemInfo?.DefaultUnit?.ShortTitle ?? itemInfo?.DefaultUnit?.Title ?? itemInfo?.SecondaryUnit?.ShortTitle ?? itemInfo?.SecondaryUnit?.Title ?? effectiveDefaultUnitId)
             : (itemInfo?.DefaultUnit?.ShortTitle ?? itemInfo?.DefaultUnit?.Title ?? itemInfo?.PrimaryUnit?.ShortTitle ?? itemInfo?.PrimaryUnit?.Title ?? effectiveDefaultUnitId);
+        var packFactor = itemInfo?.QtyInPack > 0 ? itemInfo.QtyInPack.Value : 1m;
 
         var priorAndOpRows = await _itemTransactionRepository.GetAll()
             .AsNoTracking()
@@ -48,18 +49,17 @@ internal partial class ReportService
             })
             .ToListAsync(cancellationToken);
 
-        // Wanda: opening stock is entered in the item's default unit; other transactions use default unit (SecQty when default is secondary, else Qty).
+        // Wanda: opening stock is in the item's default unit (either primary or secondary, never summed).
+        // If default is secondary and secondary qty is not recorded, runtime fallback = Qty / QtyInPack.
         var openingStock = priorAndOpRows.Sum(x =>
         {
-            if (string.Equals(x.VType, "Op", StringComparison.OrdinalIgnoreCase))
+            if (useDefaultSecUnit)
             {
-                return useDefaultSecUnit && (x.SecQtyIn != 0m || x.SecQtyOut != 0m)
-                    ? (x.SecQtyIn - x.SecQtyOut)
-                    : (x.QtyIn - x.QtyOut);
+                if (x.SecQtyIn != 0m || x.SecQtyOut != 0m)
+                    return x.SecQtyIn - x.SecQtyOut;
+                return packFactor > 0 ? (x.QtyIn - x.QtyOut) / packFactor : (x.QtyIn - x.QtyOut);
             }
-            return useDefaultSecUnit
-                ? (x.SecQtyIn - x.SecQtyOut)
-                : (x.QtyIn - x.QtyOut);
+            return x.QtyIn - x.QtyOut;
         });
 
         var rawMovements = await _itemTransactionRepository.GetAll()
@@ -93,22 +93,49 @@ internal partial class ReportService
             decimal? costPrice = null;
             decimal? costAmount = null;
 
+            var lineQtyIn = useDefaultSecUnit
+                ? (x.SecQtyIn != 0 ? x.SecQtyIn : (packFactor > 0 ? x.QtyIn / packFactor : x.QtyIn))
+                : x.QtyIn;
+            var lineQtyOut = useDefaultSecUnit
+                ? (x.SecQtyOut != 0 ? x.SecQtyOut : (packFactor > 0 ? x.QtyOut / packFactor : x.QtyOut))
+                : x.QtyOut;
+
+            decimal? lineRate = null;
+            if (x.Rate != 0)
+            {
+                if (useDefaultSecUnit)
+                {
+                    lineRate = lineQtyIn > 0 && x.Amount != 0
+                        ? Math.Round(x.Amount / lineQtyIn, 4)
+                        : (lineQtyOut > 0 && x.Amount != 0 ? Math.Round(x.Amount / lineQtyOut, 4) : Math.Round(x.Rate * packFactor, 4));
+                }
+                else
+                {
+                    lineRate = x.Rate;
+                }
+            }
+            else
+            {
+                lineRate = 0m;
+            }
+
             if (filter.ShowCostPrice)
             {
                 if (x.QtyIn > 0 || x.TranType == "in")
                 {
-                    costPrice = x.Rate;
                     costAmount = x.Amount != 0 ? x.Amount : (x.QtyIn * x.Rate);
+                    costPrice = lineQtyIn > 0 && costAmount.HasValue
+                        ? Math.Round(costAmount.Value / lineQtyIn, 4)
+                        : (useDefaultSecUnit ? Math.Round(x.Rate * packFactor, 4) : x.Rate);
                 }
                 else
                 {
-                    costPrice = x.CostPrice ?? 0m;
                     costAmount = x.CostAmount ?? ((x.CostPrice ?? 0m) * x.QtyOut);
+                    costPrice = lineQtyOut > 0 && costAmount.HasValue
+                        ? Math.Round(costAmount.Value / lineQtyOut, 4)
+                        : (useDefaultSecUnit ? Math.Round((x.CostPrice ?? 0m) * packFactor, 4) : (x.CostPrice ?? 0m));
                 }
             }
-
-            var lineQtyIn = useDefaultSecUnit ? x.SecQtyIn : x.QtyIn;
-            var lineQtyOut = useDefaultSecUnit ? x.SecQtyOut : x.QtyOut;
 
             return new StockLedgerLineResponse
             {
@@ -117,7 +144,7 @@ internal partial class ReportService
                 Particular = x.Particular,
                 QtyIn = lineQtyIn,
                 QtyOut = lineQtyOut,
-                Rate = x.Rate,
+                Rate = lineRate,
                 CostPrice = costPrice,
                 CostAmount = costAmount,
                 SecUnit = x.SecUnit,
@@ -271,6 +298,7 @@ internal partial class ReportService
                 RawPrimaryUnitId = x.Item != null ? x.Item.PrimaryUnitId : null,
                 SecondaryUnitId = x.Item != null ? x.Item.SecondaryUnitId : null,
                 DefaultUnitId = x.Item != null ? x.Item.DefaultUnitId : null,
+                QtyInPack = x.Item != null ? x.Item.QtyInPack : null,
                 LowStockAlert = x.Item != null ? x.Item.LowStockAlert : null,
                 LowStockQty = x.Item != null ? x.Item.LowStockQty : null,
                 PrimaryUnitTitle = x.Item != null && x.Item.PrimaryUnit != null ? (x.Item.PrimaryUnit.ShortTitle ?? x.Item.PrimaryUnit.Title) : null,
@@ -299,6 +327,7 @@ internal partial class ReportService
                 x.RawPrimaryUnitId,
                 x.SecondaryUnitId,
                 x.DefaultUnitId,
+                x.QtyInPack,
                 x.PrimaryUnitTitle,
                 x.DefaultUnitTitle,
                 x.SecondaryUnitTitle,
@@ -308,6 +337,7 @@ internal partial class ReportService
             })
             .Select(g =>
             {
+                var packFactor = g.Key.QtyInPack > 0 ? g.Key.QtyInPack.Value : 1m;
                 var effectiveDefaultUnitId = !string.IsNullOrWhiteSpace(g.Key.DefaultUnitId)
                     ? g.Key.DefaultUnitId
                     : (!string.IsNullOrWhiteSpace(g.Key.SecondaryUnitId) ? g.Key.SecondaryUnitId : g.Key.RawPrimaryUnitId);
@@ -321,19 +351,23 @@ internal partial class ReportService
                 var priQty = g.Where(x => x.VDate < filter.FromDate || string.Equals(x.VType, "Op", StringComparison.OrdinalIgnoreCase))
                     .Sum(x =>
                     {
-                        if (string.Equals(x.VType, "Op", StringComparison.OrdinalIgnoreCase))
+                        if (useDefaultSecUnit)
                         {
-                            return useDefaultSecUnit && (x.SecQtyIn != 0m || x.SecQtyOut != 0m)
-                                ? (x.SecQtyIn - x.SecQtyOut)
-                                : (x.QtyIn - x.QtyOut);
+                            var sIn = x.SecQtyIn != 0m ? x.SecQtyIn : (packFactor > 0 ? x.QtyIn / packFactor : x.QtyIn);
+                            var sOut = x.SecQtyOut != 0m ? x.SecQtyOut : (packFactor > 0 ? x.QtyOut / packFactor : x.QtyOut);
+                            return sIn - sOut;
                         }
-                        return useDefaultSecUnit ? (x.SecQtyIn - x.SecQtyOut) : (x.QtyIn - x.QtyOut);
+                        return x.QtyIn - x.QtyOut;
                     });
 
                 var qtyIn = g.Where(x => x.VDate >= filter.FromDate && x.VDate <= filter.ToDate && !string.Equals(x.VType, "Op", StringComparison.OrdinalIgnoreCase))
-                    .Sum(x => useDefaultSecUnit ? x.SecQtyIn : x.QtyIn);
+                    .Sum(x => useDefaultSecUnit
+                        ? (x.SecQtyIn != 0m ? x.SecQtyIn : (packFactor > 0 ? x.QtyIn / packFactor : x.QtyIn))
+                        : x.QtyIn);
                 var qtyOut = g.Where(x => x.VDate >= filter.FromDate && x.VDate <= filter.ToDate && !string.Equals(x.VType, "Op", StringComparison.OrdinalIgnoreCase))
-                    .Sum(x => useDefaultSecUnit ? x.SecQtyOut : x.QtyOut);
+                    .Sum(x => useDefaultSecUnit
+                        ? (x.SecQtyOut != 0m ? x.SecQtyOut : (packFactor > 0 ? x.QtyOut / packFactor : x.QtyOut))
+                        : x.QtyOut);
                 var qty = qtyIn - qtyOut;
                 var qtyBal = priQty + qtyIn - qtyOut;
 
@@ -341,6 +375,14 @@ internal partial class ReportService
                     .Where(x => string.Equals(x.TranType, "in", StringComparison.OrdinalIgnoreCase) && x.RemainingQty > 0)
                     .Sum(x => x.RemainingQty * x.Rate);
                 var rate = qtyBal > 0 ? Math.Round(fifoStockValue / qtyBal, 4) : 0m;
+                if (rate == 0m)
+                {
+                    var latestIn = g.Where(x => string.Equals(x.TranType, "in", StringComparison.OrdinalIgnoreCase)).OrderByDescending(x => x.VDate).ThenByDescending(x => x.Id).FirstOrDefault();
+                    if (latestIn != null)
+                    {
+                        rate = useDefaultSecUnit ? Math.Round(latestIn.Rate * packFactor, 4) : latestIn.Rate;
+                    }
+                }
 
                 var status = qtyBal <= 0
                     ? "Out of Stock"

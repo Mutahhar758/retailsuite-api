@@ -14,6 +14,15 @@ namespace Retailer.Infrastructure.Legacy.Reports;
 
 internal partial class ReportService : IReportService
 {
+    private static string FormatDefaultUnitQty(decimal qty, string? unitTitle)
+    {
+        if (qty == 0m)
+            return "0";
+        var unit = unitTitle?.Trim() ?? string.Empty;
+        var numText = qty % 1m == 0m ? qty.ToString("N0") : qty.ToString("#,##0.###");
+        return string.IsNullOrWhiteSpace(unit) ? numText : $"{numText} {unit}";
+    }
+
     private readonly IRepository<GlEntry> _glRepository;
     private readonly IRepository<ChartOfAccount> _chartOfAccountRepository;
     private readonly IRepository<ItemTransaction> _itemTransactionRepository;
@@ -702,21 +711,22 @@ internal partial class ReportService : IReportService
         var itemInfo = await _itemDetailRepository.GetAll()
             .AsNoTracking()
             .Include(x => x.PrimaryUnit)
+            .Include(x => x.SecondaryUnit)
             .Include(x => x.DefaultUnit)
             .FirstOrDefaultAsync(x => x.Id == filter.FkItem, cancellationToken);
 
-        var primaryUnitId = itemInfo?.PrimaryUnitId ?? itemInfo?.DefaultUnitId;
-        var fallbackUnitTitle = itemInfo?.PrimaryUnit?.ShortTitle ?? itemInfo?.PrimaryUnit?.Title ?? itemInfo?.DefaultUnit?.ShortTitle ?? itemInfo?.DefaultUnit?.Title;
-        var itemAdditionalUnits = itemInfo?.AdditionalUnits;
+        var effectiveDefaultUnitId = !string.IsNullOrWhiteSpace(itemInfo?.DefaultUnitId)
+            ? itemInfo.DefaultUnitId
+            : (!string.IsNullOrWhiteSpace(itemInfo?.SecondaryUnitId) ? itemInfo.SecondaryUnitId : itemInfo?.PrimaryUnitId);
+        var isSecDefault = !string.IsNullOrWhiteSpace(itemInfo?.SecondaryUnitId)
+            && string.Equals(effectiveDefaultUnitId, itemInfo.SecondaryUnitId, StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(itemInfo.SecondaryUnitId, itemInfo?.PrimaryUnitId, StringComparison.OrdinalIgnoreCase);
+        var defaultUnitTitle = isSecDefault
+            ? (itemInfo?.DefaultUnit?.ShortTitle ?? itemInfo?.DefaultUnit?.Title ?? itemInfo?.SecondaryUnit?.ShortTitle ?? itemInfo?.SecondaryUnit?.Title ?? effectiveDefaultUnitId)
+            : (itemInfo?.DefaultUnit?.ShortTitle ?? itemInfo?.DefaultUnit?.Title ?? itemInfo?.PrimaryUnit?.ShortTitle ?? itemInfo?.PrimaryUnit?.Title ?? effectiveDefaultUnitId);
+        var packFactor = itemInfo?.QtyInPack > 0 ? itemInfo.QtyInPack.Value : 1m;
 
-        var subUnits = (string.IsNullOrWhiteSpace(itemAdditionalUnits) && !string.IsNullOrWhiteSpace(primaryUnitId))
-            ? await _unitRepository.GetAll()
-                .AsNoTracking()
-                .Where(u => u.ParentUnitId == primaryUnitId && u.ConversionRatio > 1m)
-                .ToListAsync(cancellationToken)
-            : new List<Unit>();
-
-        var openingStock = await _itemTransactionRepository.GetAll()
+        var openingStockPri = await _itemTransactionRepository.GetAll()
             .AsNoTracking()
             .Where(x => x.ItemId == filter.FkItem && x.VDate < filter.FromDate)
             .OrderByDescending(x => x.VDate)
@@ -731,6 +741,12 @@ internal partial class ReportService : IReportService
             .Where(x => x.ItemId == filter.FkItem && (x.VType == "Op" || x.VDate < filter.FromDate))
             .Select(x => (x.SecQtyIn ?? 0) - (x.SecQtyOut ?? 0))
             .SumAsync(cancellationToken);
+
+        // For normal tenants: Primary and Secondary quantities are additive (e.g. cartons + loose pieces).
+        // Convert and sum up both into the default unit.
+        var openingStock = isSecDefault
+            ? (openingSecStock + (packFactor > 0 ? (openingStockPri / packFactor) : openingStockPri))
+            : (openingStockPri + (openingSecStock * (packFactor > 1 ? packFactor : 1m)));
 
         var rawMovements = await _itemTransactionRepository.GetAll()
             .AsNoTracking()
@@ -763,17 +779,48 @@ internal partial class ReportService : IReportService
             decimal? costPrice = null;
             decimal? costAmount = null;
 
+            // Normal tenant: sum primary and secondary converted to default unit
+            decimal lineQtyIn = isSecDefault
+                ? (x.SecQtyIn + (packFactor > 0 ? (x.QtyIn / packFactor) : x.QtyIn))
+                : (x.QtyIn + (x.SecQtyIn * (packFactor > 1 ? packFactor : 1m)));
+            decimal lineQtyOut = isSecDefault
+                ? (x.SecQtyOut + (packFactor > 0 ? (x.QtyOut / packFactor) : x.QtyOut))
+                : (x.QtyOut + (x.SecQtyOut * (packFactor > 1 ? packFactor : 1m)));
+
+            decimal? lineRate = null;
+            if (x.Rate != 0)
+            {
+                if (isSecDefault)
+                {
+                    lineRate = lineQtyIn > 0 && x.Amount != 0
+                        ? Math.Round(x.Amount / lineQtyIn, 4)
+                        : (lineQtyOut > 0 && x.Amount != 0 ? Math.Round(x.Amount / lineQtyOut, 4) : Math.Round(x.Rate * packFactor, 4));
+                }
+                else
+                {
+                    lineRate = x.Rate;
+                }
+            }
+            else
+            {
+                lineRate = 0m;
+            }
+
             if (filter.ShowCostPrice)
             {
                 if (x.QtyIn > 0 || x.TranType == "in")
                 {
-                    costPrice = x.Rate;
                     costAmount = x.Amount != 0 ? x.Amount : (x.QtyIn * x.Rate);
+                    costPrice = lineQtyIn > 0 && costAmount.HasValue
+                        ? Math.Round(costAmount.Value / lineQtyIn, 4)
+                        : (isSecDefault ? Math.Round(x.Rate * packFactor, 4) : x.Rate);
                 }
                 else
                 {
-                    costPrice = x.CostPrice ?? 0m;
                     costAmount = x.CostAmount ?? ((x.CostPrice ?? 0m) * x.QtyOut);
+                    costPrice = lineQtyOut > 0 && costAmount.HasValue
+                        ? Math.Round(costAmount.Value / lineQtyOut, 4)
+                        : (isSecDefault ? Math.Round((x.CostPrice ?? 0m) * packFactor, 4) : (x.CostPrice ?? 0m));
                 }
             }
 
@@ -782,15 +829,15 @@ internal partial class ReportService : IReportService
                 Vdate = x.Vdate,
                 Vno = x.Vno,
                 Particular = x.Particular,
-                QtyIn = x.QtyIn,
-                QtyOut = x.QtyOut,
-                Rate = x.Rate,
+                QtyIn = lineQtyIn,
+                QtyOut = lineQtyOut,
+                Rate = lineRate,
                 CostPrice = costPrice,
                 CostAmount = costAmount,
                 SecUnit = x.SecUnit,
                 SecQtyIn = x.SecQtyIn,
                 SecQtyOut = x.SecQtyOut,
-                PrimaryUnit = fallbackUnitTitle
+                PrimaryUnit = defaultUnitTitle
             };
         }).ToList();
 
@@ -808,7 +855,7 @@ internal partial class ReportService : IReportService
                 CostAmount = null,
                 SecQtyIn = openingSecStock >= 0 ? openingSecStock : 0m,
                 SecQtyOut = openingSecStock < 0 ? -openingSecStock : 0m,
-                PrimaryUnit = fallbackUnitTitle
+                PrimaryUnit = defaultUnitTitle
             }
         };
 
@@ -821,13 +868,9 @@ internal partial class ReportService : IReportService
             runningBal += (line.QtyIn - line.QtyOut);
             runningSecBal += (line.SecQtyIn - line.SecQtyOut);
             line.SecQtyBal = runningSecBal;
-            line.QtyInDisplay = line.QtyIn > 0
-                ? ItemUnitDisplayHelper.FormatQtyWithUnitText(line.QtyIn, primaryUnitId, fallbackUnitTitle, itemAdditionalUnits, subUnits)
-                : null;
-            line.QtyOutDisplay = line.QtyOut > 0
-                ? ItemUnitDisplayHelper.FormatQtyWithUnitText(line.QtyOut, primaryUnitId, fallbackUnitTitle, itemAdditionalUnits, subUnits)
-                : null;
-            line.BalanceDisplay = ItemUnitDisplayHelper.FormatQtyWithUnitText(runningBal, primaryUnitId, fallbackUnitTitle, itemAdditionalUnits, subUnits);
+            line.QtyInDisplay = line.QtyIn > 0 ? FormatDefaultUnitQty(line.QtyIn, defaultUnitTitle) : null;
+            line.QtyOutDisplay = line.QtyOut > 0 ? FormatDefaultUnitQty(line.QtyOut, defaultUnitTitle) : null;
+            line.BalanceDisplay = FormatDefaultUnitQty(runningBal, defaultUnitTitle);
         }
 
         return result;
@@ -949,11 +992,15 @@ internal partial class ReportService : IReportService
             {
                 x.ItemId,
                 Item = x.Item != null ? x.Item.Title : string.Empty,
-                PrimaryUnitId = x.Item != null ? (x.Item.PrimaryUnitId ?? x.Item.DefaultUnitId) : null,
-                AdditionalUnits = x.Item != null ? x.Item.AdditionalUnits : null,
+                RawPrimaryUnitId = x.Item != null ? x.Item.PrimaryUnitId : null,
+                SecondaryUnitId = x.Item != null ? x.Item.SecondaryUnitId : null,
+                DefaultUnitId = x.Item != null ? x.Item.DefaultUnitId : null,
+                QtyInPack = x.Item != null ? x.Item.QtyInPack : null,
                 LowStockAlert = x.Item != null ? x.Item.LowStockAlert : null,
                 LowStockQty = x.Item != null ? x.Item.LowStockQty : null,
-                Unit = x.Item != null ? (x.Item.PrimaryUnit != null ? (x.Item.PrimaryUnit.ShortTitle ?? x.Item.PrimaryUnit.Title) : (x.Item.DefaultUnit != null ? (x.Item.DefaultUnit.ShortTitle ?? x.Item.DefaultUnit.Title) : x.Item.DefaultUnitId)) : string.Empty,
+                PrimaryUnitTitle = x.Item != null && x.Item.PrimaryUnit != null ? (x.Item.PrimaryUnit.ShortTitle ?? x.Item.PrimaryUnit.Title) : null,
+                DefaultUnitTitle = x.Item != null && x.Item.DefaultUnit != null ? (x.Item.DefaultUnit.ShortTitle ?? x.Item.DefaultUnit.Title) : null,
+                SecondaryUnitTitle = x.Item != null && x.Item.SecondaryUnit != null ? (x.Item.SecondaryUnit.ShortTitle ?? x.Item.SecondaryUnit.Title) : null,
                 SecUnit = x.Item != null ? (x.Item.SecondaryUnit != null ? x.Item.SecondaryUnit.Title : x.Item.SecondaryUnitId) : string.Empty,
                 x.VDate,
                 x.VTime,
@@ -965,46 +1012,87 @@ internal partial class ReportService : IReportService
                 SecQtyOut = x.SecQtyOut ?? 0,
                 x.Rate,
                 x.RemainingQty,
-                x.RunningQtyBalance,
                 x.Id
             })
             .ToListAsync(cancellationToken);
 
-        var primaryUnitIds = rows
-            .Where(x => string.IsNullOrWhiteSpace(x.AdditionalUnits) && !string.IsNullOrWhiteSpace(x.PrimaryUnitId))
-            .Select(x => x.PrimaryUnitId!)
-            .Distinct()
-            .ToList();
-
-        var subUnits = primaryUnitIds.Count == 0
-            ? new List<Unit>()
-            : await _unitRepository.GetAll()
-                .AsNoTracking()
-                .Where(u => u.ParentUnitId != null && u.ConversionRatio > 1m && primaryUnitIds.Contains(u.ParentUnitId))
-                .ToListAsync(cancellationToken);
-
         var data = rows
-            .GroupBy(x => new { x.ItemId, x.Item, x.PrimaryUnitId, x.AdditionalUnits, x.Unit, x.SecUnit, x.LowStockAlert, x.LowStockQty })
+            .GroupBy(x => new
+            {
+                x.ItemId,
+                x.Item,
+                x.RawPrimaryUnitId,
+                x.SecondaryUnitId,
+                x.DefaultUnitId,
+                x.QtyInPack,
+                x.PrimaryUnitTitle,
+                x.DefaultUnitTitle,
+                x.SecondaryUnitTitle,
+                x.SecUnit,
+                x.LowStockAlert,
+                x.LowStockQty
+            })
             .Select(g =>
             {
-                var latestTx = g.OrderByDescending(x => x.VDate).ThenByDescending(x => x.VTime).ThenByDescending(x => x.TranType == "in" ? 0 : 1).ThenByDescending(x => x.Id).FirstOrDefault();
-                var latestPriorTx = g.Where(x => x.VDate < filter.FromDate || (x.VType == "Op" && x.VDate == filter.FromDate)).OrderByDescending(x => x.VDate).ThenByDescending(x => x.VTime).ThenByDescending(x => x.TranType == "in" ? 0 : 1).ThenByDescending(x => x.Id).FirstOrDefault();
-                var priQty = latestPriorTx?.RunningQtyBalance ?? 0m;
+                var packFactor = g.Key.QtyInPack > 0 ? g.Key.QtyInPack.Value : 1m;
+                var effectiveDefaultUnitId = !string.IsNullOrWhiteSpace(g.Key.DefaultUnitId)
+                    ? g.Key.DefaultUnitId
+                    : (!string.IsNullOrWhiteSpace(g.Key.SecondaryUnitId) ? g.Key.SecondaryUnitId : g.Key.RawPrimaryUnitId);
+                var isSecDefault = !string.IsNullOrWhiteSpace(g.Key.SecondaryUnitId)
+                    && string.Equals(effectiveDefaultUnitId, g.Key.SecondaryUnitId, StringComparison.OrdinalIgnoreCase)
+                    && !string.Equals(g.Key.SecondaryUnitId, g.Key.RawPrimaryUnitId, StringComparison.OrdinalIgnoreCase);
+                var defaultUnitTitle = isSecDefault
+                    ? (g.Key.DefaultUnitTitle ?? g.Key.SecondaryUnitTitle ?? effectiveDefaultUnitId ?? string.Empty)
+                    : (g.Key.DefaultUnitTitle ?? g.Key.PrimaryUnitTitle ?? effectiveDefaultUnitId ?? string.Empty);
 
-                var qtyIn = g.Where(x => x.VDate >= filter.FromDate && x.VDate <= filter.ToDate && x.VType != "Op").Sum(x => x.QtyIn);
-                var qtyOut = g.Where(x => x.VDate >= filter.FromDate && x.VDate <= filter.ToDate && x.VType != "Op").Sum(x => x.QtyOut);
+                var priQtyRaw = g.Where(x => x.VDate < filter.FromDate || (x.VType == "Op" && x.VDate == filter.FromDate))
+                    .Sum(x => x.QtyIn - x.QtyOut);
+                var secPriQtyRaw = g.Where(x => x.VDate < filter.FromDate || (x.VType == "Op" && x.VDate == filter.FromDate))
+                    .Sum(x => x.SecQtyIn - x.SecQtyOut);
+
+                var rawQtyIn = g.Where(x => x.VDate >= filter.FromDate && x.VDate <= filter.ToDate && x.VType != "Op")
+                    .Sum(x => x.QtyIn);
+                var secQtyInRaw = g.Where(x => x.VDate >= filter.FromDate && x.VDate <= filter.ToDate && x.VType != "Op")
+                    .Sum(x => x.SecQtyIn);
+
+                var rawQtyOut = g.Where(x => x.VDate >= filter.FromDate && x.VDate <= filter.ToDate && x.VType != "Op")
+                    .Sum(x => x.QtyOut);
+                var secQtyOutRaw = g.Where(x => x.VDate >= filter.FromDate && x.VDate <= filter.ToDate && x.VType != "Op")
+                    .Sum(x => x.SecQtyOut);
+
+                // Normal tenant: sum up primary and secondary into default unit
+                decimal priQty;
+                decimal qtyIn;
+                decimal qtyOut;
+
+                if (isSecDefault)
+                {
+                    priQty = secPriQtyRaw + (packFactor > 0 ? (priQtyRaw / packFactor) : priQtyRaw);
+                    qtyIn = secQtyInRaw + (packFactor > 0 ? (rawQtyIn / packFactor) : rawQtyIn);
+                    qtyOut = secQtyOutRaw + (packFactor > 0 ? (rawQtyOut / packFactor) : rawQtyOut);
+                }
+                else
+                {
+                    priQty = priQtyRaw + (secPriQtyRaw * (packFactor > 1 ? packFactor : 1m));
+                    qtyIn = rawQtyIn + (secQtyInRaw * (packFactor > 1 ? packFactor : 1m));
+                    qtyOut = rawQtyOut + (secQtyOutRaw * (packFactor > 1 ? packFactor : 1m));
+                }
+
                 var qty = qtyIn - qtyOut;
-                var qtyBal = latestTx?.RunningQtyBalance ?? 0m;
+                var qtyBal = priQty + qtyIn - qtyOut;
 
                 var fifoStockValue = g
                     .Where(x => string.Equals(x.TranType, "in", StringComparison.OrdinalIgnoreCase) && x.RemainingQty > 0)
                     .Sum(x => x.RemainingQty * x.Rate);
                 var rate = qtyBal > 0 ? Math.Round(fifoStockValue / qtyBal, 4) : 0m;
-
-                var secPriQty = g.Where(x => x.VDate < filter.FromDate || x.VType == "Op").Sum(x => x.SecQtyIn - x.SecQtyOut);
-                var secQtyIn = g.Where(x => x.VDate >= filter.FromDate && x.VDate <= filter.ToDate && x.VType != "Op").Sum(x => x.SecQtyIn);
-                var secQtyOut = g.Where(x => x.VDate >= filter.FromDate && x.VDate <= filter.ToDate && x.VType != "Op").Sum(x => x.SecQtyOut);
-                var secQtyBal = g.Sum(x => x.SecQtyIn - x.SecQtyOut);
+                if (rate == 0m)
+                {
+                    var latestIn = g.Where(x => string.Equals(x.TranType, "in", StringComparison.OrdinalIgnoreCase)).OrderByDescending(x => x.VDate).ThenByDescending(x => x.Id).FirstOrDefault();
+                    if (latestIn != null)
+                    {
+                        rate = isSecDefault ? Math.Round(latestIn.Rate * packFactor, 4) : latestIn.Rate;
+                    }
+                }
 
                 var status = qtyBal <= 0
                     ? "Out of Stock"
@@ -1014,7 +1102,7 @@ internal partial class ReportService : IReportService
                 {
                     ItemId = g.Key.ItemId,
                     Item = g.Key.Item,
-                    Unit = g.Key.Unit ?? string.Empty,
+                    Unit = defaultUnitTitle,
                     PriQty = priQty,
                     Qty = qty,
                     QtyIn = qtyIn,
@@ -1022,14 +1110,14 @@ internal partial class ReportService : IReportService
                     QtyBal = qtyBal,
                     Rate = rate,
                     SecUnit = g.Key.SecUnit,
-                    SecPriQty = secPriQty,
-                    SecQtyIn = secQtyIn,
-                    SecQtyOut = secQtyOut,
-                    SecQtyBal = secQtyBal,
-                    PriQtyDisplay = ItemUnitDisplayHelper.FormatQtyWithUnitText(priQty, g.Key.PrimaryUnitId, g.Key.Unit, g.Key.AdditionalUnits, subUnits),
-                    QtyInDisplay = qtyIn > 0 ? ItemUnitDisplayHelper.FormatQtyWithUnitText(qtyIn, g.Key.PrimaryUnitId, g.Key.Unit, g.Key.AdditionalUnits, subUnits) : null,
-                    QtyOutDisplay = qtyOut > 0 ? ItemUnitDisplayHelper.FormatQtyWithUnitText(qtyOut, g.Key.PrimaryUnitId, g.Key.Unit, g.Key.AdditionalUnits, subUnits) : null,
-                    QtyBalDisplay = ItemUnitDisplayHelper.FormatQtyWithUnitText(qtyBal, g.Key.PrimaryUnitId, g.Key.Unit, g.Key.AdditionalUnits, subUnits),
+                    SecPriQty = secPriQtyRaw,
+                    SecQtyIn = secQtyInRaw,
+                    SecQtyOut = secQtyOutRaw,
+                    SecQtyBal = secPriQtyRaw + secQtyInRaw - secQtyOutRaw,
+                    PriQtyDisplay = FormatDefaultUnitQty(priQty, defaultUnitTitle),
+                    QtyInDisplay = qtyIn > 0 ? FormatDefaultUnitQty(qtyIn, defaultUnitTitle) : null,
+                    QtyOutDisplay = qtyOut > 0 ? FormatDefaultUnitQty(qtyOut, defaultUnitTitle) : null,
+                    QtyBalDisplay = FormatDefaultUnitQty(qtyBal, defaultUnitTitle),
                     LowStockAlert = g.Key.LowStockAlert,
                     LowStockQty = g.Key.LowStockQty,
                     Status = status
@@ -4292,9 +4380,16 @@ internal partial class ReportService : IReportService
                 x.ItemId,
                 ItemTitle = x.Item != null ? x.Item.Title : x.ItemId,
                 Category = x.Item != null && x.Item.ItemCategory != null ? x.Item.ItemCategory.Title : string.Empty,
-                Unit = x.Item != null && x.Item.DefaultUnit != null ? x.Item.DefaultUnit.Title : (x.Unit != null ? x.Unit.Title : string.Empty),
+                RawPrimaryUnitId = x.Item != null ? x.Item.PrimaryUnitId : null,
+                SecondaryUnitId = x.Item != null ? x.Item.SecondaryUnitId : null,
+                DefaultUnitId = x.Item != null ? x.Item.DefaultUnitId : null,
+                QtyInPack = x.Item != null ? x.Item.QtyInPack : null,
+                PrimaryUnitTitle = x.Item != null && x.Item.PrimaryUnit != null ? (x.Item.PrimaryUnit.ShortTitle ?? x.Item.PrimaryUnit.Title) : null,
+                DefaultUnitTitle = x.Item != null && x.Item.DefaultUnit != null ? (x.Item.DefaultUnit.ShortTitle ?? x.Item.DefaultUnit.Title) : null,
+                SecondaryUnitTitle = x.Item != null && x.Item.SecondaryUnit != null ? (x.Item.SecondaryUnit.ShortTitle ?? x.Item.SecondaryUnit.Title) : null,
                 x.TranType,
                 Qty = x.TranType == "out" ? x.QtyOut : x.QtyIn,
+                SecQty = x.TranType == "out" ? (x.SecQtyOut ?? 0m) : (x.SecQtyIn ?? 0m),
                 x.Rate,
                 Amount = x.Amount != 0 ? x.Amount : (x.TranType == "out" ? x.QtyOut * x.Rate : x.QtyIn * x.Rate),
                 CostPrice = x.CostPrice ?? (x.Item != null ? x.Item.PriRate : 0m),
@@ -4302,15 +4397,56 @@ internal partial class ReportService : IReportService
             })
             .ToListAsync(cancellationToken);
 
+        var isWanda = _currentTenant.HasVariablePackFeature;
+
         var itemGroups = rawTxs
-            .GroupBy(x => new { x.ItemId, x.ItemTitle, x.Category, x.Unit })
+            .GroupBy(x => new
+            {
+                x.ItemId,
+                x.ItemTitle,
+                x.Category,
+                x.RawPrimaryUnitId,
+                x.SecondaryUnitId,
+                x.DefaultUnitId,
+                x.QtyInPack,
+                x.PrimaryUnitTitle,
+                x.DefaultUnitTitle,
+                x.SecondaryUnitTitle
+            })
             .Select(g =>
             {
+                var packFactor = g.Key.QtyInPack > 0 ? g.Key.QtyInPack.Value : 1m;
+                var effectiveDefaultUnitId = !string.IsNullOrWhiteSpace(g.Key.DefaultUnitId)
+                    ? g.Key.DefaultUnitId
+                    : (!string.IsNullOrWhiteSpace(g.Key.SecondaryUnitId) ? g.Key.SecondaryUnitId : g.Key.RawPrimaryUnitId);
+                var isSecDefault = !string.IsNullOrWhiteSpace(g.Key.SecondaryUnitId)
+                    && string.Equals(effectiveDefaultUnitId, g.Key.SecondaryUnitId, StringComparison.OrdinalIgnoreCase)
+                    && !string.Equals(g.Key.SecondaryUnitId, g.Key.RawPrimaryUnitId, StringComparison.OrdinalIgnoreCase);
+                var defaultUnitTitle = isSecDefault
+                    ? (g.Key.DefaultUnitTitle ?? g.Key.SecondaryUnitTitle ?? effectiveDefaultUnitId ?? string.Empty)
+                    : (g.Key.DefaultUnitTitle ?? g.Key.PrimaryUnitTitle ?? effectiveDefaultUnitId ?? string.Empty);
+
                 var sales = g.Where(x => x.TranType == "out").ToList();
                 var returns = g.Where(x => x.TranType == "in").ToList();
 
-                var salesQty = sales.Sum(x => x.Qty);
-                var returnQty = returns.Sum(x => x.Qty);
+                decimal ComputeDefaultUnitQty(decimal pri, decimal sec)
+                {
+                    if (isWanda)
+                    {
+                        return isSecDefault
+                            ? (sec != 0m ? sec : (packFactor > 0 ? pri / packFactor : pri))
+                            : pri;
+                    }
+                    else
+                    {
+                        return isSecDefault
+                            ? (sec + (packFactor > 0 ? pri / packFactor : pri))
+                            : (pri + (sec * (packFactor > 1 ? packFactor : 1m)));
+                    }
+                }
+
+                var salesQty = sales.Sum(x => ComputeDefaultUnitQty(x.Qty, x.SecQty));
+                var returnQty = returns.Sum(x => ComputeDefaultUnitQty(x.Qty, x.SecQty));
                 var netQty = salesQty - returnQty;
 
                 var salesAmt = sales.Sum(x => x.Amount);
@@ -4326,7 +4462,7 @@ internal partial class ReportService : IReportService
                     ItemId = g.Key.ItemId!,
                     ItemTitle = g.Key.ItemTitle ?? g.Key.ItemId!,
                     Category = g.Key.Category,
-                    Unit = g.Key.Unit,
+                    Unit = defaultUnitTitle,
                     TotalQty = netQty,
                     TotalSales = Math.Round(netSales, 2),
                     TotalCost = Math.Round(netCost, 2)
