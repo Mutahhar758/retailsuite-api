@@ -74,23 +74,28 @@ namespace PrinterRelay
                 int currentId = Environment.ProcessId;
                 string currentProcessName = Process.GetCurrentProcess().ProcessName;
 
-                var targets = new[] { "printer-bridge", "PrinterRelay", currentProcessName }
-                    .Distinct(StringComparer.OrdinalIgnoreCase);
-
-                foreach (var targetName in targets)
+                bool killedAny = false;
+                foreach (var p in Process.GetProcesses())
                 {
-                    foreach (var p in Process.GetProcessesByName(targetName))
+                    try
                     {
-                        if (p.Id != currentId)
+                        if (p.Id == currentId) continue;
+                        string name = p.ProcessName;
+                        if (name.StartsWith("printer-bridge", StringComparison.OrdinalIgnoreCase) ||
+                            name.StartsWith("PrinterRelay", StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(name, currentProcessName, StringComparison.OrdinalIgnoreCase))
                         {
-                            try
-                            {
-                                p.Kill();
-                                p.WaitForExit(2000);
-                            }
-                            catch { }
+                            p.Kill();
+                            p.WaitForExit(3000);
+                            killedAny = true;
                         }
                     }
+                    catch { }
+                }
+
+                if (killedAny)
+                {
+                    Thread.Sleep(400);
                 }
             }
             catch { }
