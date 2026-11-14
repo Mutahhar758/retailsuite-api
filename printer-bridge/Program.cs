@@ -430,11 +430,32 @@ del ""%~f0""
                             {
                                 if (logPath != null) File.AppendAllText(logPath, "Registry key already matches.\n");
                             }
+
+                            // Remove legacy PrinterRelay run entry if present
+                            try { key.DeleteValue("PrinterRelay", false); } catch { }
                         }
                         else
                         {
                             if (logPath != null) File.AppendAllText(logPath, "Registry key was null!\n");
                         }
+
+                        // Remove any stale printer-bridge.exe / PrinterRelay.exe from shell:startup so it doesn't launch an older copy on reboot
+                        try
+                        {
+                            string startupDir = Environment.GetFolderPath(Environment.SpecialFolder.Startup);
+                            if (!string.IsNullOrEmpty(startupDir) && Directory.Exists(startupDir))
+                            {
+                                foreach (var legacyName in new[] { "printer-bridge.exe", "PrinterRelay.exe" })
+                                {
+                                    string legacyPath = Path.Combine(startupDir, legacyName);
+                                    if (File.Exists(legacyPath) && !string.Equals(Path.GetFullPath(legacyPath), Path.GetFullPath(exePath), StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        File.Delete(legacyPath);
+                                    }
+                                }
+                            }
+                        }
+                        catch { }
                     }
                 }
             }
