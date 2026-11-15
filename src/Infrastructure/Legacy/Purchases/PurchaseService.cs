@@ -26,6 +26,7 @@ internal class PurchaseService : IPurchaseService
     private readonly IRepository<DefaultAccount> _defaultAccountRepository;
     private readonly IRepository<ChartOfAccount> _chartOfAccountRepository;
     private readonly IRepository<ItemDetail> _itemRepository;
+    private readonly IFifoCostingService _fifoCostingService;
     private readonly IItemTransactionBalanceService _balanceService;
     private readonly ICurrentTenant _currentTenant;
 
@@ -38,6 +39,7 @@ internal class PurchaseService : IPurchaseService
         IRepository<DefaultAccount> defaultAccountRepository,
         IRepository<ChartOfAccount> chartOfAccountRepository,
         IRepository<ItemDetail> itemRepository,
+        IFifoCostingService fifoCostingService,
         IItemTransactionBalanceService balanceService,
         ICurrentTenant currentTenant)
     {
@@ -49,6 +51,7 @@ internal class PurchaseService : IPurchaseService
         _defaultAccountRepository = defaultAccountRepository;
         _chartOfAccountRepository = chartOfAccountRepository;
         _itemRepository = itemRepository;
+        _fifoCostingService = fifoCostingService;
         _balanceService = balanceService;
         _currentTenant = currentTenant;
     }
@@ -400,12 +403,10 @@ internal class PurchaseService : IPurchaseService
 
         await _purchaseMasterRepository.SaveChangesAsync(cancellationToken);
 
-        foreach (var line in request.Lines.Where(l => !string.IsNullOrWhiteSpace(l.ItemId)).DistinctBy(l => l.ItemId))
-        {
-            BackgroundJob.Schedule<IFifoCostingService>(x =>
-                x.RebuildItemFifoAsync(_currentTenant.Id, line.ItemId, request.Date, CancellationToken.None),
-                TimeSpan.FromSeconds(5));
-        }
+        await _fifoCostingService.MarkDirtyAsync(
+            request.Lines.Select(l => l.ItemId),
+            request.Date,
+            cancellationToken);
 
         return voucherNo;
     }
@@ -565,14 +566,9 @@ internal class PurchaseService : IPurchaseService
         await _purchaseMasterRepository.SaveChangesAsync(cancellationToken);
 
         var earliestDate = request.Date < oldDate ? request.Date : oldDate;
-        var affectedItemIds = oldItemIds.Union(request.Lines.Select(x => x.ItemId)).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct();
+        var affectedItemIds = oldItemIds.Union(request.Lines.Select(x => x.ItemId)).Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x!).Distinct();
 
-        foreach (var affectedItemId in affectedItemIds)
-        {
-            BackgroundJob.Schedule<IFifoCostingService>(x =>
-                x.RebuildItemFifoAsync(_currentTenant.Id, affectedItemId!, earliestDate, CancellationToken.None),
-                TimeSpan.FromSeconds(5));
-        }
+        await _fifoCostingService.MarkDirtyAsync(affectedItemIds, earliestDate, cancellationToken);
     }
 
     public async Task DeleteAsync(string voucherNo, CancellationToken cancellationToken)
@@ -609,12 +605,10 @@ internal class PurchaseService : IPurchaseService
 
         await _purchaseMasterRepository.SaveChangesAsync(cancellationToken);
 
-        foreach (var affectedItemId in affectedItemIds)
-        {
-            BackgroundJob.Schedule<IFifoCostingService>(x =>
-                x.RebuildItemFifoAsync(_currentTenant.Id, affectedItemId!, oldDate, CancellationToken.None),
-                TimeSpan.FromSeconds(5));
-        }
+        await _fifoCostingService.MarkDirtyAsync(
+            affectedItemIds.Select(x => x!),
+            oldDate,
+            cancellationToken);
     }
 
     public async Task DeleteLineAsync(string voucherNo, int seq, CancellationToken cancellationToken)
@@ -663,9 +657,7 @@ internal class PurchaseService : IPurchaseService
 
         if (!string.IsNullOrEmpty(affectedItemId))
         {
-            BackgroundJob.Schedule<IFifoCostingService>(x =>
-                x.RebuildItemFifoAsync(_currentTenant.Id, affectedItemId, affectedDate, CancellationToken.None),
-                TimeSpan.FromSeconds(5));
+            await _fifoCostingService.MarkDirtyAsync(affectedItemId, affectedDate, cancellationToken);
         }
     }
 

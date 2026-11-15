@@ -87,6 +87,12 @@ internal static class Startup
             Cron.Daily(20, 0),
             new RecurringJobOptions { TimeZone = pktZone });
 
+        RecurringJob.AddOrUpdate<IFifoRebuildNightlyJob>(
+            "nightly-fifo-rebuild",
+            job => job.ExecuteAsync(CancellationToken.None),
+            Cron.Daily(4, 0),
+            new RecurringJobOptions { TimeZone = pktZone });
+
         return app;
     }
 }

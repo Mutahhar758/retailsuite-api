@@ -3,6 +3,7 @@ using QuestPDF.Fluent;
 using Retailer.Application.Common.Exceptions;
 using Retailer.Application.Common.Interfaces;
 using Retailer.Application.Common.Persistence;
+using Retailer.Application.Legacy.Inventory;
 using Retailer.Application.Legacy.Reports;
 using Retailer.Domain.Legacy;
 using Retailer.Domain.Common.Enums;
@@ -44,6 +45,7 @@ internal partial class ReportService : IReportService
     private readonly IRepository<DefaultAccount> _defaultAccountRepository;
     private readonly IRepository<Setting> _settingRepository;
     private readonly IRepository<TransactionFifoMapping> _fifoMappingRepository;
+    private readonly IFifoCostingService _fifoCostingService;
     private readonly ICurrentTenant _currentTenant;
 
     public ReportService(
@@ -68,6 +70,7 @@ internal partial class ReportService : IReportService
         IRepository<DefaultAccount> defaultAccountRepository,
         IRepository<Setting> settingRepository,
         IRepository<TransactionFifoMapping> fifoMappingRepository,
+        IFifoCostingService fifoCostingService,
         ICurrentTenant currentTenant)
     {
         _glRepository = glRepository;
@@ -91,6 +94,7 @@ internal partial class ReportService : IReportService
         _defaultAccountRepository = defaultAccountRepository;
         _settingRepository = settingRepository;
         _fifoMappingRepository = fifoMappingRepository;
+        _fifoCostingService = fifoCostingService;
         _currentTenant = currentTenant;
     }
 
@@ -708,6 +712,8 @@ internal partial class ReportService : IReportService
         if (filter.ToDate < filter.FromDate)
             throw new BadRequestException("To date must be greater than or equal to from date.");
 
+        await _fifoCostingService.FlushDirtyItemsAsync(new[] { filter.FkItem }, cancellationToken);
+
         var itemInfo = await _itemDetailRepository.GetAll()
             .AsNoTracking()
             .Include(x => x.PrimaryUnit)
@@ -982,6 +988,20 @@ internal partial class ReportService : IReportService
 
         if (filter.ToDate < filter.FromDate)
             throw new BadRequestException("To date must be greater than or equal to from date.");
+
+        var dirtyBalanceItemIds = await _itemTransactionRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => x.VDate <= filter.ToDate && !string.IsNullOrWhiteSpace(x.ItemId))
+            .Where(x => x.Item != null && x.Item.ItemType != ItemType.Service && x.Item.FifoRebuildFromDate != null)
+            .Where(x => string.IsNullOrWhiteSpace(filter.Catagory) || (x.Item != null && x.Item.ItemCategoryId == filter.Catagory))
+            .Select(x => x.ItemId!)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        if (dirtyBalanceItemIds.Count > 0)
+        {
+            await _fifoCostingService.FlushDirtyItemsAsync(dirtyBalanceItemIds, cancellationToken);
+        }
 
         var rows = await _itemTransactionRepository.GetAll()
             .AsNoTracking()
@@ -4136,6 +4156,21 @@ internal partial class ReportService : IReportService
     /// </summary>
     private async Task<decimal> GetFifoStockValuationAsync(DateOnly asOfDate, CancellationToken cancellationToken)
     {
+        var dirtyValuationItemIds = await _itemTransactionRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => !string.IsNullOrWhiteSpace(x.ItemId)
+                     && (x.VDate <= asOfDate || x.VType == "Op")
+                     && x.Item != null
+                     && x.Item.FifoRebuildFromDate != null)
+            .Select(x => x.ItemId!)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        if (dirtyValuationItemIds.Count > 0)
+        {
+            await _fifoCostingService.FlushDirtyItemsAsync(dirtyValuationItemIds, cancellationToken);
+        }
+
         var today = DateOnly.FromDateTime(DateTime.Today);
         if (asOfDate >= today)
         {
@@ -4197,6 +4232,17 @@ internal partial class ReportService : IReportService
         if (!string.IsNullOrWhiteSpace(filter.CustomerAccount))
         {
             txQuery = txQuery.Where(x => x.AccountId == filter.CustomerAccount);
+        }
+
+        var dirtyCustomerItemIds = await txQuery
+            .Where(x => !string.IsNullOrWhiteSpace(x.ItemId) && x.Item != null && x.Item.FifoRebuildFromDate != null)
+            .Select(x => x.ItemId!)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        if (dirtyCustomerItemIds.Count > 0)
+        {
+            await _fifoCostingService.FlushDirtyItemsAsync(dirtyCustomerItemIds, cancellationToken);
         }
 
         var rawTxs = await txQuery
@@ -4372,6 +4418,17 @@ internal partial class ReportService : IReportService
         if (!string.IsNullOrWhiteSpace(filter.CategoryId))
         {
             txQuery = txQuery.Where(x => x.Item != null && x.Item.ItemCategoryId == filter.CategoryId);
+        }
+
+        var dirtyProfitItemIds = await txQuery
+            .Where(x => x.Item != null && x.Item.FifoRebuildFromDate != null)
+            .Select(x => x.ItemId!)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        if (dirtyProfitItemIds.Count > 0)
+        {
+            await _fifoCostingService.FlushDirtyItemsAsync(dirtyProfitItemIds, cancellationToken);
         }
 
         var rawTxs = await txQuery

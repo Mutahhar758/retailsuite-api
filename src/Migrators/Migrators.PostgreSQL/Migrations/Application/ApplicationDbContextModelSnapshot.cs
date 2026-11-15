@@ -1862,6 +1862,10 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnType("timestamp without time zone")
                         .HasColumnName("deleted_on");
 
+                    b.Property<DateOnly?>("FifoRebuildFromDate")
+                        .HasColumnType("date")
+                        .HasColumnName("fifo_rebuild_from_date");
+
                     b.Property<string>("ItemCategoryId")
                         .HasColumnType("text")
                         .HasColumnName("item_category_id");
@@ -1962,6 +1966,9 @@ namespace Migrators.PostgreSQL.Migrations.Application
 
                     b.HasIndex("DefaultUnitId", "TenantId")
                         .HasDatabaseName("ix_item_detail_default_unit_id_tenant_id");
+
+                    b.HasIndex("FifoRebuildFromDate")
+                        .HasDatabaseName("ix_item_detail_fifo_rebuild_from_date");
 
                     b.HasIndex("ItemCategoryId", "TenantId")
                         .HasDatabaseName("ix_item_detail_item_category_id_tenant_id");

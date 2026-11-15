@@ -14,17 +14,20 @@ namespace Retailer.Infrastructure.Legacy.Inventory;
 public class ItemTransactionBalanceService : IItemTransactionBalanceService
 {
     private readonly IRepository<ItemTransaction> _itemTransactionRepository;
+    private readonly IFifoCostingService _fifoCostingService;
     private readonly ApplicationDbContext _dbContext;
     private readonly EfTransactionManager _transactionManager;
     private readonly ILogger<ItemTransactionBalanceService> _logger;
 
     public ItemTransactionBalanceService(
         IRepository<ItemTransaction> itemTransactionRepository,
+        IFifoCostingService fifoCostingService,
         ApplicationDbContext dbContext,
         EfTransactionManager transactionManager,
         ILogger<ItemTransactionBalanceService> logger)
     {
         _itemTransactionRepository = itemTransactionRepository;
+        _fifoCostingService = fifoCostingService;
         _dbContext = dbContext;
         _transactionManager = transactionManager;
         _logger = logger;
@@ -89,12 +92,10 @@ public class ItemTransactionBalanceService : IItemTransactionBalanceService
             if (hasSubsequent || voucherDate < DateOnly.FromDateTime(DateTime.Today))
             {
                 _logger.LogInformation(
-                    "Backdated transaction detected for Item {ItemId} at {VoucherDate}. Scheduling FIFO and running balance rebuild.",
+                    "Backdated transaction detected for Item {ItemId} at {VoucherDate}. Marking item for FIFO and running balance rebuild.",
                     itemId, voucherDate);
 
-                BackgroundJob.Schedule<IFifoCostingService>(x =>
-                    x.RebuildItemFifoAsync(tenantId, itemId, voucherDate, CancellationToken.None),
-                    TimeSpan.FromSeconds(5));
+                await _fifoCostingService.MarkDirtyAsync(itemId, voucherDate, cancellationToken);
             }
         }
     }

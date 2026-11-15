@@ -20,4 +20,21 @@ public interface IFifoCostingService : ITransientService
         string itemId,
         DateOnly fromDate,
         CancellationToken cancellationToken = default);
+
+    Task MarkDirtyAsync(
+        string itemId,
+        DateOnly fromDate,
+        CancellationToken cancellationToken = default);
+
+    Task MarkDirtyAsync(
+        IEnumerable<string> itemIds,
+        DateOnly fromDate,
+        CancellationToken cancellationToken = default);
+
+    Task FlushDirtyItemsAsync(
+        IReadOnlyCollection<string>? itemIds = null,
+        CancellationToken cancellationToken = default);
+
+    Task FlushAllTenantsAsync(
+        CancellationToken cancellationToken = default);
 }

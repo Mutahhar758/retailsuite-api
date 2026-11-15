@@ -191,6 +191,8 @@ public class ItemDetailConfig : IEntityTypeConfiguration<ItemDetail>
         builder.Property(x => x.AdditionalUnits)
             .HasMaxLength(2000);
 
+        builder.HasIndex(x => x.FifoRebuildFromDate);
+
         builder.HasOne(x => x.ItemCategory)
             .WithMany()
             .HasForeignKey(x => x.ItemCategoryId)

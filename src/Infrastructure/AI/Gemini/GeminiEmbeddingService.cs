@@ -125,7 +125,7 @@ public class GeminiEmbeddingService : IGeminiEmbeddingService
                         promptTokens = Math.Max(1, (int)Math.Ceiling(text.Length / 4.0));
                     }
 
-                    _ = _tokenUsageService.RecordUsageAsync(
+                    await _tokenUsageService.RecordUsageAsync(
                         tenantId: _currentTenant?.Id ?? "GLOBAL",
                         model: embeddingModel,
                         inputTokens: promptTokens,

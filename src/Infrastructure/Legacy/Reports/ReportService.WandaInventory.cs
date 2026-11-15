@@ -18,6 +18,8 @@ internal partial class ReportService
         if (filter.ToDate < filter.FromDate)
             throw new BadRequestException("To date must be greater than or equal to from date.");
 
+        await _fifoCostingService.FlushDirtyItemsAsync(new[] { filter.FkItem }, cancellationToken);
+
         var itemInfo = await _itemDetailRepository.GetAll()
             .AsNoTracking()
             .Include(x => x.PrimaryUnit)
@@ -285,6 +287,20 @@ internal partial class ReportService
 
         if (filter.ToDate < filter.FromDate)
             throw new BadRequestException("To date must be greater than or equal to from date.");
+
+        var dirtyWandaItemIds = await _itemTransactionRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => x.VDate <= filter.ToDate && !string.IsNullOrWhiteSpace(x.ItemId))
+            .Where(x => x.Item != null && x.Item.ItemType != ItemType.Service && x.Item.FifoRebuildFromDate != null)
+            .Where(x => string.IsNullOrWhiteSpace(filter.Catagory) || (x.Item != null && x.Item.ItemCategoryId == filter.Catagory))
+            .Select(x => x.ItemId!)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        if (dirtyWandaItemIds.Count > 0)
+        {
+            await _fifoCostingService.FlushDirtyItemsAsync(dirtyWandaItemIds, cancellationToken);
+        }
 
         var rows = await _itemTransactionRepository.GetAll()
             .AsNoTracking()

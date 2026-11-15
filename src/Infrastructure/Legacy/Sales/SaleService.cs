@@ -589,14 +589,9 @@ internal class SaleService : ISaleService
         await _saleMasterRepository.SaveChangesAsync(cancellationToken);
 
         var earliestDate = request.Date < oldDate ? request.Date : oldDate;
-        var affectedItemIds = oldItemIds.Union(request.Lines.Select(x => x.ItemId)).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct();
+        var affectedItemIds = oldItemIds.Union(request.Lines.Select(x => x.ItemId)).Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x!).Distinct();
 
-        foreach (var affectedItemId in affectedItemIds)
-        {
-            BackgroundJob.Schedule<IFifoCostingService>(x =>
-                x.RebuildItemFifoAsync(_currentTenant.Id, affectedItemId!, earliestDate, CancellationToken.None),
-                TimeSpan.FromSeconds(5));
-        }
+        await _fifoCostingService.MarkDirtyAsync(affectedItemIds, earliestDate, cancellationToken);
     }
 
     public async Task DeleteAsync(string voucherNo, CancellationToken cancellationToken)
@@ -633,12 +628,10 @@ internal class SaleService : ISaleService
 
         await _saleMasterRepository.SaveChangesAsync(cancellationToken);
 
-        foreach (var affectedItemId in affectedItemIds)
-        {
-            BackgroundJob.Schedule<IFifoCostingService>(x =>
-                x.RebuildItemFifoAsync(_currentTenant.Id, affectedItemId!, oldDate, CancellationToken.None),
-                TimeSpan.FromSeconds(5));
-        }
+        await _fifoCostingService.MarkDirtyAsync(
+            affectedItemIds.Select(x => x!),
+            oldDate,
+            cancellationToken);
     }
 
     public async Task DeleteLineAsync(string voucherNo, int seq, CancellationToken cancellationToken)
@@ -701,9 +694,7 @@ internal class SaleService : ISaleService
 
         if (!string.IsNullOrEmpty(affectedItemId))
         {
-            BackgroundJob.Schedule<IFifoCostingService>(x =>
-                x.RebuildItemFifoAsync(_currentTenant.Id, affectedItemId, affectedDate, CancellationToken.None),
-                TimeSpan.FromSeconds(5));
+            await _fifoCostingService.MarkDirtyAsync(affectedItemId, affectedDate, cancellationToken);
         }
     }
 
