@@ -314,25 +314,32 @@ public class BarcodeDocument : IDocument
                 {
                     decimal total = Math.Round(item.TotalAmount ?? ((item.Qty ?? 1) * item.Rate));
                     string unitStr = !string.IsNullOrWhiteSpace(item.Unit) && !decimal.TryParse(item.Unit, out _) ? item.Unit : "kg";
+                    bool hasQty = item.Qty.HasValue && item.Qty.Value > 0;
 
-                    decimal dispQty = item.DisplayQty.HasValue ? item.DisplayQty.Value : (item.Qty ?? 1m);
-                    string dispUnit = !string.IsNullOrWhiteSpace(item.DisplayUnit) ? item.DisplayUnit : unitStr;
-                    string formattedQty = dispQty % 1m == 0m ? dispQty.ToString("0") : dispQty.ToString("0.###");
-
-                    if (_request.IncludePrice)
+                    if (hasQty)
                     {
-                        string priceText = total > 0
-                            ? $"Qty: {formattedQty} {dispUnit}  •  Rs. {total:#,##0}"
-                            : $"Qty: {formattedQty} {dispUnit}";
+                        decimal dispQty = item.DisplayQty.HasValue ? item.DisplayQty.Value : item.Qty!.Value;
+                        string dispUnit = !string.IsNullOrWhiteSpace(item.DisplayUnit) ? item.DisplayUnit : unitStr;
+                        string formattedQty = dispQty % 1m == 0m ? dispQty.ToString("0") : dispQty.ToString("0.###");
 
-                        col.Item().AlignCenter().Text(priceText)
-                            .FontSize(effectivePriceFontSize)
-                            .Bold()
-                            .FontColor(Colors.Black);
+                        if (_request.IncludePrice && total > 0)
+                        {
+                            col.Item().AlignCenter().Text($"Qty: {formattedQty} {dispUnit}  •  Rs. {total:#,##0}")
+                                .FontSize(effectivePriceFontSize)
+                                .Bold()
+                                .FontColor(Colors.Black);
+                        }
+                        else
+                        {
+                            col.Item().AlignCenter().Text($"Qty: {formattedQty} {dispUnit}")
+                                .FontSize(effectivePriceFontSize)
+                                .Bold()
+                                .FontColor(Colors.Black);
+                        }
                     }
-                    else
+                    else if (_request.IncludePrice && total > 0)
                     {
-                        col.Item().AlignCenter().Text($"Qty: {formattedQty} {dispUnit}")
+                        col.Item().AlignCenter().Text($"Rs. {total:#,##0}")
                             .FontSize(effectivePriceFontSize)
                             .Bold()
                             .FontColor(Colors.Black);
