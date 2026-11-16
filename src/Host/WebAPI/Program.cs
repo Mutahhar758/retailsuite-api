@@ -2,6 +2,9 @@ using Retailer.Application;
 using Retailer.Application.Common.Enums;
 using Retailer.Host.Configurations;
 using Retailer.Host.Controllers;
+using Retailer.Host.OnPremises;
+using Retailer.Infrastructure.OnPremises;
+using Microsoft.Extensions.Hosting.WindowsServices;
 using Retailer.Infrastructure;
 using Retailer.Infrastructure.Common;
 using Retailer.Infrastructure.Common.Convertor;
@@ -15,15 +18,33 @@ using System.Text.Json.Serialization;
 
 [assembly: ApiConventionType(typeof(ApiConventions))]
 
+// Install-time provisioning (generates per-install secrets) - runs and exits, never starts the web host.
+if (OnPremisesProvisioner.IsCliCommand(args))
+{
+    Environment.ExitCode = OnPremisesProvisioner.Run(args);
+    return;
+}
+
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 StaticLogger.EnsureInitialized();
 Log.Information("Server Booting Up...");
 try
 {
-    var builder = WebApplication.CreateBuilder(args);
+    // When running as a Windows Service the working directory is System32; anchor content root to the exe folder.
+    var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+    {
+        Args = args,
+        ContentRootPath = WindowsServiceHelpers.IsWindowsService() ? AppContext.BaseDirectory : null,
+    });
 
     builder.AddConfigurations();
+
+    var onPremises = HostingMode.IsOnPremises(builder.Configuration);
+    if (onPremises)
+    {
+        builder.Host.UseWindowsService(options => options.ServiceName = "RetailSuiteLocalServer");
+    }
 
     // Configure Serilog to capture all logs (Console, File, Seq, AppInsights)
     builder.RegisterSerilog();
@@ -41,7 +62,7 @@ try
         });
     }
 
-    builder.Services.AddControllers()
+    var mvcBuilder = builder.Services.AddControllers()
         .AddJsonOptions(o =>
         {
             o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
@@ -74,6 +95,11 @@ try
                 });
             };
         });
+    if (onPremises)
+    {
+        mvcBuilder.ExcludeCloudControllers();
+    }
+
     builder.Services.AddApplication();
     builder.Services.AddFluentValidationAutoValidation();
     builder.Services.AddFluentValidationClientsideAdapters();

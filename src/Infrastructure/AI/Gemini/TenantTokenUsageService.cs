@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Retailer.Shared.Common;
 using Microsoft.Extensions.Logging;
 using Retailer.Application.Common.Interfaces;
@@ -10,15 +11,19 @@ namespace Retailer.Infrastructure.AI.Gemini;
 
 public class TenantTokenUsageService : ITenantTokenUsageService, IScopedService
 {
-    private readonly TenantDbContext _dbContext;
+#if !ON_PREMISES
+    private readonly TenantDbContext? _dbContext;
+#endif
     private readonly ILogger<TenantTokenUsageService> _logger;
 
     // Process-level locks keyed by "{tenantId}:{model}" to prevent local thread race conditions
     private static readonly ConcurrentDictionary<string, SemaphoreSlim> _locks = new();
 
-    public TenantTokenUsageService(TenantDbContext dbContext, ILogger<TenantTokenUsageService> logger)
+    public TenantTokenUsageService(IServiceProvider serviceProvider, ILogger<TenantTokenUsageService> logger)
     {
-        _dbContext = dbContext;
+#if !ON_PREMISES
+        _dbContext = serviceProvider.GetService<TenantDbContext>();
+#endif
         _logger = logger;
     }
 
@@ -30,6 +35,14 @@ public class TenantTokenUsageService : ITenantTokenUsageService, IScopedService
         int totalTokens,
         CancellationToken cancellationToken = default)
     {
+#if ON_PREMISES
+        await Task.CompletedTask;
+        return;
+#else
+        if (_dbContext is null)
+        {
+            return;
+        }
         if (string.IsNullOrWhiteSpace(tenantId)) tenantId = "GLOBAL";
         if (string.IsNullOrWhiteSpace(model)) model = "unknown";
 
@@ -80,12 +93,21 @@ public class TenantTokenUsageService : ITenantTokenUsageService, IScopedService
         {
             semaphore.Release();
         }
+#endif
     }
 
     public async Task<List<TenantAiTokenUsageDto>> GetTenantTokenUsagesAsync(
         string tenantId,
         CancellationToken cancellationToken = default)
     {
+#if ON_PREMISES
+        await Task.CompletedTask;
+        return new List<TenantAiTokenUsageDto>();
+#else
+        if (_dbContext is null)
+        {
+            return new List<TenantAiTokenUsageDto>();
+        }
         var cleanTenantId = (tenantId ?? "GLOBAL").Trim();
         return await _dbContext.TenantAiTokenUsages
             .AsNoTracking()
@@ -102,5 +124,6 @@ public class TenantTokenUsageService : ITenantTokenUsageService, IScopedService
                 LastUsedAt = x.LastUsedAt
             })
             .ToListAsync(cancellationToken);
+#endif
     }
 }

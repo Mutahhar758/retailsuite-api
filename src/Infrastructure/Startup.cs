@@ -14,10 +14,12 @@ using Retailer.Infrastructure.Mapping;
 using Retailer.Infrastructure.Middleware;
 using Retailer.Infrastructure.Multitenancy;
 using Retailer.Infrastructure.OpenApi;
+using Retailer.Infrastructure.OnPremises;
 using Retailer.Infrastructure.PDF;
 using Retailer.Infrastructure.Persistence;
 using Retailer.Infrastructure.Persistence.Initialization;
 using Retailer.Infrastructure.SecurityHeaders;
+using Retailer.Infrastructure.Tunnel;
 using Retailer.Shared.Localization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Mvc;
@@ -55,7 +57,8 @@ public static class Startup
             .AddBackgroundJobs(config)
             .AddMailing(config)
             .AddInternalServicesKey(config)
-            .AddExternalLinks(config);
+            .AddExternalLinks(config)
+            .AddTunnel(config);
     }
 
     private static IServiceCollection AddApiVersioning(this IServiceCollection services) =>
@@ -73,9 +76,19 @@ public static class Startup
     {
         using var scope = services.CreateScope();
 
-        // Initializes root tenant registry DB, migrates and seeds every tenant's database.
+        // On-premises: migrate + seed the single local store database (no master tenant registry exists).
+        var onPremisesInitializer = scope.ServiceProvider.GetService<OnPremisesDatabaseInitializer>();
+        if (onPremisesInitializer is not null)
+        {
+            await onPremisesInitializer.InitializeAsync(cancellationToken);
+            return;
+        }
+
+#if !ON_PREMISES
+        // Cloud: initializes root tenant registry DB, migrates and seeds every tenant's database.
         await scope.ServiceProvider.GetRequiredService<TenantDatabaseInitializer>()
             .InitializeAsync(cancellationToken);
+#endif
     }
 
     public static IApplicationBuilder UseInfrastructure(this IApplicationBuilder builder, IConfiguration config) =>
@@ -89,6 +102,7 @@ public static class Startup
             .UseBackgroundJobs()
             .UseMultitenancy()
             .UseTenantValidation()
+            .UseOnPremisesTunnelProxy(config)
             .UseRequestLogging(config)
             .UseExceptionMiddleware()
             .UseUserSessionMiddleware()
@@ -102,6 +116,7 @@ public static class Startup
     {
         builder.MapControllers().RequireAuthorization();
         builder.MapHealthCheck();
+        builder.MapTunnelEndpoints();
         return builder;
     }
 

@@ -4,6 +4,15 @@
         <NoWarn>$(NoWarn);RCS1021;IDE0161;RCS1205;NU1901;NU1902;NU1903;NU1904</NoWarn>
         <WarningsNotAsErrors>NU1901;NU1902;NU1903;NU1904</WarningsNotAsErrors>
     </PropertyGroup>
+    <PropertyGroup Condition="'$(Configuration)' == 'OnPremises'">
+        <DefineConstants>$(DefineConstants);ON_PREMISES</DefineConstants>
+        <Optimize>true</Optimize>
+        <DebugType>none</DebugType>
+        <DebugSymbols>false</DebugSymbols>
+    </PropertyGroup>
+    <ItemGroup Condition="'$(Configuration)' == 'OnPremises'">
+        <Compile Remove="Migrations\Tenant\**" />
+    </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\..\Infrastructure\Infrastructure.csproj" />
     </ItemGroup>

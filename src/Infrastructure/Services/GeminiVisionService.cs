@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Retailer.Shared.Common;
 using Retailer.Application.Common.Exceptions;
@@ -20,7 +21,10 @@ public class GeminiVisionService : IAiScanService
 {
     private readonly IConfiguration _config;
     private readonly ICurrentTenant _currentTenant;
-    private readonly TenantDbContext _tenantDbContext;
+    private readonly ITenantLookup _tenantLookup;
+#if !ON_PREMISES
+    private readonly TenantDbContext? _tenantDbContext;
+#endif
     private readonly IChartOfAccountService _chartOfAccountService;
     private readonly ITenantTokenUsageService _tokenUsageService;
     private static readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(120) };
@@ -29,14 +33,18 @@ public class GeminiVisionService : IAiScanService
     public GeminiVisionService(
         IConfiguration config,
         ICurrentTenant currentTenant,
-        TenantDbContext tenantDbContext,
+        ITenantLookup tenantLookup,
+        IServiceProvider serviceProvider,
         IChartOfAccountService chartOfAccountService,
         ITenantTokenUsageService tokenUsageService,
         ILogger<GeminiVisionService> logger)
     {
         _config = config;
         _currentTenant = currentTenant;
-        _tenantDbContext = tenantDbContext;
+        _tenantLookup = tenantLookup;
+#if !ON_PREMISES
+        _tenantDbContext = serviceProvider.GetService<TenantDbContext>();
+#endif
         _chartOfAccountService = chartOfAccountService;
         _tokenUsageService = tokenUsageService;
         _logger = logger;
@@ -71,7 +79,7 @@ public class GeminiVisionService : IAiScanService
             throw new UnauthorizedException("Tenant context is missing.");
         }
 
-        var tenant = await _tenantDbContext.TenantInfo.FirstOrDefaultAsync(x => x.Id == tenantId, cancellationToken);
+        var tenant = await _tenantLookup.FindAsync(tenantId, cancellationToken);
         if (tenant == null)
         {
             throw new NotFoundException($"Tenant '{tenantId}' not found.");
@@ -278,27 +286,32 @@ Return strictly valid JSON with this schema:
         // Audit log in GeminiApiLogs
         try
         {
-            _tenantDbContext.GeminiApiLogs.Add(new GeminiApiLog
+#if !ON_PREMISES
+            if (_tenantDbContext is not null)
             {
-                CorrelationId = Guid.CreateVersion7().ToString(),
-                ChatId = "AiScanSaleSupply",
-                TenantId = tenant.Id,
-                Source = "AiScanSaleSupply",
-                TurnIndex = 1,
-                Model = model,
-                Endpoint = baseEndpoint,
-                Prompt = $"ScanSaleSupplySheet ({images.Count} images, TargetDate: '{targetDate}')",
-                RequestBody = $"[Image parts: {images.Count}]",
-                ResponseBody = responseJson.Length > 2000 ? responseJson[..2000] + "...[truncated]" : responseJson,
-                StatusCode = (int)response.StatusCode,
-                IsSuccess = true,
-                DurationMs = stopwatch.ElapsedMilliseconds,
-                InputTokens = inputTokens,
-                OutputTokens = outputTokens,
-                TotalTokens = totalTokens,
-                CreatedAt = PakistanTime.Now
-            });
-            await _tenantDbContext.SaveChangesAsync(cancellationToken);
+                _tenantDbContext.GeminiApiLogs.Add(new GeminiApiLog
+                {
+                    CorrelationId = Guid.CreateVersion7().ToString(),
+                    ChatId = "AiScanSaleSupply",
+                    TenantId = tenant.Id,
+                    Source = "AiScanSaleSupply",
+                    TurnIndex = 1,
+                    Model = model,
+                    Endpoint = baseEndpoint,
+                    Prompt = $"ScanSaleSupplySheet ({images.Count} images, TargetDate: '{targetDate}')",
+                    RequestBody = $"[Image parts: {images.Count}]",
+                    ResponseBody = responseJson.Length > 2000 ? responseJson[..2000] + "...[truncated]" : responseJson,
+                    StatusCode = (int)response.StatusCode,
+                    IsSuccess = true,
+                    DurationMs = stopwatch.ElapsedMilliseconds,
+                    InputTokens = inputTokens,
+                    OutputTokens = outputTokens,
+                    TotalTokens = totalTokens,
+                    CreatedAt = PakistanTime.Now
+                });
+                await _tenantDbContext.SaveChangesAsync(cancellationToken);
+            }
+#endif
         }
         catch (Exception ex)
         {
@@ -363,7 +376,13 @@ Return strictly valid JSON with this schema:
 
         // 6. Increment Tenant Quota Usage
         tenant.AiScanUsedThisMonth += 1;
-        await _tenantDbContext.SaveChangesAsync(cancellationToken);
+#if !ON_PREMISES
+        if (_tenantDbContext is not null)
+        {
+            _tenantDbContext.TenantInfo.Update(tenant);
+            await _tenantDbContext.SaveChangesAsync(cancellationToken);
+        }
+#endif
 
         return new SaleSupplyScanResponse
         {

@@ -1,5 +1,6 @@
 <Project>
     <PropertyGroup>
+        <Configurations>Debug;Release;OnPremises</Configurations>
         <CodeAnalysisRuleSet>$(MSBuildThisFileDirectory)dotnet.ruleset</CodeAnalysisRuleSet>
         <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
         <NuGetAudit>false</NuGetAudit>

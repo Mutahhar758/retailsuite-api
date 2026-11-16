@@ -10,7 +10,7 @@ using Retailer.Application.Common.Interfaces;
 
 namespace Retailer.Infrastructure.FileStorage;
 
-public class MediaServiceClient : IMediaServiceClient, ITransientService
+public class MediaServiceClient : IMediaServiceClient
 {
     private readonly HttpClient _httpClient;
     private readonly MediaServiceSettings _settings;

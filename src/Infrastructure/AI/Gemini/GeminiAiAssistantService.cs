@@ -5,6 +5,7 @@ using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Retailer.Shared.Common;
 using Retailer.Application.Common.Interfaces;
@@ -28,7 +29,9 @@ public class GeminiAiAssistantService : IAiAssistantService
     private readonly IRepository<GlEntry> _glRepository;
     private readonly IRepository<ItemDetail> _itemRepository;
     private readonly IRepository<ItemTransaction> _itemTransactionRepository;
-    private readonly TenantDbContext _tenantDbContext;
+#if !ON_PREMISES
+    private readonly TenantDbContext? _tenantDbContext;
+#endif
     private readonly ITenantTokenUsageService _tokenUsageService;
     private readonly ILogger<GeminiAiAssistantService> _logger;
     private static readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(40) };
@@ -43,7 +46,7 @@ public class GeminiAiAssistantService : IAiAssistantService
         IRepository<GlEntry> glRepository,
         IRepository<ItemDetail> itemRepository,
         IRepository<ItemTransaction> itemTransactionRepository,
-        TenantDbContext tenantDbContext,
+        IServiceProvider serviceProvider,
         ITenantTokenUsageService tokenUsageService,
         ILogger<GeminiAiAssistantService> logger)
     {
@@ -56,7 +59,9 @@ public class GeminiAiAssistantService : IAiAssistantService
         _glRepository = glRepository;
         _itemRepository = itemRepository;
         _itemTransactionRepository = itemTransactionRepository;
-        _tenantDbContext = tenantDbContext;
+#if !ON_PREMISES
+        _tenantDbContext = serviceProvider.GetService<TenantDbContext>();
+#endif
         _tokenUsageService = tokenUsageService;
         _logger = logger;
     }
@@ -700,8 +705,13 @@ public class GeminiAiAssistantService : IAiAssistantService
     {
         try
         {
-            _tenantDbContext.GeminiApiLogs.Add(log);
-            await _tenantDbContext.SaveChangesAsync(cancellationToken);
+#if !ON_PREMISES
+            if (_tenantDbContext is not null)
+            {
+                _tenantDbContext.GeminiApiLogs.Add(log);
+                await _tenantDbContext.SaveChangesAsync(cancellationToken);
+            }
+#endif
 
             // Record cumulative token consumption per tenant per model with atomic row locking
             if (log.TotalTokens.HasValue || log.InputTokens.HasValue || log.OutputTokens.HasValue)

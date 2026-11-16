@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Pgvector;
 using Pgvector.EntityFrameworkCore;
@@ -10,16 +11,20 @@ namespace Retailer.Infrastructure.AI.ToolRouter;
 
 public class ToolRouterService : IToolRouterService
 {
-    private readonly TenantDbContext _tenantDbContext;
+#if !ON_PREMISES
+    private readonly TenantDbContext? _tenantDbContext;
+#endif
     private readonly IGeminiEmbeddingService? _embeddingService;
     private readonly ILogger<ToolRouterService> _logger;
 
     public ToolRouterService(
-        TenantDbContext tenantDbContext,
+        IServiceProvider serviceProvider,
         ILogger<ToolRouterService> logger,
         IGeminiEmbeddingService? embeddingService = null)
     {
-        _tenantDbContext = tenantDbContext;
+#if !ON_PREMISES
+        _tenantDbContext = serviceProvider.GetService<TenantDbContext>();
+#endif
         _logger = logger;
         _embeddingService = embeddingService;
     }
@@ -73,7 +78,11 @@ public class ToolRouterService : IToolRouterService
         }
 
         var matchedTasks = new List<AiTask>();
+        await Task.CompletedTask;
 
+#if !ON_PREMISES
+        if (_tenantDbContext is not null)
+        {
         if (promptEmbedding != null)
         {
             try
@@ -198,6 +207,8 @@ public class ToolRouterService : IToolRouterService
                 matchedTasks.Add(defaultTask);
             }
         }
+        }
+#endif
 
         // Deduplicate tools across matched tasks, limit to 3 tools
         var toolsDict = new Dictionary<string, AiTool>(StringComparer.OrdinalIgnoreCase);

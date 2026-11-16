@@ -4,6 +4,24 @@
         <RootNamespace>Retailer.Infrastructure</RootNamespace>
         <AssemblyName>Retailer.Infrastructure</AssemblyName>
     </PropertyGroup>
+    <PropertyGroup Condition="'$(Configuration)' == 'OnPremises'">
+        <DefineConstants>$(DefineConstants);ON_PREMISES</DefineConstants>
+        <Optimize>true</Optimize>
+        <DebugType>none</DebugType>
+        <DebugSymbols>false</DebugSymbols>
+    </PropertyGroup>
+    <ItemGroup Condition="'$(Configuration)' == 'OnPremises'">
+        <Compile Remove="Multitenancy\TenantDbContext.cs" />
+        <Compile Remove="Multitenancy\TenantService.cs" />
+        <Compile Remove="Multitenancy\TenantDatabaseInitializer.cs" />
+        <Compile Remove="Multitenancy\TenantDatabaseProvisioner.cs" />
+        <Compile Remove="Multitenancy\CloudTenantLookup.cs" />
+        <Compile Remove="Multitenancy\AiToolSeeder.cs" />
+        <Compile Remove="Tunnel\CloudRelayHub.cs" />
+        <Compile Remove="Tunnel\CloudTunnelRegistry.cs" />
+        <Compile Remove="Tunnel\OnPremisesProxyMiddleware.cs" />
+        <Compile Remove="FileStorage\MediaServiceClient.cs" />
+    </ItemGroup>
     <ItemGroup>
         <FrameworkReference Include="Microsoft.AspNetCore.App" />
     </ItemGroup>
@@ -25,6 +43,7 @@
         <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.5" />
         <PackageReference Include="Microsoft.AspNetCore.Mvc.Versioning" Version="5.0.0" />
         <PackageReference Include="Microsoft.AspNetCore.Mvc.Versioning.ApiExplorer" Version="5.0.0" />
+        <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.2" />
         <PackageReference Include="Microsoft.AspNetCore.SignalR.StackExchangeRedis" Version="10.0.2" />
         <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.1" />
         <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.5" />

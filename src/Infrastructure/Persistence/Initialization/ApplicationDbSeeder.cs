@@ -24,12 +24,12 @@ internal class ApplicationDbSeeder
         _logger = logger;
     }
 
-    public async Task SeedDatabaseAsync(ApplicationDbContext dbContext, CancellationToken cancellationToken, string? adminEmail = null)
+    public async Task SeedDatabaseAsync(ApplicationDbContext dbContext, CancellationToken cancellationToken, string? adminEmail = null, string? adminPassword = null)
     {
         dbContext.EnforceMultiTenantOnTracking();
 
         await SeedRolesAsync(dbContext);
-        await SeedAdminUserAsync(dbContext, adminEmail);
+        await SeedAdminUserAsync(dbContext, adminEmail, adminPassword);
         await _seederRunner.RunSeedersAsync(cancellationToken);
     }
 
@@ -110,7 +110,7 @@ internal class ApplicationDbSeeder
         public const string DefaultPassword = "Hallo123$";
     }
 
-    private async Task SeedAdminUserAsync(ApplicationDbContext dbContext, string? adminEmail = null)
+    private async Task SeedAdminUserAsync(ApplicationDbContext dbContext, string? adminEmail = null, string? adminPassword = null)
     {
         string email = !string.IsNullOrWhiteSpace(adminEmail) ? adminEmail : InitialDataSeedConstants.AdminEmail;
         if (await _userManager.Users.FirstOrDefaultAsync(u => u.Email == email)
@@ -132,7 +132,9 @@ internal class ApplicationDbSeeder
 
             _logger.LogInformation("Seeding Default Admin User.");
             var password = new PasswordHasher<ApplicationUser>();
-            adminUser.PasswordHash = password.HashPassword(adminUser, InitialDataSeedConstants.DefaultPassword);
+            adminUser.PasswordHash = password.HashPassword(
+                adminUser,
+                !string.IsNullOrWhiteSpace(adminPassword) ? adminPassword : InitialDataSeedConstants.DefaultPassword);
             var result = await _userManager.CreateAsync(adminUser);
             if (!result.Succeeded)
             {

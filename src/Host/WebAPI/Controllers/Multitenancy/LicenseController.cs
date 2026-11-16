@@ -12,17 +12,27 @@ namespace Retailer.Host.Controllers.Multitenancy;
 [ApiVersionNeutral]
 public class LicenseController : BaseApiController
 {
-    private readonly ITenantService _tenantService;
+    private readonly IServiceProvider _serviceProvider;
+    private readonly ICurrentTenant _currentTenant;
 
-    public LicenseController(ITenantService tenantService) =>
-        _tenantService = tenantService;
+    public LicenseController(IServiceProvider serviceProvider, ICurrentTenant currentTenant)
+    {
+        _serviceProvider = serviceProvider;
+        _currentTenant = currentTenant;
+    }
 
     [HttpGet("verify/{licenseKey}")]
     [AllowAnonymous]
     [OpenApiOperation("Verify license key and return tenant id.", "")]
     public async Task<IActionResult> VerifyAsync(string licenseKey, CancellationToken cancellationToken)
     {
-        var tenantId = await _tenantService.GetTenantIdByLicenseKeyAsync(licenseKey, cancellationToken);
+        var tenantService = _serviceProvider.GetService<ITenantService>();
+        if (tenantService is null)
+        {
+            return Ok(_currentTenant.Id.ToInformationResponse());
+        }
+
+        var tenantId = await tenantService.GetTenantIdByLicenseKeyAsync(licenseKey, cancellationToken);
         return Ok(tenantId.ToInformationResponse());
     }
 

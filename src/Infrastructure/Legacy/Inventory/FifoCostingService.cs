@@ -262,12 +262,8 @@ public class FifoCostingService : IFifoCostingService
     {
         var now = PakistanTime.Now;
         using var rootScope = _serviceProvider.CreateScope();
-        var tenantDbContext = rootScope.ServiceProvider.GetRequiredService<TenantDbContext>();
-
-        var tenants = await tenantDbContext.TenantInfo
-            .AsNoTracking()
-            .Where(t => t.IsActive && t.ValidFrom <= now && (t.ValidUntil == null || t.ValidUntil >= now))
-            .ToListAsync(cancellationToken);
+        var tenantLookup = rootScope.ServiceProvider.GetRequiredService<ITenantLookup>();
+        var tenants = await tenantLookup.GetActiveTenantsAsync(cancellationToken);
 
         foreach (var tenant in tenants)
         {
@@ -313,9 +309,7 @@ public class FifoCostingService : IFifoCostingService
         }
 
         // 1. Establish tenant context inside background worker
-        var tenantDbContext = scope.ServiceProvider.GetRequiredService<TenantDbContext>();
-        var tenantInfo = await tenantDbContext.TenantInfo.FirstOrDefaultAsync(
-            t => t.Id == tenantId || t.Identifier == tenantId, cancellationToken);
+        var tenantInfo = await scope.ServiceProvider.GetRequiredService<ITenantLookup>().FindAsync(tenantId, cancellationToken);
         if (tenantInfo is null)
         {
             _logger.LogWarning("Tenant {TenantId} not found. Aborting FIFO rebuild.", tenantId);

@@ -14,16 +14,16 @@ namespace Retailer.Infrastructure.BackgroundJobs;
 
 public class DailyRecurringVouchersJob : IDailyRecurringVouchersJob
 {
-    private readonly TenantDbContext _tenantDbContext;
+    private readonly ITenantLookup _tenantLookup;
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<DailyRecurringVouchersJob> _logger;
 
     public DailyRecurringVouchersJob(
-        TenantDbContext tenantDbContext,
+        ITenantLookup tenantLookup,
         IServiceProvider serviceProvider,
         ILogger<DailyRecurringVouchersJob> logger)
     {
-        _tenantDbContext = tenantDbContext;
+        _tenantLookup = tenantLookup;
         _serviceProvider = serviceProvider;
         _logger = logger;
     }
@@ -34,10 +34,7 @@ public class DailyRecurringVouchersJob : IDailyRecurringVouchersJob
         var now = PakistanTime.Now;
         _logger.LogInformation("Starting DailyRecurringVouchersJob for date {Date}.", today);
 
-        var tenants = await _tenantDbContext.TenantInfo
-            .AsNoTracking()
-            .Where(t => t.IsActive && t.ValidFrom <= now && (t.ValidUntil == null || t.ValidUntil >= now))
-            .ToListAsync(cancellationToken);
+        var tenants = await _tenantLookup.GetActiveTenantsAsync(cancellationToken);
 
         foreach (var tenant in tenants)
         {

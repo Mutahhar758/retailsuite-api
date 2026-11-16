@@ -7,6 +7,23 @@
     <PropertyGroup>
         <UserSecretsId>61441015-4cda-45fd-846a-827157b20799</UserSecretsId>
     </PropertyGroup>
+    <!-- On-Premises build: dotnet publish src/Host/WebAPI -c OnPremises -r win-x64 (self-contained).
+         Always runs in single-store mode and excludes cloud-only tenant management endpoints. -->
+    <PropertyGroup Condition="'$(Configuration)' == 'OnPremises'">
+        <DefineConstants>$(DefineConstants);ON_PREMISES</DefineConstants>
+        <Optimize>true</Optimize>
+        <DebugType>none</DebugType>
+        <DebugSymbols>false</DebugSymbols>
+    </PropertyGroup>
+    <ItemGroup Condition="'$(Configuration)' == 'OnPremises'">
+        <Compile Remove="Controllers\Multitenancy\TenantsController.cs" />
+        <!-- Cloud master-DB / shared DB / cloud media settings must never ship to a customer machine -->
+        <Content Remove="Configurations\multitenancy*.json" />
+        <Content Remove="Configurations\database*.json" />
+        <Content Remove="Configurations\mediaservice*.json" />
+        <EmbeddedResource Include="appsettings.json" LogicalName="EmbeddedConfig.appsettings.json" />
+        <EmbeddedResource Include="Configurations\*.json" Exclude="Configurations\multitenancy*.json;Configurations\database*.json;Configurations\mediaservice*.json" />
+    </ItemGroup>
     <ItemGroup>
         <PackageReference Include="FluentValidation.AspNetCore" Version="11.3.1" />
         <PackageReference Include="Microsoft.ApplicationInsights" Version="2.23.0" />
@@ -17,10 +34,12 @@
         </PackageReference>
         <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.2" />
         <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.2" />
+        <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.2" />
         <PackageReference Include="NSwag.CodeGeneration.TypeScript" Version="14.6.3" />
         <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
         <PackageReference Include="Serilog.Sinks.ApplicationInsights" Version="4.0.0" />
         <PackageReference Include="System.IO.Packaging" Version="10.0.2" />
+        <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.2" />
         <PackageReference Include="System.Linq.Dynamic.Core" Version="1.7.1" />
     </ItemGroup>
     <ItemGroup>
@@ -30,14 +49,8 @@
     </ItemGroup>
 
     <Target Name="CopyMigratorAssemblies" AfterTargets="Build">
-      <Copy SourceFiles="..\..\Migrators\Migrators.PostgreSQL\bin\$(Configuration)\net10.0\Migrators.PostgreSQL.dll"
-            DestinationFolder="$(OutDir)"
-            SkipUnchangedFiles="true"
-            Condition="Exists('..\..\Migrators\Migrators.PostgreSQL\bin\$(Configuration)\net10.0\Migrators.PostgreSQL.dll')" />
-      <Copy SourceFiles="..\..\Migrators\Migrators.MSSQL\bin\$(Configuration)\net10.0\Migrators.MSSQL.dll"
-            DestinationFolder="$(OutDir)"
-            SkipUnchangedFiles="true"
-            Condition="Exists('..\..\Migrators\Migrators.MSSQL\bin\$(Configuration)\net10.0\Migrators.MSSQL.dll')" />
+      <Copy SourceFiles="..\..\Migrators\Migrators.PostgreSQL\bin\$(Configuration)\net10.0\Migrators.PostgreSQL.dll" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" Condition="Exists('..\..\Migrators\Migrators.PostgreSQL\bin\$(Configuration)\net10.0\Migrators.PostgreSQL.dll')" />
+      <Copy SourceFiles="..\..\Migrators\Migrators.MSSQL\bin\$(Configuration)\net10.0\Migrators.MSSQL.dll" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" Condition="Exists('..\..\Migrators\Migrators.MSSQL\bin\$(Configuration)\net10.0\Migrators.MSSQL.dll')" />
     </Target>
 
     <ItemGroup>

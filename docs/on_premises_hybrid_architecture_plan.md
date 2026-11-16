@@ -50,7 +50,7 @@ In the cloud, RetailSuite uses Finbuckle to resolve tenants dynamically and conn
 
 ### The On-Premises Model: Dedicated Single-Store Mode & Compile-Time Stripping
 On customer hardware:
-- **`TenantDbContext` is physically excluded from the On-Premises build.** Using MSBuild conditional compilation (`<Compile Remove="..." Condition="'$(Configuration)' == 'OnPremises'" />` and `#if ON_PREMISES`), `TenantDbContext`, `TenantService`, `TenantDatabaseInitializer`, `TenantsController`, and all `Migrations\TenantDb\**` files are not even compiled into the On-Premises `.dll`/`.exe`. The customer never receives the master database schema, tenant management endpoints, or multitenant catalog in the binary.
+- **`TenantDbContext` is physically excluded from the On-Premises build.** Whole Cloud-only files (`TenantDbContext.cs`, `TenantService.cs`, `TenantDatabaseInitializer.cs`, `TenantDatabaseProvisioner.cs`, `TenantsController.cs`, `CloudRelayHub.cs`, and `Migrations\Tenant\**`) are excluded via `<Compile Remove>` in `.csproj`, while `#if !ON_PREMISES` / `#if ON_PREMISES` preprocessor directives strip only the specific Cloud-only code chunks inside shared files. The customer never receives the master database schema, tenant management endpoints, or multitenant catalog in the binary.
 - `ApplicationDbContext` runs in **Fixed Single-Store Mode**.
 - When the local server boots, it uses its locally stored, encrypted connection string directly, bypassing tenant lookup headers.
 - Multi-tenant query filters (`IsMultiTenant`) are automatically bound to the store's assigned `TenantId` so EF Core logic remains identical to cloud execution.
@@ -170,6 +170,8 @@ When a customer unplugs the internet cable, system time alone is untrusted. The 
 | Threat Vector | Mitigation Strategy |
 | :--- | :--- |
 | **Tampering with Local Database** | PostgreSQL runs with a system-generated, 64-character random password bound strictly to `127.0.0.1`. The connection string is encrypted using **Windows Data Protection API (DPAPI)**, accessible only by the local Windows Service account. |
+| **Shared / Hardcoded JWT Secret Forgery** | Each on-premises installation generates a **unique, cryptographically random 64-byte (512-bit) JWT signing key** (`RandomNumberGenerator.GetBytes(64)`) during setup and stores it inside the DPAPI-encrypted local config. No two stores share a JWT secret, and no store ever receives the Cloud JWT signing key. |
+| **Cloud Media Storage Key Exposure & Offline Media** | `mediaservice.json` and `MediaServiceClient.cs` are excluded from the On-Premises build so the Cloud `AdminKey` never ships locally. Instead, `LocalMediaServiceClient` (`IMediaServiceClient`) and `LocalMediaController` (`/api/local-media/upload` & `/api/local-media/view`) store and serve media files locally under `C:\ProgramData\RetailSuite\media` using HMAC-SHA256 signed URLs—requiring zero frontend changes and working 100% offline. |
 | **Eavesdropping on LAN Traffic** | Local API generates a self-signed HTTPS certificate during installation or uses mTLS for in-store POS terminals. |
 | **Inbound Attack / Port Scanners** | The local server **listens only on LAN** (`192.168.x.x` or `127.0.0.1`). No public ports are forwarded on the store router. All external traffic is outbound. |
 | **Unauthorized Cloud Ingestion** | The tunnel handshake requires mutual authentication: Tenant ID + Hardware Fingerprint (CPU/Motherboard UUID) + Cryptographic License Key. |
@@ -190,7 +192,7 @@ graph TD
     C --> D[Custom Action calls Cloud API /api/v1/tenants/activate]
     D --> E[Cloud validates license, returns signed lease & Store TenantId]
     E --> F[Custom Action runs initdb.exe & pg_ctl.exe register on Port 5439]
-    F --> G[Save DPAPI-encrypted appsettings.Local.json]
+    F --> G[Generate unique 64-byte JWT Secret & save DPAPI-encrypted appsettings.Local.json]
     G --> H[Register & start RetailSuiteLocalServer Windows Service]
     H --> I[On Startup: ApplicationDbContext.Database.MigrateAsync + Seeding]
     I --> J[Establish outbound encrypted tunnel to Cloud Hub]
@@ -236,19 +238,26 @@ RetailSuite/
 └── setup/RetailSuite.Setup/          # Visual Studio Setup Project (.vdproj) bundling WebAPI + portable pgsql/
 ```
 
-### 2. Compile-Time Stripping of Cloud/Master DB Code (`OnPremises` Build Configuration)
+### 2. Compile-Time Stripping of Cloud/Master DB Code (`<Compile Remove>` for Whole Files + `#if !ON_PREMISES` for Shared Code Chunks)
 To ensure `TenantDbContext` and multi-tenant management code do not even exist inside the compiled On-Premises binary:
-- **`Infrastructure.csproj`, `Migrators.PostgreSQL.csproj`, and `WebAPI.csproj`:**
+- **Whole Cloud-only files excluded in `Infrastructure.csproj`, `Migrators.PostgreSQL.csproj`, and `WebAPI.csproj`:**
   ```xml
   <ItemGroup Condition="'$(Configuration)' == 'OnPremises'">
     <DefineConstants>$(DefineConstants);ON_PREMISES</DefineConstants>
     <Compile Remove="Multitenancy\TenantDbContext.cs" />
     <Compile Remove="Multitenancy\TenantService.cs" />
     <Compile Remove="Multitenancy\TenantDatabaseInitializer.cs" />
+    <Compile Remove="Multitenancy\TenantDatabaseProvisioner.cs" />
+    <Compile Remove="Multitenancy\CloudTenantLookup.cs" />
+    <Compile Remove="Multitenancy\AiToolSeeder.cs" />
+    <Compile Remove="Tunnel\CloudRelayHub.cs" />
+    <Compile Remove="Tunnel\CloudTunnelRegistry.cs" />
+    <Compile Remove="Tunnel\OnPremisesProxyMiddleware.cs" />
+    <Compile Remove="FileStorage\MediaServiceClient.cs" />
   </ItemGroup>
   ```
-  *(Similarly excluding `Migrations\TenantDb\**` in `Migrators.PostgreSQL.csproj` and `TenantsController.cs` in `WebAPI.csproj`.)*
-- **`Multitenancy/Startup.cs`:**
+  *(Similarly excluding `Migrations\Tenant\**` in `Migrators.PostgreSQL.csproj` and `TenantsController.cs` in `WebAPI.csproj`.)*
+- **Specific code chunks inside shared files (`Multitenancy/Startup.cs`, `Infrastructure/Startup.cs`, `Tunnel/Startup.cs`, and AI services) guarded with `#if !ON_PREMISES` / `#if ON_PREMISES`:**
   ```csharp
   #if ON_PREMISES
       // Register static single-store tenant from local config (WithInMemoryStore + WithStaticStrategy)
@@ -267,7 +276,7 @@ To ensure `TenantDbContext` and multi-tenant management code do not even exist i
     }
   }
   ```
-- **On-Premises (`appsettings.Local.json`):**
+- **On-Premises (`appsettings.Local.json` — DPAPI Encrypted on Disk):**
   ```json
   {
     "HostingMode": "OnPremises",
@@ -279,23 +288,34 @@ To ensure `TenantDbContext` and multi-tenant management code do not even exist i
     "DatabaseSettings": {
       "DBProvider": "postgresql",
       "ConnectionString": "Host=127.0.0.1;Port=5439;Database=RetailSuite_Local;Username=retailsuite;Password=..."
+    },
+    "SecuritySettings": {
+      "JwtSettings": {
+        "Key": "<Unique-64-Byte-Cryptographic-Random-Base64-Key-Generated-At-Install>"
+      }
     }
   }
   ```
 
 ---
 
-## 11. Implementation Milestones
+## 11. Branching Strategy & Implementation Milestones
 
+### Dedicated Feature Branch Policy
+- All work for the On-Premises Hybrid Architecture **must be implemented in a dedicated separate Git branch** (e.g., `feature/on-premises-hybrid`), keeping `main` / production cloud branches completely isolated until all phases are tested and verified.
+
+### Milestones
 1. **Phase 1: Single-Tenant Bootstrapper & Compile-Time Stripping (`OnPremises` Build)**
+   - Create dedicated branch `feature/on-premises-hybrid`.
    - Add the `OnPremises` MSBuild configuration (`ON_PREMISES` symbol + `<Compile Remove>` for `TenantDbContext`, `TenantService`, `TenantsController`, and `Migrations\TenantDb\**`).
    - In `Multitenancy/Startup.cs`, use `#if ON_PREMISES` to initialize `ApplicationDbContext` with the single local PostgreSQL connection string and fixed tenant ID via Finbuckle's `WithInMemoryStore` + `WithStaticStrategy`.
-2. **Phase 2: Automated Local Migration & Provisioning**
+2. **Phase 2: Automated Local Migration, Per-Install JWT Key & Provisioning**
    - Implement automated migration execution on startup (`dbContext.Database.MigrateAsync()`) using `Migrators.PostgreSQL` when running locally.
+   - Generate a unique, cryptographically random 64-byte JWT signing key (`SecuritySettings:JwtSettings:Key`) on first install/activation and store it inside the DPAPI-encrypted local config so no two on-premises installations ever share JWT secrets.
 3. **Phase 3: Outbound Encrypted Tunnel (SignalR / gRPC Stream)**
    - Create `CloudTunnelHub` in Cloud API and `LocalTunnelAgent` in On-Premises mode.
    - Forward HTTP requests with header preservation between Cloud and On-Premises.
 4. **Phase 4: Customer Installer Package (Visual Studio Setup Project + Portable PostgreSQL)**
    - Add a **Microsoft Visual Studio Setup Project (`RetailSuite.Setup.vdproj`)** directly into `RetailSuite.sln` to produce a standard Windows Installer (`setup.exe` bootstrapper + `RetailSuite.msi`).
    - Bundle the stripped **Portable Embedded PostgreSQL (`pgsql\`)** binaries (including `pgvector`) inside the `.vdproj` Application Folder.
-   - Use VS Setup **User Interface Dialogs** and **Custom Actions** to capture the Store Activation Key, silently initialize the local PostgreSQL cluster (`initdb.exe` + `pg_ctl.exe register` on port `5439`), DPAPI-encrypt `appsettings.Local.json`, and register/start the `RetailSuiteLocalServer` Windows Service.
+   - Use VS Setup **User Interface Dialogs** and **Custom Actions** to capture the Store Activation Key, silently initialize the local PostgreSQL cluster (`initdb.exe` + `pg_ctl.exe register` on port `5439`), generate the unique local DB password + JWT signing key, DPAPI-encrypt `appsettings.Local.json`, and register/start the `RetailSuiteLocalServer` Windows Service.
