@@ -50,7 +50,9 @@ internal class TenantService : ITenantService
     {
         var tenant = await _tenantDbContext.TenantInfo.FirstOrDefaultAsync(t => t.Id == id, cancellationToken)
             ?? throw new NotFoundException($"Tenant with id '{id}' not found.");
-        return tenant.Adapt<TenantDto>();
+        var dto = tenant.Adapt<TenantDto>();
+        dto.IsOnPremises = string.Equals(tenant.ConnectionString, "on-premises", StringComparison.OrdinalIgnoreCase);
+        return dto;
     }
 
     public async Task<CreateTenantResponse> CreateAsync(CreateTenantRequest request, CancellationToken cancellationToken)
@@ -304,7 +306,9 @@ internal class TenantService : ITenantService
             throw new ConflictException("Tenant is inactive.");
         }
 
-        return tenant.Adapt<TenantDto>();
+        var dto = tenant.Adapt<TenantDto>();
+        dto.IsOnPremises = string.Equals(tenant.ConnectionString, "on-premises", StringComparison.OrdinalIgnoreCase);
+        return dto;
     }
 
     public async Task InviteTenantAsync(string id, InviteTenantRequest request, CancellationToken cancellationToken)
