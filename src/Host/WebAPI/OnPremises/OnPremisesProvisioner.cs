@@ -65,8 +65,9 @@ internal static class OnPremisesProvisioner
         var dbUser = Get(options, "db-user", "retailsuite");
         var dbPassword = Get(options, "db-password", null) ?? RandomPassword(64);
 
-        var adminPasswordGenerated = !options.ContainsKey("admin-password");
-        var adminPassword = Get(options, "admin-password", null) ?? RandomPassword(16);
+        // Leave InitialAdminPassword null unless explicitly supplied so ApplicationDbSeeder uses the
+        // standard default password ("Hallo123$"), matching Cloud tenant provisioning.
+        var adminPassword = Get(options, "admin-password", null);
 
         // Unique 512-bit (64-byte) JWT signing key per installation. Never shared between stores or with the cloud.
         var jwtKey = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
@@ -113,13 +114,9 @@ internal static class OnPremisesProvisioner
         }
 
         Console.WriteLine($"Provisioned store '{tenantId}'. Encrypted configuration written to {path}");
-        if (adminPasswordGenerated)
+        if (!string.IsNullOrWhiteSpace(adminPassword) && Get(options, "admin-password-file", null) is { } outFile)
         {
-            Console.WriteLine($"INITIAL_ADMIN_PASSWORD={adminPassword}");
-            if (Get(options, "admin-password-file", null) is { } outFile)
-            {
-                File.WriteAllText(outFile, adminPassword, new UTF8Encoding(false));
-            }
+            File.WriteAllText(outFile, adminPassword, new UTF8Encoding(false));
         }
 
         return 0;

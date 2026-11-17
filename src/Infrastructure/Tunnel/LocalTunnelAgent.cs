@@ -45,6 +45,9 @@ public sealed class LocalTunnelAgent : BackgroundService
             hubUrl += TunnelConstants.HubPath;
         }
 
+        var isLocalRelay = Uri.TryCreate(hubUrl, UriKind.Absolute, out var parsedHubUri)
+            && (parsedHubUri.IsLoopback || string.Equals(parsedHubUri.Host, "localhost", StringComparison.OrdinalIgnoreCase));
+
         await using var connection = new HubConnectionBuilder()
             .WithUrl(hubUrl, options =>
             {
@@ -52,6 +55,24 @@ public sealed class LocalTunnelAgent : BackgroundService
                 if (!string.IsNullOrWhiteSpace(_store.LicenseKey))
                 {
                     options.Headers[TunnelConstants.LicenseHeader] = _store.LicenseKey;
+                }
+
+                if (isLocalRelay)
+                {
+                    options.HttpMessageHandlerFactory = handler =>
+                    {
+                        if (handler is HttpClientHandler clientHandler)
+                        {
+                            clientHandler.ServerCertificateCustomValidationCallback =
+                                HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+                        }
+
+                        return handler;
+                    };
+                    options.WebSocketConfiguration = ws =>
+                    {
+                        ws.RemoteCertificateValidationCallback = (_, _, _, _) => true;
+                    };
                 }
             })
             .WithAutomaticReconnect(new InfiniteRetryPolicy())
