@@ -57,10 +57,15 @@ internal class TenantDatabaseInitializer
 
         await EnsureDefaultTenantAsync(cancellationToken);
 
-        // Migrate and seed each registered tenant's database using its stored connection string
+        // Migrate and seed each cloud-hosted tenant's database (skip on-premises stores whose DB lives locally)
         var tenants = await _tenantDbContext.TenantInfo.ToListAsync(cancellationToken);
         foreach (var tenant in tenants)
         {
+            if (string.Equals(tenant.ConnectionString, "on-premises", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
             await InitializeTenantDatabaseAsync(tenant, cancellationToken);
         }
     }

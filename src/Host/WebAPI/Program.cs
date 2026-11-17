@@ -25,6 +25,26 @@ if (OnPremisesProvisioner.IsCliCommand(args))
     return;
 }
 
+string? serviceBootLog = null;
+if (WindowsServiceHelpers.IsWindowsService())
+{
+    var serviceDataDir = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+        "RetailSuite");
+    Directory.CreateDirectory(serviceDataDir);
+    Directory.SetCurrentDirectory(serviceDataDir);
+    serviceBootLog = Path.Combine(serviceDataDir, "boot.log");
+    File.WriteAllText(serviceBootLog, $"[{DateTime.Now:HH:mm:ss}] Service process starting...{Environment.NewLine}");
+}
+
+void BootTrace(string msg)
+{
+    if (serviceBootLog is not null)
+    {
+        File.AppendAllText(serviceBootLog, $"[{DateTime.Now:HH:mm:ss}] {msg}{Environment.NewLine}");
+    }
+}
+
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 StaticLogger.EnsureInitialized();
@@ -39,6 +59,7 @@ try
     });
 
     builder.AddConfigurations();
+    BootTrace("AddConfigurations completed");
 
     var onPremises = HostingMode.IsOnPremises(builder.Configuration);
     if (onPremises)
@@ -48,6 +69,7 @@ try
 
     // Configure Serilog to capture all logs (Console, File, Seq, AppInsights)
     builder.RegisterSerilog();
+    BootTrace("RegisterSerilog completed");
 
     // Configure Application Insights if connection string exists
     string? appInsightsConnectionString = builder.Configuration.GetSection("Serilog:WriteTo:0:Args:connectionString").Value;
@@ -105,10 +127,36 @@ try
     builder.Services.AddFluentValidationClientsideAdapters();
 
     builder.Services.AddInfrastructure(builder.Configuration);
+    BootTrace("AddInfrastructure completed");
 
     var app = builder.Build();
 
-    await app.Services.InitializeDatabasesAsync();
+    if (onPremises && WindowsServiceHelpers.IsWindowsService())
+    {
+        // Create DB quickly (<100ms), then let app.Run() notify Windows SCM immediately so it never hits the 30s timeout.
+        await app.Services.EnsureOnPremisesDatabaseExistsAsync();
+        BootTrace("EnsureOnPremisesDatabaseExistsAsync completed");
+        app.Lifetime.ApplicationStarted.Register(() =>
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await app.Services.InitializeDatabasesAsync();
+                    ApplicationState.SetStarted();
+                    Log.Information("On-premises database migration and seeding completed.");
+                }
+                catch (Exception ex)
+                {
+                    Log.Fatal(ex, "On-premises background database initialization failed.");
+                }
+            });
+        });
+    }
+    else
+    {
+        await app.Services.InitializeDatabasesAsync();
+    }
 
     if (app.Environment.IsDevelopment())
     {
@@ -116,11 +164,16 @@ try
     }
 
     app.UseInfrastructure(builder.Configuration);
+    BootTrace("UseInfrastructure completed");
     app.MapEndpoints();
 
-    // Set application as started
-    ApplicationState.SetStarted();
-    
+    if (!(onPremises && WindowsServiceHelpers.IsWindowsService()))
+    {
+        // Set application as started
+        ApplicationState.SetStarted();
+    }
+
+    BootTrace("Calling app.Run()...");
     Log.Information("Application started and ready to serve requests");
     app.Run();
 }
@@ -128,6 +181,7 @@ catch (Exception ex) when (!ex.GetType().Name.Equals("HostAbortedException", Str
 {
     StaticLogger.EnsureInitialized();
     Log.Fatal(ex, "Unhandled exception");
+    BootTrace($"FATAL: {ex}");
 }
 finally
 {

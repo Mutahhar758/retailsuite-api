@@ -72,6 +72,16 @@ public static class Startup
     private static IServiceCollection AddHealthCheck(this IServiceCollection services) =>
         services.AddHealthChecks().Services;
 
+    public static async Task EnsureOnPremisesDatabaseExistsAsync(this IServiceProvider services, CancellationToken cancellationToken = default)
+    {
+        using var scope = services.CreateScope();
+        var onPremisesInitializer = scope.ServiceProvider.GetService<OnPremisesDatabaseInitializer>();
+        if (onPremisesInitializer is not null)
+        {
+            await onPremisesInitializer.EnsureDatabaseCreatedAsync(cancellationToken);
+        }
+    }
+
     public static async Task InitializeDatabasesAsync(this IServiceProvider services, CancellationToken cancellationToken = default)
     {
         using var scope = services.CreateScope();

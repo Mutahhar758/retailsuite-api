@@ -23,6 +23,16 @@ public class StoreSettings : IValidatableObject
 
     public string BusinessSubType { get; set; } = "general_store";
 
+    public bool HasSupplyFeature { get; set; } = true;
+
+    public bool HasSecondaryQty { get; set; }
+
+    public bool HasKotFeature { get; set; }
+
+    public bool HasVariablePackFeature { get; set; }
+
+    public bool HasMobileShopFeature { get; set; }
+
     public string? CloudRelayUrl { get; set; }
 
     public string LocalLoopbackUrl { get; set; } = "http://127.0.0.1:5050";

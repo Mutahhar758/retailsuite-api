@@ -14,6 +14,7 @@ public class CreateTenantRequest
     public bool HasMobileShopFeature { get; set; } = false;
     public string? IndustryType { get; set; }
     public string? BusinessSubType { get; set; }
+    public bool IsOnPremises { get; set; } = false;
     public DateTime? ValidFrom { get; set; }
     public DateTime? ValidUntil { get; set; }
 }
@@ -43,7 +44,8 @@ public class CreateTenantRequestValidator : AbstractValidator<CreateTenantReques
 
         RuleFor(r => r.DbProvider)
             .NotEmpty()
-            .MaximumLength(64);
+            .MaximumLength(64)
+            .When(r => !r.IsOnPremises);
 
         RuleFor(r => r.AdminEmail)
             .EmailAddress()

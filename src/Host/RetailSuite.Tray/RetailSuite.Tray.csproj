@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>WinExe</OutputType>
+        <TargetFramework>net10.0-windows</TargetFramework>
+        <UseWindowsForms>true</UseWindowsForms>
+        <AssemblyName>RetailSuite.Tray</AssemblyName>
+        <RootNamespace>RetailSuite.Tray</RootNamespace>
+        <ApplicationHighDpiMode>SystemAware</ApplicationHighDpiMode>
+        <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    </PropertyGroup>
+</Project>

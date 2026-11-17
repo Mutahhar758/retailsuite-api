@@ -65,13 +65,24 @@ internal class TenantService : ITenantService
             throw new ConflictException($"Tenant with id '{request.Id}' already exists.");
         }
 
-        // Entirely backend-handled: generate dedicated DB credentials with random password
-        string dbUser = DbPasswordGenerator.GenerateDbUsername(request.Identifier);
-        string dbPassword = DbPasswordGenerator.Generate();
-        string connectionString = _provisioner.BuildConnectionString(request.DbProvider, request.Identifier, dbUser, dbPassword);
+        string dbProvider = request.IsOnPremises ? "postgresql" : request.DbProvider;
+        string connectionString;
 
-        // Provision the database and dedicated DB user on the server with full permissions
-        await _provisioner.EnsureDatabaseAndUserProvisionedAsync(request.DbProvider, request.Identifier.ToLowerInvariant(), dbUser, dbPassword, cancellationToken);
+        if (request.IsOnPremises)
+        {
+            // On-premises tenant: DB lives on customer hardware; no cloud DB or migrations are run here.
+            connectionString = "on-premises";
+        }
+        else
+        {
+            // Entirely backend-handled: generate dedicated DB credentials with random password
+            string dbUser = DbPasswordGenerator.GenerateDbUsername(request.Identifier);
+            string dbPassword = DbPasswordGenerator.Generate();
+            connectionString = _provisioner.BuildConnectionString(dbProvider, request.Identifier, dbUser, dbPassword);
+
+            // Provision the database and dedicated DB user on the server with full permissions
+            await _provisioner.EnsureDatabaseAndUserProvisionedAsync(dbProvider, request.Identifier.ToLowerInvariant(), dbUser, dbPassword, cancellationToken);
+        }
 
         string rawIndustry = request.IndustryType?.Trim().ToLowerInvariant() ?? string.Empty;
         string industry = !string.IsNullOrWhiteSpace(rawIndustry)
@@ -91,7 +102,7 @@ internal class TenantService : ITenantService
             Id = request.Id,
             Identifier = request.Identifier,
             Name = request.Name,
-            DbProvider = request.DbProvider,
+            DbProvider = dbProvider,
             ConnectionString = connectionString,
             AdminEmail = request.AdminEmail,
             IsActive = true,
@@ -107,17 +118,24 @@ internal class TenantService : ITenantService
         _tenantDbContext.TenantInfo.Add(tenant);
         await _tenantDbContext.SaveChangesAsync(cancellationToken);
 
-        try
+        if (!request.IsOnPremises)
         {
-            _logger.LogInformation("Tenant '{Identifier}' created with industry '{Industry}'. Provisioning database with isolated DB user.", tenant.Identifier, tenant.IndustryType);
-            await _dbInitializer.InitializeTenantDatabaseAsync(tenant, cancellationToken);
+            try
+            {
+                _logger.LogInformation("Tenant '{Identifier}' created with industry '{Industry}'. Provisioning database with isolated DB user.", tenant.Identifier, tenant.IndustryType);
+                await _dbInitializer.InitializeTenantDatabaseAsync(tenant, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to initialize database for tenant '{Identifier}'. Cleaning up tenant record.", tenant.Identifier);
+                _tenantDbContext.TenantInfo.Remove(tenant);
+                await _tenantDbContext.SaveChangesAsync(CancellationToken.None);
+                throw;
+            }
         }
-        catch (Exception ex)
+        else
         {
-            _logger.LogError(ex, "Failed to initialize database for tenant '{Identifier}'. Cleaning up tenant record.", tenant.Identifier);
-            _tenantDbContext.TenantInfo.Remove(tenant);
-            await _tenantDbContext.SaveChangesAsync(CancellationToken.None);
-            throw;
+            _logger.LogInformation("On-premises tenant '{Identifier}' registered in cloud catalog (no cloud DB/migrations run).", tenant.Identifier);
         }
 
         return new CreateTenantResponse

@@ -15,9 +15,15 @@ internal static class StoreTenantFactory
         ConnectionString = database.ConnectionString,
         DbProvider = database.DBProvider,
         AdminEmail = store.AdminEmail,
+        LicenseKey = store.LicenseKey,
         IsActive = true,
         IndustryType = store.IndustryType,
         BusinessSubType = store.BusinessSubType,
+        HasSupplyFeature = store.HasSupplyFeature,
+        HasSecondaryQty = store.HasSecondaryQty,
+        HasKotFeature = store.HasKotFeature,
+        HasVariablePackFeature = store.HasVariablePackFeature,
+        HasMobileShopFeature = store.HasMobileShopFeature,
         ValidFrom = PakistanTime.Now.Date.AddDays(-1),
     };
 }

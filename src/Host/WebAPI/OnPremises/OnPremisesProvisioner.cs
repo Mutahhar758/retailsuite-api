@@ -82,6 +82,13 @@ internal static class OnPremisesProvisioner
                 ["AdminEmail"] = Get(options, "admin-email", null),
                 ["InitialAdminPassword"] = adminPassword,
                 ["LicenseKey"] = Get(options, "license-key", null),
+                ["IndustryType"] = Get(options, "industry-type", "general"),
+                ["BusinessSubType"] = Get(options, "business-sub-type", "general_store"),
+                ["HasSupplyFeature"] = ParseBool(Get(options, "has-supply", "true"), true),
+                ["HasSecondaryQty"] = ParseBool(Get(options, "has-secondary-qty", "false"), false),
+                ["HasKotFeature"] = ParseBool(Get(options, "has-kot", "false"), false),
+                ["HasVariablePackFeature"] = ParseBool(Get(options, "has-variable-pack", "false"), false),
+                ["HasMobileShopFeature"] = ParseBool(Get(options, "has-mobile-shop", "false"), false),
                 ["CloudRelayUrl"] = Get(options, "cloud-relay-url", null),
                 ["LocalLoopbackUrl"] = Get(options, "loopback-url", "http://127.0.0.1:5050"),
             },
@@ -109,6 +116,10 @@ internal static class OnPremisesProvisioner
         if (adminPasswordGenerated)
         {
             Console.WriteLine($"INITIAL_ADMIN_PASSWORD={adminPassword}");
+            if (Get(options, "admin-password-file", null) is { } outFile)
+            {
+                File.WriteAllText(outFile, adminPassword, new UTF8Encoding(false));
+            }
         }
 
         return 0;
@@ -125,10 +136,15 @@ internal static class OnPremisesProvisioner
 
         Directory.CreateDirectory(dataDir);
 
-        var activationKey = Get(options, "activation-key", null)
-            ?? Get(options, "tenant-id", "local-store")!;
-        var cloudRelayUrl = Get(options, "cloud-relay-url", null);
-        var tenantId = ResolveTenantIdFromCloudOrFallback(activationKey, cloudRelayUrl);
+        var activationKey = Get(options, "activation-key", null) ?? Get(options, "tenant-id", null);
+        if (string.IsNullOrWhiteSpace(activationKey))
+        {
+            // Installed without activation details (activation happens later in the RetailSuite tray app).
+            RegisterShell(installDir);
+            return 0;
+        }
+        var cloudRelayUrl = Get(options, "cloud-relay-url", "https://localhost:5001")!;
+        var verifiedTenant = VerifyLicenseWithCloud(activationKey, cloudRelayUrl);
 
         var initDbExe = Path.Combine(pgBinDir, "initdb.exe");
         var pgCtlExe = Path.Combine(pgBinDir, "pg_ctl.exe");
@@ -139,9 +155,18 @@ internal static class OnPremisesProvisioner
             var provisionArgs = new List<string>
             {
                 ProvisionSwitch,
-                "--tenant-id", tenantId,
-                "--license-key", activationKey,
-                "--store-name", Get(options, "store-name", tenantId)!,
+                "--force",
+                "--tenant-id", verifiedTenant.TenantId,
+                "--license-key", verifiedTenant.LicenseKey,
+                "--store-name", verifiedTenant.StoreName,
+                "--industry-type", verifiedTenant.IndustryType,
+                "--business-sub-type", verifiedTenant.BusinessSubType,
+                "--has-supply", verifiedTenant.HasSupplyFeature.ToString(),
+                "--has-secondary-qty", verifiedTenant.HasSecondaryQty.ToString(),
+                "--has-kot", verifiedTenant.HasKotFeature.ToString(),
+                "--has-variable-pack", verifiedTenant.HasVariablePackFeature.ToString(),
+                "--has-mobile-shop", verifiedTenant.HasMobileShopFeature.ToString(),
+                "--cloud-relay-url", cloudRelayUrl,
                 "--db-port", Get(options, "db-port", hasEmbeddedPostgres ? "5439" : "5432")!,
                 "--db-user", Get(options, "db-user", hasEmbeddedPostgres ? "retailsuite" : "postgres")!,
                 "--pg-pwfile", tempPwFile,
@@ -152,14 +177,14 @@ internal static class OnPremisesProvisioner
                 provisionArgs.AddRange(new[] { "--db-password", Get(options, "db-password", "postgres")! });
             }
 
-            if (Get(options, "admin-email", null) is { } adminEmail)
+            if (!string.IsNullOrWhiteSpace(verifiedTenant.AdminEmail))
             {
-                provisionArgs.AddRange(new[] { "--admin-email", adminEmail });
+                provisionArgs.AddRange(new[] { "--admin-email", verifiedTenant.AdminEmail });
             }
 
-            if (!string.IsNullOrWhiteSpace(cloudRelayUrl))
+            if (Get(options, "admin-password-file", null) is { } adminPwFile)
             {
-                provisionArgs.AddRange(new[] { "--cloud-relay-url", cloudRelayUrl });
+                provisionArgs.AddRange(new[] { "--admin-password-file", adminPwFile });
             }
 
             var rc = RunProvision(provisionArgs.ToArray());
@@ -195,14 +220,78 @@ internal static class OnPremisesProvisioner
         var hostExe = Path.Combine(installDir, "Retailer.Host.exe");
         Exec("sc.exe", $"create \"{ApiServiceName}\" binPath= \"\\\"{hostExe}\\\"\" start= auto DisplayName= \"RetailSuite Local Server\"", ignoreExitCode: true);
         Exec("sc.exe", $"failure \"{ApiServiceName}\" reset= 86400 actions= restart/5000/restart/10000/restart/30000", ignoreExitCode: true);
+
+        // Allow normal (interactive) users to start/stop both services from the tray app without admin rights.
+        const string serviceSddl = "D:(A;;CCLCSWRPWPDTLOCRRC;;;SY)(A;;CCDCLCSWRPWPDTLOCRSDRCWDWO;;;BA)(A;;CCLCSWRPWPDTLOCRRC;;;IU)(A;;CCLCSWLOCRRC;;;SU)";
+        Exec("sc.exe", $"sdset \"{ApiServiceName}\" \"{serviceSddl}\"", ignoreExitCode: true);
+        Exec("sc.exe", $"sdset \"{PgServiceName}\" \"{serviceSddl}\"", ignoreExitCode: true);
+
         Exec("sc.exe", $"start \"{ApiServiceName}\"", ignoreExitCode: true);
         Exec("netsh.exe", "advfirewall firewall add rule name=\"RetailSuite Local POS API\" dir=in action=allow protocol=TCP localport=5050 profile=private,domain", ignoreExitCode: true);
+        RegisterShell(installDir);
 
         return 0;
     }
 
+    private static void RegisterShell(string installDir)
+    {
+        var trayExe = Path.Combine(installDir, "RetailSuite.Tray.exe");
+        if (!File.Exists(trayExe))
+        {
+            return;
+        }
+
+        // Start the tray manager at every user login + Start Menu / Desktop shortcuts.
+        Microsoft.Win32.Registry.SetValue(
+            @"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Run",
+            "RetailSuiteTray",
+            $"\"{trayExe}\"");
+        CreateShortcut(ShortcutPath(Environment.SpecialFolder.CommonPrograms), trayExe);
+        CreateShortcut(ShortcutPath(Environment.SpecialFolder.CommonDesktopDirectory), trayExe);
+    }
+
+    private static string ShortcutPath(Environment.SpecialFolder folder) =>
+        Path.Combine(Environment.GetFolderPath(folder), "RetailSuite Local Server.lnk");
+
+    private static void CreateShortcut(string path, string target)
+    {
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            var shellType = Type.GetTypeFromProgID("WScript.Shell");
+            if (shellType is null)
+            {
+                return;
+            }
+
+            dynamic shell = Activator.CreateInstance(shellType)!;
+            dynamic link = shell.CreateShortcut(path);
+            link.TargetPath = target;
+            link.WorkingDirectory = Path.GetDirectoryName(target);
+            link.Description = "RetailSuite Local Server manager";
+            link.Save();
+        }
+        catch
+        {
+            // Shortcuts are a convenience only.
+        }
+    }
+
     private static int RunUninstall()
     {
+        Exec("taskkill.exe", "/F /IM RetailSuite.Tray.exe", ignoreExitCode: true);
+        Microsoft.Win32.Registry.LocalMachine
+            .OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", writable: true)?
+            .DeleteValue("RetailSuiteTray", throwOnMissingValue: false);
+        foreach (var folder in new[] { Environment.SpecialFolder.CommonPrograms, Environment.SpecialFolder.CommonDesktopDirectory })
+        {
+            var lnk = ShortcutPath(folder);
+            if (File.Exists(lnk))
+            {
+                File.Delete(lnk);
+            }
+        }
+
         Exec("sc.exe", $"stop \"{ApiServiceName}\"", ignoreExitCode: true);
         Exec("sc.exe", $"delete \"{ApiServiceName}\"", ignoreExitCode: true);
         Exec("sc.exe", $"stop \"{PgServiceName}\"", ignoreExitCode: true);
@@ -211,34 +300,85 @@ internal static class OnPremisesProvisioner
         return 0;
     }
 
-    private static string ResolveTenantIdFromCloudOrFallback(string activationKey, string? cloudRelayUrl)
+    private static VerifiedTenantPayload VerifyLicenseWithCloud(string licenseKey, string cloudRelayUrl)
     {
-        if (string.IsNullOrWhiteSpace(cloudRelayUrl))
+        var trimmedKey = licenseKey.Trim();
+        var baseUri = cloudRelayUrl.TrimEnd('/');
+        var url = $"{baseUri}/api/license/verify/{Uri.EscapeDataString(trimmedKey)}";
+
+        using var handler = new HttpClientHandler();
+        if (Uri.TryCreate(baseUri, UriKind.Absolute, out var parsedUri)
+            && (parsedUri.IsLoopback || string.Equals(parsedUri.Host, "localhost", StringComparison.OrdinalIgnoreCase)))
         {
-            return activationKey.Trim();
+            handler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
         }
 
-        try
+        using var http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(15) };
+        using var response = http.GetAsync(url).GetAwaiter().GetResult();
+        if (!response.IsSuccessStatusCode)
         {
-            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
-            var url = $"{cloudRelayUrl.TrimEnd('/')}/api/license/verify/{Uri.EscapeDataString(activationKey.Trim())}";
-            var json = http.GetFromJsonAsync<JsonElement>(url).GetAwaiter().GetResult();
-            if (json.TryGetProperty("data", out var dataProp) && dataProp.ValueKind == JsonValueKind.String)
-            {
-                var resolved = dataProp.GetString();
-                if (!string.IsNullOrWhiteSpace(resolved))
-                {
-                    return resolved;
-                }
-            }
-        }
-        catch
-        {
-            // Offline during install: fall back to activationKey as tenant identifier
+            var body = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+            throw new InvalidOperationException(
+                $"License verification failed ({(int)response.StatusCode} {response.ReasonPhrase}): {body}");
         }
 
-        return activationKey.Trim();
+        var json = response.Content.ReadFromJsonAsync<JsonElement>().GetAwaiter().GetResult();
+        if (!(json.TryGetProperty("body", out var dataProp) && dataProp.ValueKind == JsonValueKind.Object)
+            && !(json.TryGetProperty("data", out dataProp) && dataProp.ValueKind == JsonValueKind.Object))
+        {
+            throw new InvalidOperationException("License verification returned an unexpected response from the Cloud server.");
+        }
+
+        string ReadString(string name, string fallback = "") =>
+            dataProp.TryGetProperty(name, out var p) && p.ValueKind == JsonValueKind.String
+                ? p.GetString() ?? fallback
+                : fallback;
+
+        bool ReadBool(string name, bool fallback = false) =>
+            dataProp.TryGetProperty(name, out var p) && (p.ValueKind == JsonValueKind.True || p.ValueKind == JsonValueKind.False)
+                ? p.GetBoolean()
+                : fallback;
+
+        var tenantId = ReadString("identifier");
+        if (string.IsNullOrWhiteSpace(tenantId))
+        {
+            tenantId = ReadString("id");
+        }
+
+        if (string.IsNullOrWhiteSpace(tenantId))
+        {
+            throw new InvalidOperationException("Cloud license verification did not return a valid Tenant ID.");
+        }
+
+        return new VerifiedTenantPayload(
+            TenantId: tenantId,
+            StoreName: ReadString("name", tenantId),
+            AdminEmail: ReadString("adminEmail"),
+            LicenseKey: ReadString("licenseKey", trimmedKey),
+            IndustryType: ReadString("industryType", "general"),
+            BusinessSubType: ReadString("businessSubType", "general_store"),
+            HasSupplyFeature: ReadBool("hasSupplyFeature", true),
+            HasSecondaryQty: ReadBool("hasSecondaryQty", false),
+            HasKotFeature: ReadBool("hasKotFeature", false),
+            HasVariablePackFeature: ReadBool("hasVariablePackFeature", false),
+            HasMobileShopFeature: ReadBool("hasMobileShopFeature", false));
     }
+
+    private static bool ParseBool(string? value, bool fallback) =>
+        bool.TryParse(value, out var parsed) ? parsed : fallback;
+
+    private sealed record VerifiedTenantPayload(
+        string TenantId,
+        string StoreName,
+        string AdminEmail,
+        string LicenseKey,
+        string IndustryType,
+        string BusinessSubType,
+        bool HasSupplyFeature,
+        bool HasSecondaryQty,
+        bool HasKotFeature,
+        bool HasVariablePackFeature,
+        bool HasMobileShopFeature);
 
     private static void Exec(string fileName, string arguments, bool ignoreExitCode = false)
     {

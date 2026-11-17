@@ -15,6 +15,12 @@
     {
         "Entry"
         {
+        "MsmKey" = "8:_TRAY_EXE_FILE"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_HOST_EXE_FILE"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -172,7 +178,7 @@
             "Object" = "8:_HOST_EXE_FILE"
             "FileType" = "3:2"
             "InstallAction" = "3:1"
-            "Arguments" = "8:--onprem-install --activation-key=\"[ACTIVATION_KEY]\" --store-name=\"[STORE_NAME]\" --admin-email=\"[ADMIN_EMAIL]\" --cloud-relay-url=\"[CLOUD_URL]\""
+            "Arguments" = "8:--onprem-install --activation-key=\"[ACTIVATION_KEY]\" --cloud-relay-url=\"[CLOUD_URL]\""
             "EntryPoint" = "8:"
             "Sequence" = "3:1"
             "Identifier" = "8:_INSTALL_ONPREM"
@@ -196,6 +202,26 @@
         }
         "File"
         {
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_TRAY_EXE_FILE"
+            {
+            "SourcePath" = "8:publish\\RetailSuite.Tray.exe"
+            "TargetName" = "8:RetailSuite.Tray.exe"
+            "Tag" = "8:"
+            "Folder" = "8:_APP_FOLDER"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_HOST_EXE_FILE"
             {
             "SourcePath" = "8:publish\\Retailer.Host.exe"
@@ -260,7 +286,7 @@
         "UseSystemSearchPath" = "11:TRUE"
         "TargetPlatform" = "3:1"
         "PreBuildEvent" = "8:"
-        "PostBuildEvent" = "8:"
+        "PostBuildEvent" = "8:powershell -NoProfile -ExecutionPolicy Bypass -Command \"$m='$(BuiltOuputPath)'; if(!(Test-Path $m)){$m='OnPremises\\RetailSuite.msi'}; $w=New-Object -ComObject WindowsInstaller.Installer; $d=$w.GetType().InvokeMember('OpenDatabase','InvokeMethod',$null,$w,@((Resolve-Path $m).Path,1)); function Q($s){$v=$d.GetType().InvokeMember('OpenView','InvokeMethod',$null,$d,@($s));$v.GetType().InvokeMember('Execute','InvokeMethod',$null,$v,$null);$v.GetType().InvokeMember('Close','InvokeMethod',$null,$v,$null)}; $qq=[char]34+[char]34; foreach($r in @(@('WelcomeForm',('Installed='+$qq+' AND NOT RESUME'),1001),@('ProgressForm',$null,1299),@('FinishedForm',$null,-1))){try{Q('DELETE FROM InstallUISequence WHERE Action='''+$r[0]+'''')}catch{}; $c=if($r[1]){''''+$r[1]+''''}else{'NULL'}; Q('INSERT INTO InstallUISequence (Action,Condition,Sequence) VALUES ('''+$r[0]+''','+$c+','+$r[2]+')')}; $p=@{WelcomeForm_NextArgs='CustomTextA';CustomTextA_PrevArgs='WelcomeForm';CustomTextA_NextArgs='FolderForm';FolderForm_PrevArgs='CustomTextA';FolderForm_NextArgs='ConfirmInstallForm';ConfirmInstallForm_PrevArgs='FolderForm';EDITA1='';CLOUD_URL='https://localhost:5001'}; foreach($k in $p.Keys){try{Q('DELETE FROM Property WHERE Property='''+$k+'''')}catch{}; Q('INSERT INTO Property (Property,Value) VALUES ('''+$k+''','''+$p[$k]+''')')}; $d.GetType().InvokeMember('Commit','InvokeMethod',$null,$d,$null)\""
         "RunPostBuildEvent" = "3:0"
         }
         "UserInterface"
@@ -367,7 +393,7 @@
                             "ContextData" = "8:"
                             "Attributes" = "3:0"
                             "Setting" = "3:2"
-                            "Value" = "8:Enter your Store License Key and store details to configure this On-Premises server."
+                            "Value" = "8:Enter your Store License Key to verify your store and configure this On-Premises server."
                             "DefaultValue" = "8:#1215"
                             "UsePlugInResources" = "11:TRUE"
                             }
@@ -380,7 +406,7 @@
                             "ContextData" = "8:"
                             "Attributes" = "3:0"
                             "Setting" = "3:2"
-                            "Value" = "8:Store License Key / Tenant ID:"
+                            "Value" = "8:Store License Key:"
                             "DefaultValue" = "8:#1246"
                             "UsePlugInResources" = "11:TRUE"
                             }
@@ -406,7 +432,7 @@
                             "ContextData" = "8:"
                             "Attributes" = "3:0"
                             "Setting" = "3:2"
-                            "Value" = "8:root"
+                            "Value" = "8:"
                             "DefaultValue" = "8:"
                             "UsePlugInResources" = "11:TRUE"
                             }
@@ -471,7 +497,7 @@
                             "ContextData" = "8:1;True=1;False=0"
                             "Attributes" = "3:0"
                             "Setting" = "3:0"
-                            "Value" = "3:1"
+                            "Value" = "3:0"
                             "DefaultValue" = "3:1"
                             "UsePlugInResources" = "11:TRUE"
                             }
@@ -523,7 +549,7 @@
                             "ContextData" = "8:1;True=1;False=0"
                             "Attributes" = "3:0"
                             "Setting" = "3:0"
-                            "Value" = "3:1"
+                            "Value" = "3:0"
                             "DefaultValue" = "3:1"
                             "UsePlugInResources" = "11:TRUE"
                             }
@@ -575,7 +601,7 @@
                             "ContextData" = "8:1;True=1;False=0"
                             "Attributes" = "3:0"
                             "Setting" = "3:0"
-                            "Value" = "3:1"
+                            "Value" = "3:0"
                             "DefaultValue" = "3:1"
                             "UsePlugInResources" = "11:TRUE"
                             }

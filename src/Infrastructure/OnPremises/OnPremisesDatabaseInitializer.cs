@@ -38,6 +38,26 @@ internal class OnPremisesDatabaseInitializer
 
     public async Task InitializeAsync(CancellationToken cancellationToken)
     {
+        await EnsureDatabaseCreatedAsync(cancellationToken);
+        await MigrateAndSeedAsync(cancellationToken);
+    }
+
+    public async Task EnsureDatabaseCreatedAsync(CancellationToken cancellationToken)
+    {
+        var tenant = StoreTenantFactory.Create(_store, _database);
+        using var scope = _serviceProvider.CreateScope();
+        var accessor = scope.ServiceProvider.GetRequiredService<IMultiTenantContextAccessor<AppTenantInfo>>();
+        if (accessor is IMultiTenantContextSetter setter)
+        {
+            setter.MultiTenantContext = new MultiTenantContext<AppTenantInfo>(tenant);
+        }
+
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        await EnsurePostgreSqlDatabaseExistsAsync(dbContext, cancellationToken);
+    }
+
+    public async Task MigrateAndSeedAsync(CancellationToken cancellationToken)
+    {
         var tenant = StoreTenantFactory.Create(_store, _database);
         _logger.LogInformation("Initializing on-premises store database for '{Tenant}'.", tenant.Identifier);
 
@@ -84,7 +104,12 @@ internal class OnPremisesDatabaseInitializer
             throw new InvalidOperationException("On-premises mode supports PostgreSQL only.");
         }
 
-        var builder = new NpgsqlConnectionStringBuilder(dbContext.Database.GetConnectionString());
+        // NpgsqlConnection.ConnectionString strips the password unless Persist Security Info=true,
+        // so read the raw configured connection string directly from DatabaseSettings.
+        var rawConnectionString = !string.IsNullOrWhiteSpace(_database.ConnectionString)
+            ? _database.ConnectionString
+            : dbContext.Database.GetConnectionString();
+        var builder = new NpgsqlConnectionStringBuilder(rawConnectionString);
         if (string.IsNullOrWhiteSpace(builder.Database))
         {
             return;

@@ -11,6 +11,8 @@
          Always runs in single-store mode and excludes cloud-only tenant management endpoints. -->
     <PropertyGroup Condition="'$(Configuration)' == 'OnPremises'">
         <DefineConstants>$(DefineConstants);ON_PREMISES</DefineConstants>
+        <!-- GUI subsystem: no console window flashes when the installer/service launches the exe -->
+        <OutputType>WinExe</OutputType>
         <Optimize>true</Optimize>
         <DebugType>none</DebugType>
         <DebugSymbols>false</DebugSymbols>
