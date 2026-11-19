@@ -1,3 +1,5 @@
+using Retailer.Application.Legacy.Inventory;
+
 namespace Retailer.Application.Legacy.Purchases;
 
 public class PurchaseLineRequest
@@ -17,4 +19,8 @@ public class PurchaseLineRequest
     public string? PtaStatus { get; set; }
     public string? ConditionNote { get; set; }
     public int? BatteryHealth { get; set; }
+    public decimal? SalePrice { get; set; }
+    public decimal? SecSalePrice { get; set; }
+    public decimal? MinSalePrice { get; set; }
+    public List<ItemCustomerCategoryPriceUpsertRequest>? CustomerCategoryPrices { get; set; }
 }

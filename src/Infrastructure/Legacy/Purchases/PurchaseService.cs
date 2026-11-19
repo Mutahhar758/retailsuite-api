@@ -26,6 +26,7 @@ internal class PurchaseService : IPurchaseService
     private readonly IRepository<DefaultAccount> _defaultAccountRepository;
     private readonly IRepository<ChartOfAccount> _chartOfAccountRepository;
     private readonly IRepository<ItemDetail> _itemRepository;
+    private readonly IRepository<ItemCustomerCategoryPrice> _categoryPriceRepository;
     private readonly IFifoCostingService _fifoCostingService;
     private readonly IItemTransactionBalanceService _balanceService;
     private readonly ICurrentTenant _currentTenant;
@@ -39,6 +40,7 @@ internal class PurchaseService : IPurchaseService
         IRepository<DefaultAccount> defaultAccountRepository,
         IRepository<ChartOfAccount> chartOfAccountRepository,
         IRepository<ItemDetail> itemRepository,
+        IRepository<ItemCustomerCategoryPrice> categoryPriceRepository,
         IFifoCostingService fifoCostingService,
         IItemTransactionBalanceService balanceService,
         ICurrentTenant currentTenant)
@@ -51,6 +53,7 @@ internal class PurchaseService : IPurchaseService
         _defaultAccountRepository = defaultAccountRepository;
         _chartOfAccountRepository = chartOfAccountRepository;
         _itemRepository = itemRepository;
+        _categoryPriceRepository = categoryPriceRepository;
         _fifoCostingService = fifoCostingService;
         _balanceService = balanceService;
         _currentTenant = currentTenant;
@@ -355,7 +358,6 @@ internal class PurchaseService : IPurchaseService
 
         var itemIds = request.Lines.Select(x => x.ItemId).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().ToList();
         var itemMap = await _itemRepository.GetAll()
-            .AsNoTracking()
             .Where(x => itemIds.Contains(x.Id))
             .ToDictionaryAsync(x => x.Id, cancellationToken);
 
@@ -398,6 +400,7 @@ internal class PurchaseService : IPurchaseService
             }, false);
         }
 
+        await ApplyItemPriceUpdatesAsync(request.Lines, itemMap, cancellationToken);
         await UpsertItemTransactionsAsync(voucherNo, request.Date, request.Account, request.Lines, "001", itemMap, cancellationToken);
         await UpsertGlEntriesAsync(voucherNo, request, totalAmount, cancellationToken);
 
@@ -485,7 +488,6 @@ internal class PurchaseService : IPurchaseService
 
         var itemIds = request.Lines.Select(x => x.ItemId).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().ToList();
         var itemMap = await _itemRepository.GetAll()
-            .AsNoTracking()
             .Where(x => itemIds.Contains(x.Id))
             .ToDictionaryAsync(x => x.Id, cancellationToken);
 
@@ -560,6 +562,7 @@ internal class PurchaseService : IPurchaseService
             }
         }
 
+        await ApplyItemPriceUpdatesAsync(request.Lines, itemMap, cancellationToken);
         await UpsertItemTransactionsAsync(voucherNo, request.Date, request.Account, request.Lines, master.Counter, itemMap, cancellationToken);
         await UpsertGlEntriesAsync(voucherNo, request, totalAmount, cancellationToken);
 
@@ -866,5 +869,121 @@ internal class PurchaseService : IPurchaseService
 
             await _glRepository.UpdateAsync(gl, false);
         }
+    }
+
+    /// <summary>
+    /// Applies any sale price and customer category rate updates specified on purchase lines to the corresponding items.
+    /// </summary>
+    private async Task ApplyItemPriceUpdatesAsync(
+        IEnumerable<PurchaseLineRequest> lines,
+        Dictionary<string, ItemDetail> itemMap,
+        CancellationToken cancellationToken)
+    {
+        var modifiedItemIds = new HashSet<string>();
+        var categoryPricesByItem = new Dictionary<string, List<ItemCustomerCategoryPriceUpsertRequest>>();
+
+        foreach (var line in lines)
+        {
+            if (string.IsNullOrWhiteSpace(line.ItemId) || !itemMap.TryGetValue(line.ItemId, out var item))
+                continue;
+
+            var itemChanged = false;
+
+            if (line.SalePrice.HasValue && line.SalePrice.Value >= 0 && item.PriRate != line.SalePrice.Value)
+            {
+                item.PriRate = line.SalePrice.Value;
+                itemChanged = true;
+            }
+
+            if (line.SecSalePrice.HasValue && line.SecSalePrice.Value >= 0 && item.SecRate != line.SecSalePrice.Value)
+            {
+                item.SecRate = line.SecSalePrice.Value;
+                itemChanged = true;
+            }
+
+            if (line.MinSalePrice.HasValue && line.MinSalePrice.Value >= 0 && item.MinSalePrice != line.MinSalePrice.Value)
+            {
+                item.MinSalePrice = line.MinSalePrice.Value;
+                itemChanged = true;
+            }
+
+            if (itemChanged)
+                modifiedItemIds.Add(item.Id);
+
+            if (line.CustomerCategoryPrices != null)
+                categoryPricesByItem[item.Id] = line.CustomerCategoryPrices;
+        }
+
+        foreach (var itemId in modifiedItemIds)
+        {
+            await _itemRepository.UpdateAsync(itemMap[itemId], false);
+        }
+
+        if (categoryPricesByItem.Count == 0)
+            return;
+
+        var targetItemIds = categoryPricesByItem.Keys.ToList();
+        var existingPrices = await _categoryPriceRepository.GetAll()
+            .Where(x => targetItemIds.Contains(x.ItemId))
+            .ToListAsync(cancellationToken);
+
+        var existingByItem = existingPrices
+            .GroupBy(x => x.ItemId)
+            .ToDictionary(g => g.Key, g => g.ToDictionary(x => x.CustomerCategoryId));
+
+        var toDelete = new List<ItemCustomerCategoryPrice>();
+        var toAdd = new List<ItemCustomerCategoryPrice>();
+        var toUpdate = new List<ItemCustomerCategoryPrice>();
+
+        foreach (var (itemId, incomingList) in categoryPricesByItem)
+        {
+            var existingMap = existingByItem.GetValueOrDefault(itemId) ?? new Dictionary<string, ItemCustomerCategoryPrice>();
+            var incomingCatIds = incomingList
+                .Where(p => !string.IsNullOrWhiteSpace(p.CustomerCategoryId))
+                .Select(p => p.CustomerCategoryId.Trim())
+                .ToHashSet();
+
+            foreach (var existing in existingMap.Values)
+            {
+                if (!incomingCatIds.Contains(existing.CustomerCategoryId) ||
+                    incomingList.Any(p => p.CustomerCategoryId.Trim() == existing.CustomerCategoryId && p.PriRate <= 0))
+                {
+                    toDelete.Add(existing);
+                }
+            }
+
+            foreach (var p in incomingList.Where(p => !string.IsNullOrWhiteSpace(p.CustomerCategoryId) && p.PriRate > 0))
+            {
+                var catId = p.CustomerCategoryId.Trim();
+                if (existingMap.TryGetValue(catId, out var existingPrice))
+                {
+                    if (existingPrice.PriRate != p.PriRate || existingPrice.SecRate != p.SecRate)
+                    {
+                        existingPrice.PriRate = p.PriRate;
+                        existingPrice.SecRate = p.SecRate;
+                        toUpdate.Add(existingPrice);
+                    }
+                }
+                else
+                {
+                    toAdd.Add(new ItemCustomerCategoryPrice
+                    {
+                        ItemId = itemId,
+                        CustomerCategoryId = catId,
+                        PriRate = p.PriRate,
+                        SecRate = p.SecRate
+                    });
+                }
+            }
+        }
+
+        if (toDelete.Count > 0)
+            await _categoryPriceRepository.DeleteRangeAsync(toDelete, false);
+
+        if (toAdd.Count > 0)
+            await _categoryPriceRepository.AddRangeAsync(toAdd, false);
+
+        if (toUpdate.Count > 0)
+            await _categoryPriceRepository.UpdateRangeAsync(toUpdate, false);
     }
 }
