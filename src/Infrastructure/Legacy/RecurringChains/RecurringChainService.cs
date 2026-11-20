@@ -8,6 +8,7 @@ using Retailer.Application.Legacy.SaleSupplies;
 using Retailer.Domain.Legacy;
 using Retailer.Infrastructure.Persistence.Context;
 using Retailer.Infrastructure.Persistence.Transactions;
+using Retailer.Shared.Common;
 
 namespace Retailer.Infrastructure.Legacy.RecurringChains;
 
@@ -47,24 +48,13 @@ internal class RecurringChainService : IRecurringChainService
 
     public async Task<List<RecurringChainResponse>> GetListAsync(CancellationToken cancellationToken)
     {
-        return await _chainRepo.GetAll()
+        var today = PakistanTime.Today;
+        var chains = await _chainRepo.GetAll()
             .AsNoTracking()
             .OrderByDescending(x => x.CreatedOn)
-            .Select(x => new RecurringChainResponse
-            {
-                Id = x.Id,
-                Name = x.Name,
-                VoucherType = x.VoucherType,
-                Frequency = x.Frequency,
-                DayOfWeek = x.DayOfWeek,
-                DayOfMonth = x.DayOfMonth,
-                IsActive = x.IsActive,
-                LastRunDate = x.LastRunDate,
-                LastVoucherNo = x.LastVoucherNo,
-                Notes = x.Notes,
-                CreatedOn = x.CreatedOn
-            })
             .ToListAsync(cancellationToken);
+
+        return chains.Select(x => MapToResponse(x, today)).ToList();
     }
 
     public async Task<RecurringChainResponse> GetByIdAsync(int id, CancellationToken cancellationToken)
@@ -75,20 +65,7 @@ internal class RecurringChainService : IRecurringChainService
             throw new NotFoundException($"Recurring chain with ID '{id}' not found.");
         }
 
-        return new RecurringChainResponse
-        {
-            Id = chain.Id,
-            Name = chain.Name,
-            VoucherType = chain.VoucherType,
-            Frequency = chain.Frequency,
-            DayOfWeek = chain.DayOfWeek,
-            DayOfMonth = chain.DayOfMonth,
-            IsActive = chain.IsActive,
-            LastRunDate = chain.LastRunDate,
-            LastVoucherNo = chain.LastVoucherNo,
-            Notes = chain.Notes,
-            CreatedOn = chain.CreatedOn
-        };
+        return MapToResponse(chain, PakistanTime.Today);
     }
 
     public async Task<int> CreateFromVoucherAsync(RecurringChainCreateRequest request, CancellationToken cancellationToken)
@@ -99,17 +76,38 @@ internal class RecurringChainService : IRecurringChainService
         if (string.IsNullOrWhiteSpace(request.SourceVoucherNo))
             throw new BadRequestException("Source voucher number is required.");
 
+        RecurringScheduleEvaluator.ValidateAndNormalize(
+            request.Frequency,
+            request.DaysOfWeek,
+            request.DayOfWeek,
+            request.DayOfMonth,
+            request.Interval,
+            out var normalizedFrequency,
+            out var daysOfWeekCsv,
+            out var legacyDayOfWeek,
+            out var dayOfMonth,
+            out var interval);
+
         var chain = new RecurringChain
         {
             Name = request.Name.Trim(),
             VoucherType = request.VoucherType,
-            Frequency = string.IsNullOrWhiteSpace(request.Frequency) ? "Daily" : request.Frequency,
-            DayOfWeek = request.DayOfWeek,
-            DayOfMonth = request.DayOfMonth,
+            Frequency = normalizedFrequency,
+            DayOfWeek = legacyDayOfWeek,
+            DaysOfWeek = daysOfWeekCsv,
+            DayOfMonth = dayOfMonth,
+            Interval = interval,
+            StartDate = request.StartDate,
             IsActive = true,
             LastVoucherNo = request.SourceVoucherNo,
             Notes = request.Notes
         };
+
+        // Anchor StartDate automatically for BiWeekly or Interval > 1 when not explicitly provided
+        if (!chain.StartDate.HasValue && (normalizedFrequency == RecurringScheduleEvaluator.BiWeekly || interval > 1))
+        {
+            chain.StartDate = PakistanTime.Today;
+        }
 
         await _chainRepo.AddAsync(chain);
 
@@ -151,14 +149,34 @@ internal class RecurringChainService : IRecurringChainService
 
     public async Task UpdateAsync(int id, RecurringChainUpdateRequest request, CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(request.Name))
+            throw new BadRequestException("Schedule name is required.");
+
         var chain = await _chainRepo.GetByIdAsync(id, cancellationToken);
         if (chain is null)
             throw new NotFoundException($"Recurring chain with ID '{id}' not found.");
 
+        RecurringScheduleEvaluator.ValidateAndNormalize(
+            request.Frequency,
+            request.DaysOfWeek,
+            request.DayOfWeek,
+            request.DayOfMonth,
+            request.Interval,
+            out var normalizedFrequency,
+            out var daysOfWeekCsv,
+            out var legacyDayOfWeek,
+            out var dayOfMonth,
+            out var interval);
+
         chain.Name = request.Name.Trim();
-        chain.Frequency = request.Frequency;
-        chain.DayOfWeek = request.DayOfWeek;
-        chain.DayOfMonth = request.DayOfMonth;
+        chain.Frequency = normalizedFrequency;
+        chain.DayOfWeek = legacyDayOfWeek;
+        chain.DaysOfWeek = daysOfWeekCsv;
+        chain.DayOfMonth = dayOfMonth;
+        chain.Interval = interval;
+        chain.StartDate = request.StartDate ?? (normalizedFrequency == RecurringScheduleEvaluator.BiWeekly || interval > 1
+            ? chain.StartDate ?? PakistanTime.Today
+            : null);
         chain.IsActive = request.IsActive;
         chain.Notes = request.Notes;
 
@@ -248,27 +266,35 @@ internal class RecurringChainService : IRecurringChainService
         }
     }
 
-    private static bool IsDueOn(RecurringChain chain, DateOnly date)
+    private static RecurringChainResponse MapToResponse(RecurringChain chain, DateOnly today)
     {
-        if (string.Equals(chain.Frequency, "Daily", StringComparison.OrdinalIgnoreCase))
-            return true;
+        var daysOfWeek = RecurringScheduleEvaluator.ParseDaysOfWeek(
+            chain.DaysOfWeek,
+            chain.Frequency is RecurringScheduleEvaluator.Weekly or RecurringScheduleEvaluator.BiWeekly ? chain.DayOfWeek : null);
 
-        if (string.Equals(chain.Frequency, "Weekly", StringComparison.OrdinalIgnoreCase))
+        return new RecurringChainResponse
         {
-            var targetDay = chain.DayOfWeek ?? DayOfWeek.Monday;
-            return date.DayOfWeek == targetDay;
-        }
-
-        if (string.Equals(chain.Frequency, "Monthly", StringComparison.OrdinalIgnoreCase))
-        {
-            var targetDay = chain.DayOfMonth ?? 1;
-            var daysInMonth = DateTime.DaysInMonth(date.Year, date.Month);
-            var effectiveDay = Math.Min(targetDay, daysInMonth);
-            return date.Day == effectiveDay;
-        }
-
-        return false;
+            Id = chain.Id,
+            Name = chain.Name,
+            VoucherType = chain.VoucherType,
+            Frequency = chain.Frequency,
+            DayOfWeek = chain.DayOfWeek,
+            DaysOfWeek = daysOfWeek,
+            DayOfMonth = chain.DayOfMonth,
+            Interval = Math.Max(1, chain.Interval),
+            StartDate = chain.StartDate,
+            ScheduleSummary = RecurringScheduleEvaluator.GetScheduleSummary(chain),
+            NextRunDate = RecurringScheduleEvaluator.GetNextRunDate(chain, today),
+            IsActive = chain.IsActive,
+            LastRunDate = chain.LastRunDate,
+            LastVoucherNo = chain.LastVoucherNo,
+            Notes = chain.Notes,
+            CreatedOn = chain.CreatedOn
+        };
     }
+
+    private static bool IsDueOn(RecurringChain chain, DateOnly date) =>
+        RecurringScheduleEvaluator.IsDueOn(chain, date);
 
     private async Task<string?> CloneLatestSaleSupplyAsync(RecurringChain chain, DateOnly runDate, CancellationToken cancellationToken)
     {

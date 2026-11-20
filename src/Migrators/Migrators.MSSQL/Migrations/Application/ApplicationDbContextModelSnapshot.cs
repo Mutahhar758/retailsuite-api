@@ -3448,6 +3448,11 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasColumnType("int")
                         .HasColumnName("day_of_week");
 
+                    b.Property<string>("DaysOfWeek")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)")
+                        .HasColumnName("days_of_week");
+
                     b.Property<string>("DeletedBy")
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("deleted_by");
@@ -3461,6 +3466,12 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)")
                         .HasColumnName("frequency");
+
+                    b.Property<int>("Interval")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1)
+                        .HasColumnName("interval");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit")
@@ -3494,6 +3505,10 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)")
                         .HasColumnName("notes");
+
+                    b.Property<DateOnly?>("StartDate")
+                        .HasColumnType("date")
+                        .HasColumnName("start_date");
 
                     b.Property<string>("VoucherType")
                         .IsRequired()

@@ -3447,6 +3447,11 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnType("integer")
                         .HasColumnName("day_of_week");
 
+                    b.Property<string>("DaysOfWeek")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("days_of_week");
+
                     b.Property<string>("DeletedBy")
                         .HasColumnType("text")
                         .HasColumnName("deleted_by");
@@ -3460,6 +3465,12 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
                         .HasColumnName("frequency");
+
+                    b.Property<int>("Interval")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("interval");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
@@ -3493,6 +3504,10 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)")
                         .HasColumnName("notes");
+
+                    b.Property<DateOnly?>("StartDate")
+                        .HasColumnType("date")
+                        .HasColumnName("start_date");
 
                     b.Property<string>("VoucherType")
                         .IsRequired()

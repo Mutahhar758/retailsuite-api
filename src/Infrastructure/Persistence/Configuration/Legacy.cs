@@ -992,6 +992,8 @@ public class RecurringChainConfig : IEntityTypeConfiguration<RecurringChain>
         builder.Property(x => x.Name).HasMaxLength(150).IsRequired();
         builder.Property(x => x.VoucherType).HasMaxLength(10).IsRequired();
         builder.Property(x => x.Frequency).HasMaxLength(20).IsRequired();
+        builder.Property(x => x.DaysOfWeek).HasMaxLength(30);
+        builder.Property(x => x.Interval).HasDefaultValue(1);
         builder.Property(x => x.LastVoucherNo).HasMaxLength(50);
         builder.Property(x => x.Notes).HasMaxLength(500);
     }
