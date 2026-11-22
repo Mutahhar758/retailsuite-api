@@ -876,6 +876,22 @@ public class SettingConfig : IEntityTypeConfiguration<Setting>
     }
 }
 
+public class PosTerminalConfig : IEntityTypeConfiguration<PosTerminal>
+{
+    public void Configure(EntityTypeBuilder<PosTerminal> builder)
+    {
+        var mtBuilder = builder.IsMultiTenant();
+        builder.Property(x => x.Id).ValueGeneratedOnAdd();
+        builder.Property(x => x.MachineId).HasMaxLength(64).IsRequired();
+        builder.Property(x => x.TerminalCode).HasMaxLength(20).IsRequired();
+        builder.Property(x => x.MachineName).HasMaxLength(250);
+        builder.Property(x => x.IsActive).HasDefaultValue(true);
+        builder.HasIndex(x => x.MachineId).IsUnique().HasSoftDeleteFilter();
+        builder.HasIndex(x => x.TerminalCode).IsUnique().HasSoftDeleteFilter();
+        mtBuilder.AdjustUniqueIndexes();
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Mobile Shop & Repair Management module configurations
 // ---------------------------------------------------------------------------

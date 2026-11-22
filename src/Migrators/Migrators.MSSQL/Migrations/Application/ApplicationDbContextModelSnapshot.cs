@@ -1962,14 +1962,14 @@ namespace Migrators.MSSQL.Migrations.Application
                     b.HasKey("Id", "TenantId")
                         .HasName("ak_item_detail_id_tenant_id");
 
+                    b.HasIndex("FifoRebuildFromDate")
+                        .HasDatabaseName("ix_item_detail_fifo_rebuild_from_date");
+
                     b.HasIndex("BrandId", "TenantId")
                         .HasDatabaseName("ix_item_detail_brand_id_tenant_id");
 
                     b.HasIndex("DefaultUnitId", "TenantId")
                         .HasDatabaseName("ix_item_detail_default_unit_id_tenant_id");
-
-                    b.HasIndex("FifoRebuildFromDate")
-                        .HasDatabaseName("ix_item_detail_fifo_rebuild_from_date");
 
                     b.HasIndex("ItemCategoryId", "TenantId")
                         .HasDatabaseName("ix_item_detail_item_category_id_tenant_id");
@@ -2503,6 +2503,90 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasFilter("deleted_on IS NULL");
 
                     b.ToTable("Payroll");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Legacy.PosTerminal", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("TenantId")
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_on");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("deleted_on");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("LastModifiedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("last_modified_by");
+
+                    b.Property<DateTime?>("LastModifiedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("last_modified_on");
+
+                    b.Property<DateTime?>("LastSeenOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("last_seen_on");
+
+                    b.Property<string>("MachineId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)")
+                        .HasColumnName("machine_id");
+
+                    b.Property<string>("MachineName")
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)")
+                        .HasColumnName("machine_name");
+
+                    b.Property<string>("TerminalCode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("terminal_code");
+
+                    b.HasKey("Id", "TenantId")
+                        .HasName("ak_pos_terminals_id_tenant_id");
+
+                    b.HasIndex("MachineId", "TenantId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_pos_terminals_machine_id")
+                        .HasFilter("deleted_on IS NULL");
+
+                    b.HasIndex("TerminalCode", "TenantId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_pos_terminals_terminal_code")
+                        .HasFilter("deleted_on IS NULL");
+
+                    b.ToTable("PosTerminals");
 
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });

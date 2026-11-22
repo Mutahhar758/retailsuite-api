@@ -291,14 +291,39 @@ internal class SaleService : ISaleService
 
     public async Task<string> CreateAsync(SaleCreateRequest request, CancellationToken cancellationToken)
     {
-        var maxVoucherNo = await _saleMasterRepository.GetAll()
-            .IgnoreQueryFilters([GlobalQueryFilterConstants.SoftDelete])
-            .AsNoTracking()
-            .Where(x => x.VType == VType)
-            .MaxAsync(x => (string?)x.VNo, cancellationToken);
+        var counter = !string.IsNullOrWhiteSpace(request.Counter)
+            ? request.Counter.Trim()
+            : "001";
+        if (counter.Length > 20)
+            counter = counter[..20];
 
-        var nextNum = maxVoucherNo == null ? 1L : long.Parse(maxVoucherNo) + 1;
-        var voucherNo = nextNum.ToString("D5");
+        string voucherNo;
+        if (!string.IsNullOrWhiteSpace(request.OfflineVoucherNo))
+        {
+            voucherNo = request.OfflineVoucherNo.Trim();
+            if (voucherNo.Length > 30 || !voucherNo.Contains('-') || !voucherNo.All(c => char.IsLetterOrDigit(c) || c == '-'))
+                throw new CustomException($"Invalid offline voucher number '{voucherNo}'. Must be terminal-prefixed (e.g. T01-00001) using only letters, digits, and '-'.");
+
+            var exists = await _saleMasterRepository.GetAll()
+                .IgnoreQueryFilters([GlobalQueryFilterConstants.SoftDelete])
+                .AsNoTracking()
+                .AnyAsync(x => x.VType == VType && x.VNo == voucherNo, cancellationToken);
+
+            if (exists)
+                return voucherNo;
+        }
+        else
+        {
+            var maxNum = await _saleMasterRepository.GetAll()
+                .IgnoreQueryFilters([GlobalQueryFilterConstants.SoftDelete])
+                .AsNoTracking()
+                .Where(x => x.VType == VType && !x.VNo.Contains("-"))
+                .Select(x => (long?)Convert.ToInt64(x.VNo))
+                .MaxAsync(cancellationToken);
+
+            var nextNum = (maxNum ?? 0L) + 1L;
+            voucherNo = nextNum.ToString("D5");
+        }
 
         var isWanda = _currentTenant.HasVariablePackFeature;
         var grossAmount = request.Lines.Sum(x => isWanda
@@ -333,7 +358,7 @@ internal class SaleService : ISaleService
             NetAmount = netAmount,
             CashReceipt = cashReceipt,
             CashBack = cashBack,
-            Counter = "001"
+            Counter = counter
         };
 
         await _saleMasterRepository.AddAsync(master, false);
@@ -405,7 +430,7 @@ internal class SaleService : ISaleService
             }, false);
         }
 
-        await UpsertItemTransactionsAsync(voucherNo, request.Date, request.Account, request.Lines, "001", itemMap, cancellationToken);
+        await UpsertItemTransactionsAsync(voucherNo, request.Date, request.Account, request.Lines, counter, itemMap, cancellationToken);
         await UpsertGlEntriesAsync(voucherNo, request, netAmount, cancellationToken);
 
         await _saleMasterRepository.SaveChangesAsync(cancellationToken);

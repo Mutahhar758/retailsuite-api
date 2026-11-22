@@ -12,4 +12,6 @@ public class SaleCreateRequest
     public decimal CashBack { get; set; }
     public List<SaleLineRequest> Lines { get; set; } = [];
     public List<PaymentRecordRequest>? Payments { get; set; }
+    public string? OfflineVoucherNo { get; set; }
+    public string? Counter { get; set; }
 }
