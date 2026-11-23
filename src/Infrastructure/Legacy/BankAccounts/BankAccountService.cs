@@ -11,9 +11,9 @@ namespace Retailer.Infrastructure.Legacy.BankAccounts;
 
 internal class BankAccountService : IBankAccountService
 {
-    private const string DefaultBankPrefix = "001002002002";
-    private const string DefaultCashPrefix = "001002002001";
-    private const string CashBanksParentId = "001002002";
+    private const string DefaultBankPrefix = ChartOfAccountConstants.Prefixes.Banks;
+    private const string DefaultCashPrefix = ChartOfAccountConstants.Prefixes.Cash;
+    private const string CashBanksParentId = ChartOfAccountConstants.Prefixes.CashBanks;
     private const string OpeningVType = "Op";
 
     private readonly IRepository<ChartOfAccount> _chartOfAccountRepository;
@@ -223,7 +223,7 @@ internal class BankAccountService : IBankAccountService
             long.TryParse(maxChildId[parentPrefix.Length..], out maxSuffix);
         }
 
-        var newAccountCode = parentPrefix + (maxSuffix + 1).ToString("D3");
+        var newAccountCode = parentPrefix + (maxSuffix + 1).ToString(ChartOfAccountConstants.SuffixFormats.Default);
         var accLevel = parent.AccLevel + 1;
 
         // Build composite title for COA display
@@ -237,7 +237,7 @@ internal class BankAccountService : IBankAccountService
             Title = coaTitle,
             ParentId = parentPrefix,
             AccLevel = accLevel,
-            AccType = "Detail"
+            AccType = ChartOfAccountConstants.AccountTypes.Detail
         };
         await _chartOfAccountRepository.AddAsync(newAccount);
 

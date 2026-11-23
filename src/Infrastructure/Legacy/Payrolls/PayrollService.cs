@@ -111,7 +111,7 @@ internal class PayrollService : IPayrollService
 
         var expenseAccounts = await _chartOfAccountRepository.GetAll()
             .AsNoTracking()
-            .Where(x => x.AccLevel == 5 && x.Id.StartsWith("004"))
+            .Where(x => x.AccLevel == ChartOfAccountConstants.Levels.Detail && x.Id.StartsWith(ChartOfAccountConstants.RootIds.Expenses))
             .OrderBy(x => x.Title)
             .Select(x => new PayrollLookupItemResponse
             {
@@ -122,7 +122,7 @@ internal class PayrollService : IPayrollService
 
         var payableAccounts = await _chartOfAccountRepository.GetAll()
             .AsNoTracking()
-            .Where(x => x.AccLevel == 5 && x.Id.StartsWith("002"))
+            .Where(x => x.AccLevel == ChartOfAccountConstants.Levels.Detail && x.Id.StartsWith(ChartOfAccountConstants.RootIds.Liabilities))
             .OrderBy(x => x.Title)
             .Select(x => new PayrollLookupItemResponse
             {

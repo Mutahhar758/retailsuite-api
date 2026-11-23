@@ -368,7 +368,7 @@ internal class CustomerService : ICustomerService
             long.TryParse(maxChildId[customerAccountPrefix.Length..], out maxSuffix);
         }
 
-        var newAccountCode = customerAccountPrefix + (maxSuffix + 1).ToString("D3");
+        var newAccountCode = customerAccountPrefix + (maxSuffix + 1).ToString(ChartOfAccountConstants.SuffixFormats.Default);
         var accLevel = parent.AccLevel + 1;
 
         // Create Chart of Account entry
@@ -378,7 +378,7 @@ internal class CustomerService : ICustomerService
             Title = request.Title,
             ParentId = customerAccountPrefix,
             AccLevel = accLevel,
-            AccType = "Detail"
+            AccType = ChartOfAccountConstants.AccountTypes.Detail
         };
         await _chartOfAccountRepository.AddAsync(newAccount);
 
@@ -852,7 +852,7 @@ internal class CustomerService : ICustomerService
             else
             {
                 currentSuffix++;
-                var newAccountCode = customerAccountPrefix + currentSuffix.ToString("D3");
+                var newAccountCode = customerAccountPrefix + currentSuffix.ToString(ChartOfAccountConstants.SuffixFormats.Default);
 
                 var newAccount = new ChartOfAccount
                 {
@@ -860,7 +860,7 @@ internal class CustomerService : ICustomerService
                     Title = item.Title,
                     ParentId = customerAccountPrefix,
                     AccLevel = accLevel,
-                    AccType = "Detail"
+                    AccType = ChartOfAccountConstants.AccountTypes.Detail
                 };
                 newCoasToAdd.Add(newAccount);
 

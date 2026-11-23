@@ -1,5 +1,6 @@
 using Retailer.Application.Common.Persistence;
 using Retailer.Domain.Legacy;
+using Retailer.Shared.Common.Constants;
 using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
 
@@ -225,19 +226,21 @@ public class AccountSeeder : ICustomSeeder
         else
         {
             // Backfill MapAccountId for Cash and Bank if missing in existing databases
-            var existingCash = await _defaultAccRepository.GetAll().FirstOrDefaultAsync(x => x.Title == "Cash", cancellationToken);
+            var existingCash = await _defaultAccRepository.GetAll().FirstOrDefaultAsync(x => x.Title == ChartOfAccountConstants.DefaultAccountTitles.Cash, cancellationToken);
             bool updated = false;
             if (existingCash != null && string.IsNullOrWhiteSpace(existingCash.MapAccountId))
             {
-                existingCash.MapAccountId = "001002002001";
+                existingCash.MapAccountId = ChartOfAccountConstants.Prefixes.Cash;
                 await _defaultAccRepository.UpdateAsync(existingCash);
                 updated = true;
             }
 
-            var existingBank = await _defaultAccRepository.GetAll().FirstOrDefaultAsync(x => x.Title == "Bank" || x.Title == "Banks", cancellationToken);
+            var existingBank = await _defaultAccRepository.GetAll().FirstOrDefaultAsync(
+                x => x.Title == ChartOfAccountConstants.DefaultAccountTitles.Bank || x.Title == ChartOfAccountConstants.DefaultAccountTitles.Banks,
+                cancellationToken);
             if (existingBank != null && string.IsNullOrWhiteSpace(existingBank.MapAccountId))
             {
-                existingBank.MapAccountId = "001002002002";
+                existingBank.MapAccountId = ChartOfAccountConstants.Prefixes.Banks;
                 await _defaultAccRepository.UpdateAsync(existingBank);
                 updated = true;
             }

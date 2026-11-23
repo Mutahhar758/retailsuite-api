@@ -3,6 +3,7 @@ using Retailer.Application.Common.Persistence;
 using Retailer.Application.Legacy.Dashboards;
 using Retailer.Domain.Legacy;
 using Retailer.Domain.Common.Enums;
+using Retailer.Shared.Common.Constants;
 using System.Globalization;
 
 namespace Retailer.Infrastructure.Legacy.Dashboards;
@@ -140,7 +141,7 @@ internal class DashboardService : IDashboardService
         var allAccounts = await _chartOfAccountRepository.GetAll().AsNoTracking().ToListAsync(cancellationToken);
         
         var expenseDetailAccounts = allAccounts
-            .Where(x => IsDescendantOf(x, "004", allAccounts) && x.AccLevel == 5)
+            .Where(x => IsDescendantOf(x, ChartOfAccountConstants.RootIds.Expenses, allAccounts) && x.AccLevel == ChartOfAccountConstants.Levels.Detail)
             .ToList();
         var expenseAccountIds = expenseDetailAccounts.Select(x => x.Id).ToList();
 
@@ -167,7 +168,7 @@ internal class DashboardService : IDashboardService
     {
         var allAccounts = await _chartOfAccountRepository.GetAll().AsNoTracking().ToListAsync(cancellationToken);
         var expenseDetailAccounts = allAccounts
-            .Where(x => IsDescendantOf(x, "004", allAccounts) && x.AccLevel == 5)
+            .Where(x => IsDescendantOf(x, ChartOfAccountConstants.RootIds.Expenses, allAccounts) && x.AccLevel == ChartOfAccountConstants.Levels.Detail)
             .ToList();
         var expenseAccountIds = expenseDetailAccounts.Select(x => x.Id).ToList();
 

@@ -10,6 +10,7 @@ using Retailer.Domain.Common.Enums;
 using Retailer.Infrastructure.Legacy.Inventory;
 using Retailer.Infrastructure.Reporting.QuestPdf.Documents;
 using Retailer.Infrastructure.Reporting.QuestPdf.Models;
+using Retailer.Shared.Common.Constants;
 
 namespace Retailer.Infrastructure.Legacy.Reports;
 
@@ -1294,7 +1295,9 @@ internal partial class ReportService : IReportService
                 Balance = curBal.ContainsKey(a.Id) ? curBal[a.Id] : 0m
             })
             .Where(x => x.Balance != 0m)
-            .Where(x => x.Lvl1Id == "001" || x.Lvl1Id == "002" || x.Lvl1Id == "005")
+            .Where(x => x.Lvl1Id == ChartOfAccountConstants.RootIds.Assets
+                     || x.Lvl1Id == ChartOfAccountConstants.RootIds.Liabilities
+                     || x.Lvl1Id == ChartOfAccountConstants.RootIds.Capital)
             .GroupBy(x => new { x.Lvl1Id, x.Lvl2Id, x.Lvl3Id, x.Lvl4Id })
             .Select(g => new BalanceSheetLineResponse
             {
@@ -1409,7 +1412,7 @@ internal partial class ReportService : IReportService
         var detailAccounts = allAccounts.Where(x => x.AccLevel == 5).ToList();
 
         var salesRows = detailAccounts
-            .Where(x => GetParent(GetParent(GetParent(GetParent(x.Id)))) == "003")
+            .Where(x => GetParent(GetParent(GetParent(GetParent(x.Id)))) == ChartOfAccountConstants.RootIds.Income)
             .Select(x =>
             {
                 var dr = drMap.ContainsKey(x.Id) ? drMap[x.Id] : 0m;
@@ -1447,7 +1450,7 @@ internal partial class ReportService : IReportService
         };
 
         var expenseRows = detailAccounts
-            .Where(x => GetParent(GetParent(GetParent(GetParent(x.Id)))) == "004")
+            .Where(x => GetParent(GetParent(GetParent(GetParent(x.Id)))) == ChartOfAccountConstants.RootIds.Expenses)
             .Where(x => purchaseAccount == null || !string.Equals(x.Id, purchaseAccount.Id, StringComparison.OrdinalIgnoreCase))
             .Select(x =>
             {
@@ -2706,7 +2709,7 @@ internal partial class ReportService : IReportService
         {
             accounts = await _chartOfAccountRepository.GetAll()
                 .AsNoTracking()
-                .Where(x => x.AccLevel == 5 && x.Id.StartsWith("02"))
+                .Where(x => x.AccLevel == ChartOfAccountConstants.Levels.Detail && x.Id.StartsWith(ChartOfAccountConstants.Prefixes.VendorBillLegacy))
                 .Select(x => x.Id)
                 .ToListAsync(cancellationToken);
         }
@@ -3102,7 +3105,7 @@ internal partial class ReportService : IReportService
         {
             accounts = await _chartOfAccountRepository.GetAll()
                 .AsNoTracking()
-                .Where(x => x.AccLevel == 5 && x.Id.StartsWith("02"))
+                .Where(x => x.AccLevel == ChartOfAccountConstants.Levels.Detail && x.Id.StartsWith(ChartOfAccountConstants.Prefixes.VendorBillLegacy))
                 .Select(x => x.Id)
                 .ToListAsync(cancellationToken);
         }

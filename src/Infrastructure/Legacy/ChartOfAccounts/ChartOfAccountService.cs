@@ -9,9 +9,9 @@ namespace Retailer.Infrastructure.Legacy.ChartOfAccounts;
 
 internal class ChartOfAccountService : IChartOfAccountService
 {
-    private const string CashBankDefaultAccountTitle = "Cash";
-    private const string SupplierDefaultAccountTitle = "Suppliers";
-    private static readonly string[] CustomerAccountTitles = ["Customers", "Suppliers"];
+    private const string CashBankDefaultAccountTitle = ChartOfAccountConstants.DefaultAccountTitles.Cash;
+    private const string SupplierDefaultAccountTitle = ChartOfAccountConstants.DefaultAccountTitles.Suppliers;
+    private static readonly string[] CustomerAccountTitles = [ChartOfAccountConstants.DefaultAccountTitles.Customers, ChartOfAccountConstants.DefaultAccountTitles.Suppliers];
 
     private readonly IRepository<ChartOfAccount> _repository;
     private readonly IRepository<DefaultAccount> _defaultAccountRepository;
@@ -73,7 +73,7 @@ internal class ChartOfAccountService : IChartOfAccountService
         if (parent is null)
             throw new NotFoundException($"Parent account '{request.ParentId}' not found.");
 
-        if (parent.AccLevel >= 5)
+        if (parent.AccLevel >= ChartOfAccountConstants.Levels.Detail)
             throw new BadRequestException("Cannot create child for detail account.");
 
         var maxChildId = await _repository.GetAll()
@@ -91,7 +91,7 @@ internal class ChartOfAccountService : IChartOfAccountService
             long.TryParse(maxChildId[request.ParentId.Length..], out maxSuffix);
         }
 
-        var account = request.ParentId + (maxSuffix + 1).ToString("D3");
+        var account = request.ParentId + (maxSuffix + 1).ToString(ChartOfAccountConstants.SuffixFormats.Default);
         var accLevel = parent.AccLevel + 1;
 
         var chartOfAccount = new ChartOfAccount
@@ -100,7 +100,9 @@ internal class ChartOfAccountService : IChartOfAccountService
             Title = request.Title,
             ParentId = request.ParentId,
             AccLevel = accLevel,
-            AccType = accLevel == 5 ? "Detail" : "Parent"
+            AccType = accLevel == ChartOfAccountConstants.Levels.Detail
+                ? ChartOfAccountConstants.AccountTypes.Detail
+                : ChartOfAccountConstants.AccountTypes.Parent
         };
 
         await _repository.AddAsync(chartOfAccount);
@@ -172,7 +174,7 @@ internal class ChartOfAccountService : IChartOfAccountService
     {
         return await _repository.GetAll()
             .AsNoTracking()
-            .Where(x => x.AccType == "Detail")
+            .Where(x => x.AccType == ChartOfAccountConstants.AccountTypes.Detail)
             .OrderBy(x => x.Id)
             .Select(x => new ChartOfAccountHeadResponse
             {
@@ -186,7 +188,9 @@ internal class ChartOfAccountService : IChartOfAccountService
     {
         var prefixesFromDb = await _defaultAccountRepository.GetAll()
             .AsNoTracking()
-            .Where(x => x.Title == "Cash" || x.Title == "Bank" || x.Title == "Banks")
+            .Where(x => x.Title == ChartOfAccountConstants.DefaultAccountTitles.Cash
+                     || x.Title == ChartOfAccountConstants.DefaultAccountTitles.Bank
+                     || x.Title == ChartOfAccountConstants.DefaultAccountTitles.Banks)
             .Select(x => x.MapAccountId ?? x.AccountId)
             .Where(x => !string.IsNullOrWhiteSpace(x))
             .ToListAsync(cancellationToken);
@@ -198,9 +202,9 @@ internal class ChartOfAccountService : IChartOfAccountService
             var acc = await _repository.GetByIdAsync(accId, cancellationToken);
             if (acc != null)
             {
-                if (acc.AccLevel <= 4)
+                if (acc.AccLevel <= ChartOfAccountConstants.Levels.Category)
                     prefixes.Add(acc.Id);
-                else if (acc.AccLevel == 5 && !string.IsNullOrWhiteSpace(acc.ParentId))
+                else if (acc.AccLevel == ChartOfAccountConstants.Levels.Detail && !string.IsNullOrWhiteSpace(acc.ParentId))
                     prefixes.Add(acc.ParentId);
                 else
                     prefixes.Add(acc.Id);
@@ -213,14 +217,14 @@ internal class ChartOfAccountService : IChartOfAccountService
 
         if (prefixes.Count == 0)
         {
-            prefixes.Add("001002002");
+            prefixes.Add(ChartOfAccountConstants.Prefixes.CashBanks);
         }
 
         var distinctPrefixes = prefixes.Distinct().ToList();
 
         var accounts = await _repository.GetAll()
             .AsNoTracking()
-            .Where(x => x.AccLevel == 5)
+            .Where(x => x.AccLevel == ChartOfAccountConstants.Levels.Detail)
             .OrderBy(x => x.Id)
             .Select(x => new ChartOfAccountHeadResponse
             {

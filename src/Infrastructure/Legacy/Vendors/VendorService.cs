@@ -288,7 +288,7 @@ internal class VendorService : IVendorService
             long.TryParse(maxChildId[vendorAccountPrefix.Length..], out maxSuffix);
         }
 
-        var newAccountCode = vendorAccountPrefix + (maxSuffix + 1).ToString("D3");
+        var newAccountCode = vendorAccountPrefix + (maxSuffix + 1).ToString(ChartOfAccountConstants.SuffixFormats.Default);
         var accLevel = parent.AccLevel + 1;
 
         // Create Chart of Account entry
@@ -298,7 +298,7 @@ internal class VendorService : IVendorService
             Title = request.Title,
             ParentId = vendorAccountPrefix,
             AccLevel = accLevel,
-            AccType = "Detail"
+            AccType = ChartOfAccountConstants.AccountTypes.Detail
         };
         await _chartOfAccountRepository.AddAsync(newAccount);
 
@@ -601,7 +601,7 @@ internal class VendorService : IVendorService
             else
             {
                 currentSuffix++;
-                var newAccountCode = vendorAccountPrefix + currentSuffix.ToString("D3");
+                var newAccountCode = vendorAccountPrefix + currentSuffix.ToString(ChartOfAccountConstants.SuffixFormats.Default);
 
                 var newAccount = new ChartOfAccount
                 {
@@ -609,7 +609,7 @@ internal class VendorService : IVendorService
                     Title = item.Title,
                     ParentId = vendorAccountPrefix,
                     AccLevel = accLevel,
-                    AccType = "Detail"
+                    AccType = ChartOfAccountConstants.AccountTypes.Detail
                 };
                 newCoasToAdd.Add(newAccount);
 
