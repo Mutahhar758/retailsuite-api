@@ -1003,16 +1003,22 @@ internal class ManufacturingService : IManufacturingService
             .ToListAsync(cancellationToken);
 
         var wipAccount = accounts.FirstOrDefault(x => x.Title != null && x.Title.Contains("Work in Progress", StringComparison.OrdinalIgnoreCase))?.AccountId;
+        var puAccount = accounts.FirstOrDefault(x => string.Equals(x.Title, "PU", StringComparison.OrdinalIgnoreCase))?.AccountId
+            ?? accounts.FirstOrDefault(x => x.Title != null && x.Title.Contains("Purchase", StringComparison.OrdinalIgnoreCase))?.AccountId;
+        var stockAccount = accounts.FirstOrDefault(x => x.Title != null && (x.Title.Contains("Stock", StringComparison.OrdinalIgnoreCase) || x.Title.Contains("Inventory", StringComparison.OrdinalIgnoreCase)))?.AccountId;
+
         var rawMaterialAccount = accounts.FirstOrDefault(x => x.Title != null && x.Title.Contains("Raw Material", StringComparison.OrdinalIgnoreCase))?.AccountId
-            ?? accounts.FirstOrDefault(x => x.Title != null && x.Title.Contains("Purchases", StringComparison.OrdinalIgnoreCase))?.AccountId;
-        var finishedGoodsAccount = accounts.FirstOrDefault(x => x.Title != null && x.Title.Contains("Finished Goods", StringComparison.OrdinalIgnoreCase))?.AccountId
-            ?? accounts.FirstOrDefault(x => x.Title != null && x.Title.Contains("Stock", StringComparison.OrdinalIgnoreCase))?.AccountId;
+            ?? puAccount
+            ?? stockAccount;
+        var finishedGoodsAccount = accounts.FirstOrDefault(x => x.Title != null && (x.Title.Contains("Finished Goods", StringComparison.OrdinalIgnoreCase) || string.Equals(x.Title, VType, StringComparison.OrdinalIgnoreCase)))?.AccountId
+            ?? stockAccount
+            ?? puAccount;
         var overheadAccount = accounts.FirstOrDefault(x => x.Title != null && x.Title.Contains("Manufacturing Absorption", StringComparison.OrdinalIgnoreCase))?.AccountId
             ?? accounts.FirstOrDefault(x => x.Title != null && x.Title.Contains("Direct Expense", StringComparison.OrdinalIgnoreCase))?.AccountId;
 
-        if (string.IsNullOrWhiteSpace(rawMaterialAccount) || string.IsNullOrWhiteSpace(finishedGoodsAccount))
+        if (string.IsNullOrWhiteSpace(finishedGoodsAccount))
         {
-            // If GL accounts are not mapped yet, inventory transaction remains accurate
+            // No inventory/purchase account configured in DefaultAccount
             return;
         }
 
@@ -1021,39 +1027,45 @@ internal class ManufacturingService : IManufacturingService
         {
             // DR WIP, CR Raw Materials
             var targetDr = wipAccount ?? finishedGoodsAccount;
-            await _glRepository.AddAsync(new GlEntry
+            if (master.TotalMaterialCost > 0 && !string.IsNullOrWhiteSpace(rawMaterialAccount) && !string.Equals(targetDr, rawMaterialAccount, StringComparison.OrdinalIgnoreCase))
             {
-                VDate = master.VDate,
-                VTime = master.VTime,
-                VType = VType,
-                VoucherNo = master.VNo,
-                VSeq = seq++,
-                DrAccountId = targetDr,
-                CrAccountId = rawMaterialAccount,
-                Amount = master.TotalMaterialCost,
-                NarrationId = master.NarrationId,
-                Remarks = $"Material Issued for Batch {master.VNo} - {master.Remarks}"
-            });
+                await _glRepository.AddAsync(new GlEntry
+                {
+                    VDate = master.VDate,
+                    VTime = master.VTime,
+                    VType = VType,
+                    VoucherNo = master.VNo,
+                    VSeq = seq++,
+                    DrAccountId = targetDr,
+                    CrAccountId = rawMaterialAccount,
+                    Amount = master.TotalMaterialCost,
+                    NarrationId = master.NarrationId,
+                    Remarks = $"Material Issued for Batch {master.VNo} - {master.Remarks}"
+                });
+            }
         }
         else if (master.Status == ProductionStatus.Completed)
         {
             // DR Finished Goods
             // CR Raw Materials (or CR WIP)
-            // CR Overheads
+            // CR Overheads / Manufacturing Expenses (each to its own GL Account)
             var sourceCr = wipAccount ?? rawMaterialAccount;
-            await _glRepository.AddAsync(new GlEntry
+            if (master.TotalMaterialCost > 0 && !string.IsNullOrWhiteSpace(sourceCr) && !string.Equals(finishedGoodsAccount, sourceCr, StringComparison.OrdinalIgnoreCase))
             {
-                VDate = master.VDate,
-                VTime = master.VTime,
-                VType = VType,
-                VoucherNo = master.VNo,
-                VSeq = seq++,
-                DrAccountId = finishedGoodsAccount,
-                CrAccountId = sourceCr,
-                Amount = master.TotalMaterialCost,
-                NarrationId = master.NarrationId,
-                Remarks = $"Finished Goods from Batch {master.VNo} - {master.Remarks}"
-            });
+                await _glRepository.AddAsync(new GlEntry
+                {
+                    VDate = master.VDate,
+                    VTime = master.VTime,
+                    VType = VType,
+                    VoucherNo = master.VNo,
+                    VSeq = seq++,
+                    DrAccountId = finishedGoodsAccount,
+                    CrAccountId = sourceCr,
+                    Amount = master.TotalMaterialCost,
+                    NarrationId = master.NarrationId,
+                    Remarks = $"Finished Goods from Batch {master.VNo} - {master.Remarks}"
+                });
+            }
 
             if (master.Expenses.Count > 0)
             {
