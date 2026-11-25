@@ -1043,6 +1043,30 @@ public class BomMasterConfig : IEntityTypeConfiguration<BomMaster>
             .WithOne(x => x.BomMaster)
             .HasForeignKey(x => x.BomMasterId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasMany(x => x.Expenses)
+            .WithOne(x => x.BomMaster)
+            .HasForeignKey(x => x.BomMasterId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public class BomExpenseConfig : IEntityTypeConfiguration<BomExpense>
+{
+    public void Configure(EntityTypeBuilder<BomExpense> builder)
+    {
+        builder.IsMultiTenant();
+        builder.Property(x => x.Id).ValueGeneratedOnAdd();
+        builder.Property(x => x.Title).HasMaxLength(200).IsRequired();
+        builder.Property(x => x.AccountId).HasMaxLength(50);
+        builder.Property(x => x.CalculationType).HasConversion<string>().HasMaxLength(30);
+        builder.Property(x => x.Rate).HasPrecision(18, 4);
+        builder.Property(x => x.Remarks).HasMaxLength(500);
+
+        builder.HasOne(x => x.Account)
+            .WithMany()
+            .HasForeignKey(x => x.AccountId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }
 
@@ -1083,6 +1107,9 @@ public class ProductionMasterConfig : IEntityTypeConfiguration<ProductionMaster>
         builder.Property(x => x.TotalProductionCost).HasPrecision(18, 4);
         builder.Property(x => x.UnitProductionCost).HasPrecision(18, 4);
         builder.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
+        builder.Property(x => x.PurchaseSupplierAccountId).HasMaxLength(50);
+        builder.Property(x => x.PurchaseScope).HasMaxLength(30);
+        builder.Property(x => x.LinkedPurchaseVoucherNo).HasMaxLength(50);
 
         builder.HasIndex(x => new { x.VType, x.VNo }).IsUnique().HasSoftDeleteFilter();
         mtBuilder.AdjustUniqueIndexes();
@@ -1111,6 +1138,37 @@ public class ProductionMasterConfig : IEntityTypeConfiguration<ProductionMaster>
             .WithOne(x => x.ProductionMaster)
             .HasForeignKey(x => x.ProductionMasterId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasMany(x => x.Expenses)
+            .WithOne(x => x.ProductionMaster)
+            .HasForeignKey(x => x.ProductionMasterId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public class ProductionExpenseConfig : IEntityTypeConfiguration<ProductionExpense>
+{
+    public void Configure(EntityTypeBuilder<ProductionExpense> builder)
+    {
+        var mtBuilder = builder.IsMultiTenant();
+        builder.Property(x => x.Id).ValueGeneratedOnAdd();
+        builder.Property(x => x.VType).HasMaxLength(10).IsRequired();
+        builder.Property(x => x.VNo).HasMaxLength(50).IsRequired();
+        builder.Property(x => x.Title).HasMaxLength(200).IsRequired();
+        builder.Property(x => x.AccountId).HasMaxLength(50);
+        builder.Property(x => x.CalculationType).HasConversion<string>().HasMaxLength(30);
+        builder.Property(x => x.Rate).HasPrecision(18, 4);
+        builder.Property(x => x.PlannedAmount).HasPrecision(18, 4);
+        builder.Property(x => x.ActualAmount).HasPrecision(18, 4);
+        builder.Property(x => x.Remarks).HasMaxLength(500);
+
+        builder.HasIndex(x => new { x.VType, x.VNo, x.Seq }).IsUnique().HasSoftDeleteFilter();
+        mtBuilder.AdjustUniqueIndexes();
+
+        builder.HasOne(x => x.Account)
+            .WithMany()
+            .HasForeignKey(x => x.AccountId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }
 

@@ -6,6 +6,7 @@ using Retailer.Application.Common.Models;
 using Retailer.Application.Common.Persistence;
 using Retailer.Application.Legacy.Inventory;
 using Retailer.Application.Legacy.Manufacturing;
+using Retailer.Application.Legacy.Purchases;
 using Retailer.Domain.Common.Enums;
 using Retailer.Domain.Legacy;
 using Retailer.Shared.Common.Constants;
@@ -24,6 +25,7 @@ internal class ManufacturingService : IManufacturingService
     private readonly IRepository<GlEntry> _glRepository;
     private readonly IRepository<DefaultAccount> _defaultAccountRepository;
     private readonly IItemTransactionBalanceService _balanceService;
+    private readonly IPurchaseService _purchaseService;
     private readonly ICurrentTenant _currentTenant;
 
     public ManufacturingService(
@@ -35,6 +37,7 @@ internal class ManufacturingService : IManufacturingService
         IRepository<GlEntry> glRepository,
         IRepository<DefaultAccount> defaultAccountRepository,
         IItemTransactionBalanceService balanceService,
+        IPurchaseService purchaseService,
         ICurrentTenant currentTenant)
     {
         _productionMasterRepository = productionMasterRepository;
@@ -45,6 +48,7 @@ internal class ManufacturingService : IManufacturingService
         _glRepository = glRepository;
         _defaultAccountRepository = defaultAccountRepository;
         _balanceService = balanceService;
+        _purchaseService = purchaseService;
         _currentTenant = currentTenant;
     }
 
@@ -59,6 +63,8 @@ internal class ManufacturingService : IManufacturingService
             .Include(x => x.Unit)
             .Include(x => x.BomMaster)
             .Include(x => x.Narration)
+            .Include(x => x.Expenses)
+                .ThenInclude(e => e.Account)
             .Where(x => x.VType == (filter.VType ?? VType));
 
         if (filter.FromDate.HasValue)
@@ -119,10 +125,27 @@ internal class ManufacturingService : IManufacturingService
             CurrentStage = m.CurrentStage,
             IssuedDate = m.IssuedDate,
             CompletedDate = m.CompletedDate,
+            CreateRawMaterialPurchase = m.CreateRawMaterialPurchase,
+            PurchaseSupplierAccountId = m.PurchaseSupplierAccountId,
+            PurchaseScope = m.PurchaseScope,
+            LinkedPurchaseVoucherNo = m.LinkedPurchaseVoucherNo,
             CreatedBy = m.CreatedBy,
             CreatedOn = m.CreatedOn,
             LastModifiedBy = m.LastModifiedBy,
-            LastModifiedOn = m.LastModifiedOn
+            LastModifiedOn = m.LastModifiedOn,
+            Expenses = m.Expenses.OrderBy(e => e.Seq).Select(e => new ProductionExpenseResponse
+            {
+                Id = e.Id,
+                Seq = e.Seq,
+                Title = e.Title,
+                AccountId = e.AccountId,
+                AccountTitle = e.Account?.Title,
+                CalculationType = e.CalculationType,
+                Rate = e.Rate,
+                PlannedAmount = e.PlannedAmount,
+                ActualAmount = e.ActualAmount,
+                Remarks = e.Remarks
+            }).ToList()
         }).ToList();
 
         return new PaginationResponse<ProductionResponse>(items, totalCount, pageNumber, pageSize);
@@ -139,6 +162,8 @@ internal class ManufacturingService : IManufacturingService
             .Include(x => x.Unit)
             .Include(x => x.BomMaster)
             .Include(x => x.Narration)
+            .Include(x => x.Expenses)
+                .ThenInclude(e => e.Account)
             .Where(x => x.VType == (filter.VType ?? VType));
 
         if (filter.FromDate.HasValue)
@@ -190,10 +215,27 @@ internal class ManufacturingService : IManufacturingService
             CurrentStage = m.CurrentStage,
             IssuedDate = m.IssuedDate,
             CompletedDate = m.CompletedDate,
+            CreateRawMaterialPurchase = m.CreateRawMaterialPurchase,
+            PurchaseSupplierAccountId = m.PurchaseSupplierAccountId,
+            PurchaseScope = m.PurchaseScope,
+            LinkedPurchaseVoucherNo = m.LinkedPurchaseVoucherNo,
             CreatedBy = m.CreatedBy,
             CreatedOn = m.CreatedOn,
             LastModifiedBy = m.LastModifiedBy,
-            LastModifiedOn = m.LastModifiedOn
+            LastModifiedOn = m.LastModifiedOn,
+            Expenses = m.Expenses.OrderBy(e => e.Seq).Select(e => new ProductionExpenseResponse
+            {
+                Id = e.Id,
+                Seq = e.Seq,
+                Title = e.Title,
+                AccountId = e.AccountId,
+                AccountTitle = e.Account?.Title,
+                CalculationType = e.CalculationType,
+                Rate = e.Rate,
+                PlannedAmount = e.PlannedAmount,
+                ActualAmount = e.ActualAmount,
+                Remarks = e.Remarks
+            }).ToList()
         }).ToList();
     }
 
@@ -216,6 +258,8 @@ internal class ManufacturingService : IManufacturingService
                     .ThenInclude(r => r.PrimaryUnit)
             .Include(x => x.Details)
                 .ThenInclude(d => d.Unit)
+            .Include(x => x.Expenses)
+                .ThenInclude(e => e.Account)
             .FirstOrDefaultAsync(x => x.VType == VType && x.VNo == voucherNo, cancellationToken);
 
         if (master is null)
@@ -269,11 +313,28 @@ internal class ManufacturingService : IManufacturingService
             CurrentStage = master.CurrentStage,
             IssuedDate = master.IssuedDate,
             CompletedDate = master.CompletedDate,
+            CreateRawMaterialPurchase = master.CreateRawMaterialPurchase,
+            PurchaseSupplierAccountId = master.PurchaseSupplierAccountId,
+            PurchaseScope = master.PurchaseScope,
+            LinkedPurchaseVoucherNo = master.LinkedPurchaseVoucherNo,
             CreatedBy = master.CreatedBy,
             CreatedOn = master.CreatedOn,
             LastModifiedBy = master.LastModifiedBy,
             LastModifiedOn = master.LastModifiedOn,
-            Lines = lines
+            Lines = lines,
+            Expenses = master.Expenses.OrderBy(e => e.Seq).Select(e => new ProductionExpenseResponse
+            {
+                Id = e.Id,
+                Seq = e.Seq,
+                Title = e.Title,
+                AccountId = e.AccountId,
+                AccountTitle = e.Account?.Title,
+                CalculationType = e.CalculationType,
+                Rate = e.Rate,
+                PlannedAmount = e.PlannedAmount,
+                ActualAmount = e.ActualAmount,
+                Remarks = e.Remarks
+            }).ToList()
         };
     }
 
@@ -292,6 +353,8 @@ internal class ManufacturingService : IManufacturingService
                         .ThenInclude(r => r.PrimaryUnit)
                 .Include(x => x.Details)
                     .ThenInclude(d => d.Unit)
+                .Include(x => x.Expenses)
+                    .ThenInclude(e => e.Account)
                 .FirstOrDefaultAsync(x => x.Id == request.BomMasterId.Value, cancellationToken);
         }
         else
@@ -306,6 +369,8 @@ internal class ManufacturingService : IManufacturingService
                         .ThenInclude(r => r.PrimaryUnit)
                 .Include(x => x.Details)
                     .ThenInclude(d => d.Unit)
+                .Include(x => x.Expenses)
+                    .ThenInclude(e => e.Account)
                 .Where(x => x.FinishedItemId == request.FinishedItemId && x.IsActive)
                 .OrderByDescending(x => x.IsDefault)
                 .ThenByDescending(x => x.Id)
@@ -350,10 +415,38 @@ internal class ManufacturingService : IManufacturingService
             };
         }).ToList();
 
+        var estimateExpenses = bom.Expenses.OrderBy(e => e.Seq).Select(e =>
+        {
+            var calcAmount = e.CalculationType switch
+            {
+                ExpenseCalculationType.LumpSum => e.Rate,
+                ExpenseCalculationType.PerUnit => e.Rate * request.TargetQty,
+                ExpenseCalculationType.PercentOfMaterial => totalMaterialCost * (e.Rate / 100m),
+                _ => e.Rate
+            };
+            var rounded = Math.Round(calcAmount, 2);
+
+            return new ProductionExpenseResponse
+            {
+                Id = e.Id,
+                Seq = e.Seq,
+                Title = e.Title,
+                AccountId = e.AccountId,
+                AccountTitle = e.Account?.Title,
+                CalculationType = e.CalculationType,
+                Rate = e.Rate,
+                PlannedAmount = rounded,
+                ActualAmount = rounded,
+                Remarks = e.Remarks
+            };
+        }).ToList();
+
         var laborCost = bom.LaborCost * ratio;
         var overheadCost = bom.OverheadCost * ratio;
         var packagingCost = bom.PackagingCost * ratio;
-        var totalOverhead = laborCost + overheadCost + packagingCost;
+        var totalOverhead = estimateExpenses.Count > 0
+            ? estimateExpenses.Sum(x => x.ActualAmount)
+            : (laborCost + overheadCost + packagingCost);
         var totalCost = totalMaterialCost + totalOverhead;
         var unitCost = request.TargetQty > 0 ? (totalCost / request.TargetQty) : 0;
 
@@ -364,9 +457,11 @@ internal class ManufacturingService : IManufacturingService
             EstimatedLaborCost = Math.Round(laborCost, 2),
             EstimatedOverheadCost = Math.Round(overheadCost, 2),
             EstimatedPackagingCost = Math.Round(packagingCost, 2),
+            EstimatedExpenseCost = Math.Round(totalOverhead, 2),
             EstimatedTotalCost = Math.Round(totalCost, 2),
             EstimatedUnitCost = Math.Round(unitCost, 2),
-            Lines = lines
+            Lines = lines,
+            Expenses = estimateExpenses
         };
     }
 
@@ -395,7 +490,12 @@ internal class ManufacturingService : IManufacturingService
             totalMaterialCost += lineCost;
         }
 
-        var totalOverheads = request.LaborCost + request.OverheadCost + request.PackagingCost;
+        var validExpenses = request.Expenses
+            .Where(e => !string.IsNullOrWhiteSpace(e.Title) || !string.IsNullOrWhiteSpace(e.AccountId))
+            .ToList();
+        var totalOverheads = validExpenses.Count > 0
+            ? validExpenses.Sum(e => e.ActualAmount)
+            : (request.LaborCost + request.OverheadCost + request.PackagingCost);
         var totalProductionCost = totalMaterialCost + totalOverheads;
         var unitProductionCost = request.ProducedQty > 0 ? (totalProductionCost / request.ProducedQty) : 0;
 
@@ -422,7 +522,10 @@ internal class ManufacturingService : IManufacturingService
             Status = request.Status,
             CurrentStage = request.CurrentStage ?? (request.Status == ProductionStatus.InProgress ? "In Progress" : request.Status.ToString()),
             IssuedDate = (request.Status == ProductionStatus.InProgress || request.Status == ProductionStatus.Completed) ? now : null,
-            CompletedDate = request.Status == ProductionStatus.Completed ? now : null
+            CompletedDate = request.Status == ProductionStatus.Completed ? now : null,
+            CreateRawMaterialPurchase = request.CreateRawMaterialPurchase,
+            PurchaseSupplierAccountId = string.IsNullOrWhiteSpace(request.PurchaseSupplierAccountId) ? null : request.PurchaseSupplierAccountId,
+            PurchaseScope = string.IsNullOrWhiteSpace(request.PurchaseScope) ? "ShortageOnly" : request.PurchaseScope
         };
 
         foreach (var line in request.Lines)
@@ -442,11 +545,30 @@ internal class ManufacturingService : IManufacturingService
             });
         }
 
+        int expSeq = 1;
+        foreach (var exp in validExpenses)
+        {
+            master.Expenses.Add(new ProductionExpense
+            {
+                VType = VType,
+                VNo = voucherNo,
+                Seq = exp.Seq > 0 ? exp.Seq : expSeq++,
+                Title = string.IsNullOrWhiteSpace(exp.Title) ? "Expense" : exp.Title.Trim(),
+                AccountId = string.IsNullOrWhiteSpace(exp.AccountId) ? null : exp.AccountId,
+                CalculationType = exp.CalculationType,
+                Rate = exp.Rate,
+                PlannedAmount = exp.PlannedAmount,
+                ActualAmount = exp.ActualAmount,
+                Remarks = exp.Remarks
+            });
+        }
+
         await _productionMasterRepository.AddAsync(master);
 
         // Inventory and Costing
         if (request.Status == ProductionStatus.InProgress || request.Status == ProductionStatus.Completed)
         {
+            await EnsureLinkedPurchaseAsync(master, request.Lines, cancellationToken);
             await ProcessInventoryPostingAsync(master, request.Lines, itemMap, cancellationToken);
             await PostGlEntriesAsync(master, cancellationToken);
         }
@@ -458,6 +580,7 @@ internal class ManufacturingService : IManufacturingService
     {
         var master = await _productionMasterRepository.GetAll()
             .Include(x => x.Details)
+            .Include(x => x.Expenses)
             .FirstOrDefaultAsync(x => x.VType == VType && x.VNo == voucherNo, cancellationToken);
 
         if (master is null)
@@ -477,7 +600,12 @@ internal class ManufacturingService : IManufacturingService
             totalMaterialCost += lineCost;
         }
 
-        var totalOverheads = request.LaborCost + request.OverheadCost + request.PackagingCost;
+        var validExpenses = request.Expenses
+            .Where(e => !string.IsNullOrWhiteSpace(e.Title) || !string.IsNullOrWhiteSpace(e.AccountId))
+            .ToList();
+        var totalOverheads = validExpenses.Count > 0
+            ? validExpenses.Sum(e => e.ActualAmount)
+            : (request.LaborCost + request.OverheadCost + request.PackagingCost);
         var totalProductionCost = totalMaterialCost + totalOverheads;
         var unitProductionCost = request.ProducedQty > 0 ? (totalProductionCost / request.ProducedQty) : 0;
 
@@ -498,6 +626,9 @@ internal class ManufacturingService : IManufacturingService
         master.Remarks = request.Remarks;
         master.Status = request.Status;
         master.CurrentStage = request.CurrentStage;
+        master.CreateRawMaterialPurchase = request.CreateRawMaterialPurchase;
+        master.PurchaseSupplierAccountId = string.IsNullOrWhiteSpace(request.PurchaseSupplierAccountId) ? null : request.PurchaseSupplierAccountId;
+        master.PurchaseScope = string.IsNullOrWhiteSpace(request.PurchaseScope) ? "ShortageOnly" : request.PurchaseScope;
 
         if ((master.Status == ProductionStatus.InProgress || master.Status == ProductionStatus.Completed) && master.IssuedDate == null)
             master.IssuedDate = PakistanTime.Now;
@@ -524,18 +655,47 @@ internal class ManufacturingService : IManufacturingService
             });
         }
 
+        master.Expenses.Clear();
+        int expSeq = 1;
+        foreach (var exp in validExpenses)
+        {
+            master.Expenses.Add(new ProductionExpense
+            {
+                ProductionMasterId = master.Id,
+                VType = VType,
+                VNo = voucherNo,
+                Seq = exp.Seq > 0 ? exp.Seq : expSeq++,
+                Title = string.IsNullOrWhiteSpace(exp.Title) ? "Expense" : exp.Title.Trim(),
+                AccountId = string.IsNullOrWhiteSpace(exp.AccountId) ? null : exp.AccountId,
+                CalculationType = exp.CalculationType,
+                Rate = exp.Rate,
+                PlannedAmount = exp.PlannedAmount,
+                ActualAmount = exp.ActualAmount,
+                Remarks = exp.Remarks
+            });
+        }
+
         await _productionMasterRepository.UpdateAsync(master);
 
         if (master.Status == ProductionStatus.InProgress || master.Status == ProductionStatus.Completed)
         {
+            if (!master.CreateRawMaterialPurchase && !string.IsNullOrWhiteSpace(master.LinkedPurchaseVoucherNo))
+            {
+                await RemoveLinkedPurchaseAsync(master, cancellationToken);
+            }
+            else if (master.CreateRawMaterialPurchase)
+            {
+                await EnsureLinkedPurchaseAsync(master, request.Lines, cancellationToken);
+            }
             await ProcessInventoryPostingAsync(master, request.Lines, itemMap, cancellationToken);
             await PostGlEntriesAsync(master, cancellationToken);
         }
         else
         {
-            // If switched back to Planned or Cancelled, remove inventory and GL entries
+            // If switched back to Planned or Cancelled, remove inventory, GL, and linked purchase
             await RemoveInventoryTransactionsAsync(voucherNo, cancellationToken);
             await RemoveGlEntriesAsync(voucherNo, cancellationToken);
+            await RemoveLinkedPurchaseAsync(master, cancellationToken);
         }
     }
 
@@ -543,6 +703,7 @@ internal class ManufacturingService : IManufacturingService
     {
         var master = await _productionMasterRepository.GetAll()
             .Include(x => x.Details)
+            .Include(x => x.Expenses)
             .FirstOrDefaultAsync(x => x.VType == VType && x.VNo == voucherNo, cancellationToken);
 
         if (master is null)
@@ -588,6 +749,7 @@ internal class ManufacturingService : IManufacturingService
 
         if (newStatus == ProductionStatus.InProgress || newStatus == ProductionStatus.Completed)
         {
+            await EnsureLinkedPurchaseAsync(master, lines, cancellationToken);
             await ProcessInventoryPostingAsync(master, lines, itemMap, cancellationToken);
             await PostGlEntriesAsync(master, cancellationToken);
         }
@@ -595,6 +757,7 @@ internal class ManufacturingService : IManufacturingService
         {
             await RemoveInventoryTransactionsAsync(voucherNo, cancellationToken);
             await RemoveGlEntriesAsync(voucherNo, cancellationToken);
+            await RemoveLinkedPurchaseAsync(master, cancellationToken);
         }
     }
 
@@ -602,6 +765,7 @@ internal class ManufacturingService : IManufacturingService
     {
         var master = await _productionMasterRepository.GetAll()
             .Include(x => x.Details)
+            .Include(x => x.Expenses)
             .FirstOrDefaultAsync(x => x.VType == VType && x.VNo == voucherNo, cancellationToken);
 
         if (master is null)
@@ -609,7 +773,104 @@ internal class ManufacturingService : IManufacturingService
 
         await RemoveInventoryTransactionsAsync(voucherNo, cancellationToken);
         await RemoveGlEntriesAsync(voucherNo, cancellationToken);
+        await RemoveLinkedPurchaseAsync(master, cancellationToken);
         await _productionMasterRepository.DeleteAsync(master);
+    }
+
+    private async Task EnsureLinkedPurchaseAsync(
+        ProductionMaster master,
+        List<ProductionLineRequest> lines,
+        CancellationToken cancellationToken)
+    {
+        if (!master.CreateRawMaterialPurchase ||
+            string.IsNullOrWhiteSpace(master.PurchaseSupplierAccountId) ||
+            !string.IsNullOrWhiteSpace(master.LinkedPurchaseVoucherNo))
+        {
+            return;
+        }
+
+        var rawItemIds = lines
+            .Where(l => !string.IsNullOrWhiteSpace(l.RawItemId) && l.ActualQty > 0)
+            .Select(l => l.RawItemId)
+            .Distinct()
+            .ToList();
+
+        if (rawItemIds.Count == 0) return;
+
+        var purchaseAll = string.Equals(master.PurchaseScope, "AllMaterials", StringComparison.OrdinalIgnoreCase);
+        var stockBalances = purchaseAll
+            ? new Dictionary<string, decimal>()
+            : await GetStockBalancesAsync(rawItemIds, cancellationToken);
+
+        var purchaseLines = new List<PurchaseLineRequest>();
+        int seq = 1;
+        foreach (var line in lines)
+        {
+            if (string.IsNullOrWhiteSpace(line.RawItemId) || line.ActualQty <= 0) continue;
+
+            decimal qtyToBuy;
+            if (purchaseAll)
+            {
+                qtyToBuy = line.ActualQty;
+            }
+            else
+            {
+                var available = Math.Max(0m, stockBalances.GetValueOrDefault(line.RawItemId, 0m));
+                qtyToBuy = line.ActualQty - available;
+                if (qtyToBuy > 0)
+                {
+                    stockBalances[line.RawItemId] = 0m;
+                }
+                else
+                {
+                    stockBalances[line.RawItemId] = available - line.ActualQty;
+                }
+            }
+
+            if (qtyToBuy <= 0) continue;
+
+            purchaseLines.Add(new PurchaseLineRequest
+            {
+                Seq = seq++,
+                ItemId = line.RawItemId,
+                Qty = Math.Round(qtyToBuy, 4),
+                Rate = line.UnitCost
+            });
+        }
+
+        if (purchaseLines.Count == 0) return;
+
+        var puVoucherNo = await _purchaseService.CreateAsync(new PurchaseCreateRequest
+        {
+            Date = master.VDate,
+            Account = master.PurchaseSupplierAccountId,
+            Description = $"Raw materials purchase for Manufacturing Batch {master.VNo}",
+            Narration = master.NarrationId,
+            CashPaid = 0,
+            CashBack = 0,
+            Lines = purchaseLines
+        }, cancellationToken);
+
+        master.LinkedPurchaseVoucherNo = puVoucherNo;
+        await _productionMasterRepository.UpdateAsync(master);
+    }
+
+    private async Task RemoveLinkedPurchaseAsync(ProductionMaster master, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(master.LinkedPurchaseVoucherNo)) return;
+
+        var linkedPu = master.LinkedPurchaseVoucherNo;
+        master.LinkedPurchaseVoucherNo = null;
+        await _productionMasterRepository.UpdateAsync(master);
+
+        try
+        {
+            await _purchaseService.DeleteAsync(linkedPu, cancellationToken);
+        }
+        catch (NotFoundException)
+        {
+            // Already deleted manually
+        }
     }
 
     private async Task ProcessInventoryPostingAsync(
@@ -794,7 +1055,32 @@ internal class ManufacturingService : IManufacturingService
                 Remarks = $"Finished Goods from Batch {master.VNo} - {master.Remarks}"
             });
 
-            if (master.TotalOverheadCost > 0 && !string.IsNullOrWhiteSpace(overheadAccount))
+            if (master.Expenses.Count > 0)
+            {
+                foreach (var exp in master.Expenses.OrderBy(e => e.Seq))
+                {
+                    if (exp.ActualAmount <= 0) continue;
+                    var crAccount = !string.IsNullOrWhiteSpace(exp.AccountId) ? exp.AccountId : overheadAccount;
+                    if (string.IsNullOrWhiteSpace(crAccount)) continue;
+
+                    await _glRepository.AddAsync(new GlEntry
+                    {
+                        VDate = master.VDate,
+                        VTime = master.VTime,
+                        VType = VType,
+                        VoucherNo = master.VNo,
+                        VSeq = seq++,
+                        DrAccountId = finishedGoodsAccount,
+                        CrAccountId = crAccount,
+                        Amount = exp.ActualAmount,
+                        NarrationId = master.NarrationId,
+                        Remarks = string.IsNullOrWhiteSpace(exp.Remarks)
+                            ? $"{exp.Title} ({exp.CalculationType}) - Batch {master.VNo}"
+                            : $"{exp.Title}: {exp.Remarks} - Batch {master.VNo}"
+                    });
+                }
+            }
+            else if (master.TotalOverheadCost > 0 && !string.IsNullOrWhiteSpace(overheadAccount))
             {
                 await _glRepository.AddAsync(new GlEntry
                 {

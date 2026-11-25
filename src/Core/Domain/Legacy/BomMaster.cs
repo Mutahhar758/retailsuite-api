@@ -20,4 +20,5 @@ public class BomMaster : AuditableEntity, IAggregateRoot
     public ItemDetail? FinishedItem { get; set; }
     public Unit? Unit { get; set; }
     public ICollection<BomDetail> Details { get; set; } = new List<BomDetail>();
+    public ICollection<BomExpense> Expenses { get; set; } = new List<BomExpense>();
 }

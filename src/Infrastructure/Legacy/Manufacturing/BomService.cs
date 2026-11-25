@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Retailer.Application.Common.Exceptions;
 using Retailer.Application.Common.Persistence;
 using Retailer.Application.Legacy.Manufacturing;
+using Retailer.Domain.Common.Enums;
 using Retailer.Domain.Legacy;
 
 namespace Retailer.Infrastructure.Legacy.Manufacturing;
@@ -45,6 +46,8 @@ internal class BomService : IBomService
                     .ThenInclude(r => r.PrimaryUnit)
             .Include(x => x.Details)
                 .ThenInclude(d => d.Unit)
+            .Include(x => x.Expenses)
+                .ThenInclude(e => e.Account)
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(filter.Keyword))
@@ -92,6 +95,8 @@ internal class BomService : IBomService
                     .ThenInclude(r => r.PrimaryUnit)
             .Include(x => x.Details)
                 .ThenInclude(d => d.Unit)
+            .Include(x => x.Expenses)
+                .ThenInclude(e => e.Account)
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
         if (bom is null)
@@ -120,6 +125,8 @@ internal class BomService : IBomService
                     .ThenInclude(r => r.PrimaryUnit)
             .Include(x => x.Details)
                 .ThenInclude(d => d.Unit)
+            .Include(x => x.Expenses)
+                .ThenInclude(e => e.Account)
             .Where(x => x.FinishedItemId == finishedItemId && x.IsActive)
             .OrderByDescending(x => x.IsDefault)
             .ThenByDescending(x => x.Id)
@@ -177,6 +184,20 @@ internal class BomService : IBomService
             });
         }
 
+        int expSeq = 1;
+        foreach (var exp in request.Expenses.Where(e => !string.IsNullOrWhiteSpace(e.Title) || !string.IsNullOrWhiteSpace(e.AccountId)))
+        {
+            master.Expenses.Add(new BomExpense
+            {
+                Seq = exp.Seq > 0 ? exp.Seq : expSeq++,
+                Title = string.IsNullOrWhiteSpace(exp.Title) ? "Expense" : exp.Title.Trim(),
+                AccountId = string.IsNullOrWhiteSpace(exp.AccountId) ? null : exp.AccountId,
+                CalculationType = exp.CalculationType,
+                Rate = exp.Rate,
+                Remarks = exp.Remarks
+            });
+        }
+
         await _bomMasterRepository.AddAsync(master);
         return master.Id;
     }
@@ -185,6 +206,7 @@ internal class BomService : IBomService
     {
         var master = await _bomMasterRepository.GetAll()
             .Include(x => x.Details)
+            .Include(x => x.Expenses)
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
         if (master is null)
@@ -231,6 +253,23 @@ internal class BomService : IBomService
             });
         }
 
+        // Sync expenses
+        master.Expenses.Clear();
+        int expSeq = 1;
+        foreach (var exp in request.Expenses.Where(e => !string.IsNullOrWhiteSpace(e.Title) || !string.IsNullOrWhiteSpace(e.AccountId)))
+        {
+            master.Expenses.Add(new BomExpense
+            {
+                BomMasterId = id,
+                Seq = exp.Seq > 0 ? exp.Seq : expSeq++,
+                Title = string.IsNullOrWhiteSpace(exp.Title) ? "Expense" : exp.Title.Trim(),
+                AccountId = string.IsNullOrWhiteSpace(exp.AccountId) ? null : exp.AccountId,
+                CalculationType = exp.CalculationType,
+                Rate = exp.Rate,
+                Remarks = exp.Remarks
+            });
+        }
+
         await _bomMasterRepository.UpdateAsync(master);
     }
 
@@ -238,6 +277,7 @@ internal class BomService : IBomService
     {
         var master = await _bomMasterRepository.GetAll()
             .Include(x => x.Details)
+            .Include(x => x.Expenses)
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
         if (master is null)
@@ -303,7 +343,33 @@ internal class BomService : IBomService
             };
         }).ToList();
 
-        var totalOverheads = b.LaborCost + b.OverheadCost + b.PackagingCost;
+        var expenses = b.Expenses.OrderBy(e => e.Seq).Select(e =>
+        {
+            var estAmount = e.CalculationType switch
+            {
+                ExpenseCalculationType.LumpSum => e.Rate,
+                ExpenseCalculationType.PerUnit => e.Rate * b.OutputQty,
+                ExpenseCalculationType.PercentOfMaterial => totalMatCost * (e.Rate / 100m),
+                _ => e.Rate
+            };
+
+            return new BomExpenseResponse
+            {
+                Id = e.Id,
+                Seq = e.Seq,
+                Title = e.Title,
+                AccountId = e.AccountId,
+                AccountTitle = e.Account?.Title,
+                CalculationType = e.CalculationType,
+                Rate = e.Rate,
+                EstimatedAmount = Math.Round(estAmount, 2),
+                Remarks = e.Remarks
+            };
+        }).ToList();
+
+        var totalOverheads = expenses.Count > 0
+            ? expenses.Sum(e => e.EstimatedAmount)
+            : (b.LaborCost + b.OverheadCost + b.PackagingCost);
         var totalCost = totalMatCost + totalOverheads;
         var unitCost = b.OutputQty > 0 ? (totalCost / b.OutputQty) : 0;
 
@@ -324,10 +390,12 @@ internal class BomService : IBomService
             OverheadCost = b.OverheadCost,
             PackagingCost = b.PackagingCost,
             TotalEstimatedMaterialCost = Math.Round(totalMatCost, 2),
+            TotalEstimatedExpenseCost = Math.Round(totalOverheads, 2),
             TotalEstimatedCost = Math.Round(totalCost, 2),
             UnitEstimatedCost = Math.Round(unitCost, 2),
             Notes = b.Notes,
-            Lines = lines
+            Lines = lines,
+            Expenses = expenses
         };
     }
 }

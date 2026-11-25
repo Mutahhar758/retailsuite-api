@@ -24,6 +24,32 @@ public class ProductionLineRequest
     public bool IsIssued { get; set; } = true;
 }
 
+public class ProductionExpenseRequest
+{
+    public int Seq { get; set; }
+    public string Title { get; set; } = default!;
+    public string? AccountId { get; set; }
+    public ExpenseCalculationType CalculationType { get; set; } = ExpenseCalculationType.PerUnit;
+    public decimal Rate { get; set; }
+    public decimal PlannedAmount { get; set; }
+    public decimal ActualAmount { get; set; }
+    public string? Remarks { get; set; }
+}
+
+public class ProductionExpenseResponse
+{
+    public int Id { get; set; }
+    public int Seq { get; set; }
+    public string Title { get; set; } = default!;
+    public string? AccountId { get; set; }
+    public string? AccountTitle { get; set; }
+    public ExpenseCalculationType CalculationType { get; set; }
+    public decimal Rate { get; set; }
+    public decimal PlannedAmount { get; set; }
+    public decimal ActualAmount { get; set; }
+    public string? Remarks { get; set; }
+}
+
 public class ProductionCreateRequest
 {
     public DateOnly Date { get; set; }
@@ -42,7 +68,11 @@ public class ProductionCreateRequest
     public string? Remarks { get; set; }
     public ProductionStatus Status { get; set; } = ProductionStatus.Completed;
     public string? CurrentStage { get; set; }
+    public bool CreateRawMaterialPurchase { get; set; }
+    public string? PurchaseSupplierAccountId { get; set; }
+    public string? PurchaseScope { get; set; }
     public List<ProductionLineRequest> Lines { get; set; } = [];
+    public List<ProductionExpenseRequest> Expenses { get; set; } = [];
 }
 
 public class ProductionUpdateRequest
@@ -62,7 +92,11 @@ public class ProductionUpdateRequest
     public string? Remarks { get; set; }
     public ProductionStatus Status { get; set; } = ProductionStatus.Completed;
     public string? CurrentStage { get; set; }
+    public bool CreateRawMaterialPurchase { get; set; }
+    public string? PurchaseSupplierAccountId { get; set; }
+    public string? PurchaseScope { get; set; }
     public List<ProductionLineRequest> Lines { get; set; } = [];
+    public List<ProductionExpenseRequest> Expenses { get; set; } = [];
 }
 
 public class ProductionLineResponse
@@ -110,11 +144,16 @@ public class ProductionResponse
     public string? CurrentStage { get; set; }
     public DateTime? IssuedDate { get; set; }
     public DateTime? CompletedDate { get; set; }
+    public bool CreateRawMaterialPurchase { get; set; }
+    public string? PurchaseSupplierAccountId { get; set; }
+    public string? PurchaseScope { get; set; }
+    public string? LinkedPurchaseVoucherNo { get; set; }
     public string? CreatedBy { get; set; }
     public DateTime CreatedOn { get; set; }
     public string? LastModifiedBy { get; set; }
     public DateTime? LastModifiedOn { get; set; }
     public List<ProductionLineResponse> Lines { get; set; } = [];
+    public List<ProductionExpenseResponse> Expenses { get; set; } = [];
 }
 
 public class ProductionEstimateRequest
@@ -147,7 +186,9 @@ public class ProductionEstimateResponse
     public decimal EstimatedLaborCost { get; set; }
     public decimal EstimatedOverheadCost { get; set; }
     public decimal EstimatedPackagingCost { get; set; }
+    public decimal EstimatedExpenseCost { get; set; }
     public decimal EstimatedTotalCost { get; set; }
     public decimal EstimatedUnitCost { get; set; }
     public List<ProductionEstimateLine> Lines { get; set; } = [];
+    public List<ProductionExpenseResponse> Expenses { get; set; } = [];
 }

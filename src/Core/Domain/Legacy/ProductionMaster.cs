@@ -27,10 +27,15 @@ public class ProductionMaster : AuditableEntity, IAggregateRoot
     public string? CurrentStage { get; set; }
     public DateTime? IssuedDate { get; set; }
     public DateTime? CompletedDate { get; set; }
+    public bool CreateRawMaterialPurchase { get; set; }
+    public string? PurchaseSupplierAccountId { get; set; }
+    public string? PurchaseScope { get; set; }
+    public string? LinkedPurchaseVoucherNo { get; set; }
 
     public BomMaster? BomMaster { get; set; }
     public ItemDetail? FinishedItem { get; set; }
     public Unit? Unit { get; set; }
     public Narration? Narration { get; set; }
     public ICollection<ProductionDetail> Details { get; set; } = new List<ProductionDetail>();
+    public ICollection<ProductionExpense> Expenses { get; set; } = new List<ProductionExpense>();
 }

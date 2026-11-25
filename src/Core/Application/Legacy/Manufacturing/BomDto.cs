@@ -1,3 +1,5 @@
+using Retailer.Domain.Common.Enums;
+
 namespace Retailer.Application.Legacy.Manufacturing;
 
 public class BomListFilter
@@ -17,6 +19,16 @@ public class BomLineRequest
     public bool IsOptional { get; set; }
 }
 
+public class BomExpenseRequest
+{
+    public int Seq { get; set; }
+    public string Title { get; set; } = default!;
+    public string? AccountId { get; set; }
+    public ExpenseCalculationType CalculationType { get; set; } = ExpenseCalculationType.PerUnit;
+    public decimal Rate { get; set; }
+    public string? Remarks { get; set; }
+}
+
 public class BomCreateRequest
 {
     public string Code { get; set; } = default!;
@@ -31,6 +43,7 @@ public class BomCreateRequest
     public decimal PackagingCost { get; set; }
     public string? Notes { get; set; }
     public List<BomLineRequest> Lines { get; set; } = [];
+    public List<BomExpenseRequest> Expenses { get; set; } = [];
 }
 
 public class BomUpdateRequest
@@ -47,6 +60,7 @@ public class BomUpdateRequest
     public decimal PackagingCost { get; set; }
     public string? Notes { get; set; }
     public List<BomLineRequest> Lines { get; set; } = [];
+    public List<BomExpenseRequest> Expenses { get; set; } = [];
 }
 
 public class BomLineResponse
@@ -63,6 +77,19 @@ public class BomLineResponse
     public bool IsOptional { get; set; }
     public decimal CurrentRate { get; set; }
     public decimal TotalEstimatedCost { get; set; }
+}
+
+public class BomExpenseResponse
+{
+    public int Id { get; set; }
+    public int Seq { get; set; }
+    public string Title { get; set; } = default!;
+    public string? AccountId { get; set; }
+    public string? AccountTitle { get; set; }
+    public ExpenseCalculationType CalculationType { get; set; }
+    public decimal Rate { get; set; }
+    public decimal EstimatedAmount { get; set; }
+    public string? Remarks { get; set; }
 }
 
 public class BomResponse
@@ -82,8 +109,10 @@ public class BomResponse
     public decimal OverheadCost { get; set; }
     public decimal PackagingCost { get; set; }
     public decimal TotalEstimatedMaterialCost { get; set; }
+    public decimal TotalEstimatedExpenseCost { get; set; }
     public decimal TotalEstimatedCost { get; set; }
     public decimal UnitEstimatedCost { get; set; }
     public string? Notes { get; set; }
     public List<BomLineResponse> Lines { get; set; } = [];
+    public List<BomExpenseResponse> Expenses { get; set; } = [];
 }

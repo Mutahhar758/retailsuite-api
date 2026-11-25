@@ -627,6 +627,94 @@ namespace Migrators.MSSQL.Migrations.Application
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
 
+            modelBuilder.Entity("Retailer.Domain.Legacy.BomExpense", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("TenantId")
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("AccountId")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("account_id");
+
+                    b.Property<int>("BomMasterId")
+                        .HasColumnType("int")
+                        .HasColumnName("bom_master_id");
+
+                    b.Property<string>("CalculationType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)")
+                        .HasColumnName("calculation_type");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_on");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("deleted_on");
+
+                    b.Property<string>("LastModifiedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("last_modified_by");
+
+                    b.Property<DateTime?>("LastModifiedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("last_modified_on");
+
+                    b.Property<decimal>("Rate")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
+                        .HasColumnName("rate");
+
+                    b.Property<string>("Remarks")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("remarks");
+
+                    b.Property<int>("Seq")
+                        .HasColumnType("int")
+                        .HasColumnName("seq");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("title");
+
+                    b.HasKey("Id", "TenantId")
+                        .HasName("ak_bom_expense_id_tenant_id");
+
+                    b.HasIndex("AccountId", "TenantId")
+                        .HasDatabaseName("ix_bom_expense_account_id_tenant_id");
+
+                    b.HasIndex("BomMasterId", "TenantId")
+                        .HasDatabaseName("ix_bom_expense_bom_master_id_tenant_id");
+
+                    b.ToTable("BomExpense");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
             modelBuilder.Entity("Retailer.Domain.Legacy.BomMaster", b =>
                 {
                     b.Property<int>("Id")
@@ -2758,6 +2846,121 @@ namespace Migrators.MSSQL.Migrations.Application
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
 
+            modelBuilder.Entity("Retailer.Domain.Legacy.ProductionExpense", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("TenantId")
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("AccountId")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("account_id");
+
+                    b.Property<decimal>("ActualAmount")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
+                        .HasColumnName("actual_amount");
+
+                    b.Property<string>("CalculationType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)")
+                        .HasColumnName("calculation_type");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_on");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("deleted_on");
+
+                    b.Property<string>("LastModifiedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("last_modified_by");
+
+                    b.Property<DateTime?>("LastModifiedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("last_modified_on");
+
+                    b.Property<decimal>("PlannedAmount")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
+                        .HasColumnName("planned_amount");
+
+                    b.Property<int>("ProductionMasterId")
+                        .HasColumnType("int")
+                        .HasColumnName("production_master_id");
+
+                    b.Property<decimal>("Rate")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
+                        .HasColumnName("rate");
+
+                    b.Property<string>("Remarks")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("remarks");
+
+                    b.Property<int>("Seq")
+                        .HasColumnType("int")
+                        .HasColumnName("seq");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("title");
+
+                    b.Property<string>("VNo")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("v_no");
+
+                    b.Property<string>("VType")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)")
+                        .HasColumnName("v_type");
+
+                    b.HasKey("Id", "TenantId")
+                        .HasName("ak_production_expense_id_tenant_id");
+
+                    b.HasIndex("AccountId", "TenantId")
+                        .HasDatabaseName("ix_production_expense_account_id_tenant_id");
+
+                    b.HasIndex("ProductionMasterId", "TenantId")
+                        .HasDatabaseName("ix_production_expense_production_master_id_tenant_id");
+
+                    b.HasIndex("VType", "VNo", "Seq", "TenantId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_production_expense_v_type_v_no_seq")
+                        .HasFilter("deleted_on IS NULL");
+
+                    b.ToTable("ProductionExpense");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
             modelBuilder.Entity("Retailer.Domain.Legacy.ProductionMaster", b =>
                 {
                     b.Property<int>("Id")
@@ -2782,6 +2985,10 @@ namespace Migrators.MSSQL.Migrations.Application
                     b.Property<DateTime?>("CompletedDate")
                         .HasColumnType("datetime2")
                         .HasColumnName("completed_date");
+
+                    b.Property<bool>("CreateRawMaterialPurchase")
+                        .HasColumnType("bit")
+                        .HasColumnName("create_raw_material_purchase");
 
                     b.Property<string>("CreatedBy")
                         .IsRequired()
@@ -2826,6 +3033,11 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasColumnType("datetime2")
                         .HasColumnName("last_modified_on");
 
+                    b.Property<string>("LinkedPurchaseVoucherNo")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("linked_purchase_voucher_no");
+
                     b.Property<string>("NarrationId")
                         .HasColumnType("nvarchar(450)")
                         .HasColumnName("narration_id");
@@ -2834,6 +3046,16 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasPrecision(18, 4)
                         .HasColumnType("decimal(18,4)")
                         .HasColumnName("produced_qty");
+
+                    b.Property<string>("PurchaseScope")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)")
+                        .HasColumnName("purchase_scope");
+
+                    b.Property<string>("PurchaseSupplierAccountId")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("purchase_supplier_account_id");
 
                     b.Property<string>("Remarks")
                         .HasColumnType("nvarchar(max)")
@@ -5703,6 +5925,26 @@ namespace Migrators.MSSQL.Migrations.Application
                     b.Navigation("Unit");
                 });
 
+            modelBuilder.Entity("Retailer.Domain.Legacy.BomExpense", b =>
+                {
+                    b.HasOne("Retailer.Domain.Legacy.ChartOfAccount", "Account")
+                        .WithMany()
+                        .HasForeignKey("AccountId", "TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_bom_expense_chart_of_account_account_id_tenant_id");
+
+                    b.HasOne("Retailer.Domain.Legacy.BomMaster", "BomMaster")
+                        .WithMany("Expenses")
+                        .HasForeignKey("BomMasterId", "TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_bom_expense_bom_master_bom_master_id_tenant_id");
+
+                    b.Navigation("Account");
+
+                    b.Navigation("BomMaster");
+                });
+
             modelBuilder.Entity("Retailer.Domain.Legacy.BomMaster", b =>
                 {
                     b.HasOne("Retailer.Domain.Legacy.ItemDetail", "FinishedItem")
@@ -6053,6 +6295,26 @@ namespace Migrators.MSSQL.Migrations.Application
                     b.Navigation("RawItem");
 
                     b.Navigation("Unit");
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Legacy.ProductionExpense", b =>
+                {
+                    b.HasOne("Retailer.Domain.Legacy.ChartOfAccount", "Account")
+                        .WithMany()
+                        .HasForeignKey("AccountId", "TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_production_expense_chart_of_account_account_id_tenant_id");
+
+                    b.HasOne("Retailer.Domain.Legacy.ProductionMaster", "ProductionMaster")
+                        .WithMany("Expenses")
+                        .HasForeignKey("ProductionMasterId", "TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_production_expense_production_master_production_master_id_tenant_id");
+
+                    b.Navigation("Account");
+
+                    b.Navigation("ProductionMaster");
                 });
 
             modelBuilder.Entity("Retailer.Domain.Legacy.ProductionMaster", b =>
@@ -6567,6 +6829,8 @@ namespace Migrators.MSSQL.Migrations.Application
             modelBuilder.Entity("Retailer.Domain.Legacy.BomMaster", b =>
                 {
                     b.Navigation("Details");
+
+                    b.Navigation("Expenses");
                 });
 
             modelBuilder.Entity("Retailer.Domain.Legacy.ChartOfAccount", b =>
@@ -6606,6 +6870,8 @@ namespace Migrators.MSSQL.Migrations.Application
             modelBuilder.Entity("Retailer.Domain.Legacy.ProductionMaster", b =>
                 {
                     b.Navigation("Details");
+
+                    b.Navigation("Expenses");
                 });
 
             modelBuilder.Entity("Retailer.Domain.Legacy.PurchaseMaster", b =>
