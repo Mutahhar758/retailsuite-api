@@ -640,8 +640,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("tenant_id");
 
                     b.Property<string>("AccountId")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
+                        .HasColumnType("text")
                         .HasColumnName("account_id");
 
                     b.Property<int>("BomMasterId")
@@ -2859,8 +2858,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnName("tenant_id");
 
                     b.Property<string>("AccountId")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
+                        .HasColumnType("text")
                         .HasColumnName("account_id");
 
                     b.Property<decimal>("ActualAmount")

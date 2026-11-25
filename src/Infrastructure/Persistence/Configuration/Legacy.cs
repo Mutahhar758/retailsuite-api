@@ -1058,7 +1058,6 @@ public class BomExpenseConfig : IEntityTypeConfiguration<BomExpense>
         builder.IsMultiTenant();
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
         builder.Property(x => x.Title).HasMaxLength(200).IsRequired();
-        builder.Property(x => x.AccountId).HasMaxLength(50);
         builder.Property(x => x.CalculationType).HasConversion<string>().HasMaxLength(30);
         builder.Property(x => x.Rate).HasPrecision(18, 4);
         builder.Property(x => x.Remarks).HasMaxLength(500);
@@ -1155,7 +1154,6 @@ public class ProductionExpenseConfig : IEntityTypeConfiguration<ProductionExpens
         builder.Property(x => x.VType).HasMaxLength(10).IsRequired();
         builder.Property(x => x.VNo).HasMaxLength(50).IsRequired();
         builder.Property(x => x.Title).HasMaxLength(200).IsRequired();
-        builder.Property(x => x.AccountId).HasMaxLength(50);
         builder.Property(x => x.CalculationType).HasConversion<string>().HasMaxLength(30);
         builder.Property(x => x.Rate).HasPrecision(18, 4);
         builder.Property(x => x.PlannedAmount).HasPrecision(18, 4);

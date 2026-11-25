@@ -641,8 +641,7 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasColumnName("tenant_id");
 
                     b.Property<string>("AccountId")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("account_id");
 
                     b.Property<int>("BomMasterId")
@@ -2860,8 +2859,7 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasColumnName("tenant_id");
 
                     b.Property<string>("AccountId")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("nvarchar(450)")
                         .HasColumnName("account_id");
 
                     b.Property<decimal>("ActualAmount")
