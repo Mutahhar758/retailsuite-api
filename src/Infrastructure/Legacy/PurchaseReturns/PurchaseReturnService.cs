@@ -349,6 +349,14 @@ internal class PurchaseReturnService : IPurchaseReturnService
             }
         }
 
+        var lineSeqSet = request.Lines.Select(x => x.Seq).ToHashSet();
+        var staleDetails = await _purchaseRetDetailRepository.GetAll()
+            .Where(x => x.VType == VType && x.VNo == voucherNo && !lineSeqSet.Contains(x.Seq))
+            .ToListAsync(cancellationToken);
+
+        if (staleDetails.Count > 0)
+            await _purchaseRetDetailRepository.DeleteRangeAsync(staleDetails, false);
+
         await UpsertItemTransactionsAsync(voucherNo, request.Date, request.Account, request.Lines, master.Counter, itemMap, cancellationToken);
         await UpsertGlEntryAsync(voucherNo, request.Date, request.Account, request.Narration, request.Description, amount, cancellationToken);
 

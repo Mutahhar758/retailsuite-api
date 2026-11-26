@@ -376,6 +376,14 @@ internal class SaleReturnService : ISaleReturnService
             }
         }
 
+        var lineSeqSet = request.Lines.Select(x => x.Seq).ToHashSet();
+        var staleDetails = await _saleRetDetailRepository.GetAll()
+            .Where(x => x.VType == VType && x.VNo == voucherNo && !lineSeqSet.Contains(x.Seq))
+            .ToListAsync(cancellationToken);
+
+        if (staleDetails.Count > 0)
+            await _saleRetDetailRepository.DeleteRangeAsync(staleDetails, false);
+
         await UpsertItemTransactionsAsync(voucherNo, request.Date, request.Account, request.Lines, master.Counter, itemMap, cancellationToken);
         await UpsertGlEntriesAsync(voucherNo, request, netAmount, cancellationToken);
 

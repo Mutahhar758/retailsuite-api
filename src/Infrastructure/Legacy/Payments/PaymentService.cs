@@ -317,6 +317,14 @@ internal class PaymentService : IPaymentService
             }
         }
 
+        var lineSeqSet = request.Lines.Select(x => x.Seq).ToHashSet();
+        var staleEntries = await _glRepository.GetAll()
+            .Where(x => x.VType == VType && x.VoucherNo == voucherNo && !lineSeqSet.Contains(x.VSeq))
+            .ToListAsync(cancellationToken);
+
+        if (staleEntries.Count > 0)
+            await _glRepository.DeleteRangeAsync(staleEntries, false);
+
         await _glRepository.SaveChangesAsync(cancellationToken);
     }
 

@@ -562,6 +562,14 @@ internal class PurchaseService : IPurchaseService
             }
         }
 
+        var lineSeqSet = request.Lines.Select(x => x.Seq).ToHashSet();
+        var staleDetails = await _purchaseDetailRepository.GetAll()
+            .Where(x => x.VType == VType && x.VNo == voucherNo && !lineSeqSet.Contains(x.Seq))
+            .ToListAsync(cancellationToken);
+
+        if (staleDetails.Count > 0)
+            await _purchaseDetailRepository.DeleteRangeAsync(staleDetails, false);
+
         await ApplyItemPriceUpdatesAsync(request.Lines, itemMap, cancellationToken);
         await UpsertItemTransactionsAsync(voucherNo, request.Date, request.Account, request.Lines, master.Counter, itemMap, cancellationToken);
         await UpsertGlEntriesAsync(voucherNo, request, totalAmount, cancellationToken);

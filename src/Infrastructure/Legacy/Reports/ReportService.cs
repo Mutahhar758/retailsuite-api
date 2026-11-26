@@ -1575,6 +1575,7 @@ internal partial class ReportService : IReportService
                 on new { ssd.VType, ssd.VNo } equals new { ssm.VType, VNo = ssm.VNo }
             where ssd.CustomerAccountId == filter.Account
                   && ssm.VDate >= filter.FromDate && ssm.VDate <= filter.ToDate
+            orderby ssm.VDate, ssd.VType, ssd.VNo, ssd.Seq
             select new
             {
                 Date = ssm.VDate,
@@ -2017,6 +2018,7 @@ internal partial class ReportService : IReportService
                 on new { ssd.VType, ssd.VNo } equals new { ssm.VType, VNo = ssm.VNo }
             where targetSupplyAccounts.Contains(ssd.CustomerAccountId)
                   && ssm.VDate >= filter.FromDate && ssm.VDate <= filter.ToDate
+            orderby ssm.VDate, ssd.VType, ssd.VNo, ssd.Seq
             select new
             {
                 ssm.VDate,
@@ -2081,6 +2083,7 @@ internal partial class ReportService : IReportService
                 on new { srd.VType, srd.VNo } equals new { srm.VType, VNo = srm.VNo }
             where srm.AccountId == filter.Account
                   && srm.VDate >= filter.FromDate && srm.VDate <= filter.ToDate
+            orderby srm.VDate, srd.VType, srd.VNo, srd.Seq
             select new WandaCustomerBillLineResponse
             {
                 Date = srm.VDate,
@@ -2110,6 +2113,7 @@ internal partial class ReportService : IReportService
                 on new { pd.VType, pd.VNo } equals new { pm.VType, VNo = pm.VNo }
             where pm.AccountId == filter.Account
                   && pm.VDate >= filter.FromDate && pm.VDate <= filter.ToDate
+            orderby pm.VDate, pd.VType, pd.VNo, pd.Seq
             select new WandaCustomerBillLineResponse
             {
                 Date = pm.VDate,
@@ -2141,6 +2145,7 @@ internal partial class ReportService : IReportService
                 on new { prd.VType, prd.VNo } equals new { prm.VType, VNo = prm.VNo }
             where prm.AccountId == filter.Account
                   && prm.VDate >= filter.FromDate && prm.VDate <= filter.ToDate
+            orderby prm.VDate, prd.VType, prd.VNo, prd.Seq
             select new WandaCustomerBillLineResponse
             {
                 Date = prm.VDate,
@@ -2170,6 +2175,10 @@ internal partial class ReportService : IReportService
                         && (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) >= filter.FromDate
                         && (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) <= filter.ToDate
                         && (x.VType == "RV" || x.VType == "JV"))
+            .OrderBy(x => x.VDate)
+            .ThenBy(x => x.VType)
+            .ThenBy(x => x.VoucherNo)
+            .ThenBy(x => x.VSeq)
             .Select(x => new WandaCustomerBillLineResponse
             {
                 Date = useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate,
@@ -2872,6 +2881,7 @@ internal partial class ReportService : IReportService
                 on new { prd.VType, prd.VNo } equals new { prm.VType, VNo = prm.VNo }
             where prm.AccountId == filter.Account
                   && prm.VDate >= filter.FromDate && prm.VDate <= filter.ToDate
+            orderby prm.VDate, prd.VType, prd.VNo, prd.Seq
             select new WandaVendorBillLineResponse
             {
                 Date = prm.VDate,
@@ -2901,6 +2911,7 @@ internal partial class ReportService : IReportService
                 on new { sd.VType, sd.VNo } equals new { sm.VType, VNo = sm.VNo }
             where sm.AccountId == filter.Account
                   && sm.VDate >= filter.FromDate && sm.VDate <= filter.ToDate
+            orderby sm.VDate, sd.VType, sd.VNo, sd.Seq
             select new WandaVendorBillLineResponse
             {
                 Date = sm.VDate,
@@ -2930,6 +2941,7 @@ internal partial class ReportService : IReportService
                 on new { srd.VType, srd.VNo } equals new { srm.VType, VNo = srm.VNo }
             where srm.AccountId == filter.Account
                   && srm.VDate >= filter.FromDate && srm.VDate <= filter.ToDate
+            orderby srm.VDate, srd.VType, srd.VNo, srd.Seq
             select new WandaVendorBillLineResponse
             {
                 Date = srm.VDate,
@@ -2959,6 +2971,10 @@ internal partial class ReportService : IReportService
                         && (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) >= filter.FromDate
                         && (useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate) <= filter.ToDate
                         && (x.VType == "PV" || x.VType == "JV"))
+            .OrderBy(x => x.VDate)
+            .ThenBy(x => x.VType)
+            .ThenBy(x => x.VoucherNo)
+            .ThenBy(x => x.VSeq)
             .Select(x => new WandaVendorBillLineResponse
             {
                 Date = useClearingDate ? (x.ClearingDate ?? x.VDate) : x.VDate,
@@ -3230,6 +3246,7 @@ internal partial class ReportService : IReportService
         var rawLines = await (
             from sd in _saleRepository.GetAll().AsNoTracking()
             where sd.VType == "SL" && (sd.VNo == vNo || sd.VNo == filter.VoucherNo)
+            orderby sd.Seq
             select new
             {
                 ItemName = sd.Item != null ? sd.Item.Title : string.Empty,
@@ -3438,6 +3455,7 @@ internal partial class ReportService : IReportService
         var rawLines = await (
             from pd in _purchaseDetailRepository.GetAll().AsNoTracking()
             where pd.VType == "PU" && pd.VNo == filter.VoucherNo
+            orderby pd.Seq
             select new
             {
                 ItemName = pd.Item != null ? pd.Item.Title : string.Empty,
@@ -3524,6 +3542,7 @@ internal partial class ReportService : IReportService
         var rawLines = await (
             from pd in _purchaseRetDetailRepository.GetAll().AsNoTracking()
             where pd.VType == "PR" && pd.VNo == filter.VoucherNo
+            orderby pd.Seq
             select new
             {
                 ItemName = pd.Item != null ? pd.Item.Title : string.Empty,
@@ -3610,6 +3629,7 @@ internal partial class ReportService : IReportService
         var rawLines = await (
             from sd in _saleRetDetailRepository.GetAll().AsNoTracking()
             where sd.VType == "SR" && sd.VNo == filter.VoucherNo
+            orderby sd.Seq
             select new
             {
                 ItemName = sd.Item != null ? sd.Item.Title : string.Empty,
