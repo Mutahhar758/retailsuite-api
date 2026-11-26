@@ -865,8 +865,8 @@ internal class AccountingPeriodCloseService : IAccountingPeriodCloseService
         {
             return Math.Round(await _itemTransactionRepository.GetAll()
                 .AsNoTracking()
-                .Where(x => string.Equals(x.TranType, "in", StringComparison.OrdinalIgnoreCase)
-                         && !string.IsNullOrWhiteSpace(x.ItemId)
+                .Where(x => x.TranType != null && x.TranType.ToLower() == "in"
+                         && x.ItemId != null && x.ItemId != ""
                          && (x.VDate <= asOfDate || x.VType == "Op")
                          && x.RemainingQty > 0)
                 .SumAsync(x => x.RemainingQty * x.Rate, cancellationToken), 2);
@@ -874,8 +874,8 @@ internal class AccountingPeriodCloseService : IAccountingPeriodCloseService
 
         var inBatches = await _itemTransactionRepository.GetAll()
             .AsNoTracking()
-            .Where(x => string.Equals(x.TranType, "in", StringComparison.OrdinalIgnoreCase)
-                     && !string.IsNullOrWhiteSpace(x.ItemId)
+            .Where(x => x.TranType != null && x.TranType.ToLower() == "in"
+                     && x.ItemId != null && x.ItemId != ""
                      && (x.VDate <= asOfDate || x.VType == "Op"))
             .Select(x => new { x.Id, x.QtyIn, x.Rate })
             .ToListAsync(cancellationToken);
