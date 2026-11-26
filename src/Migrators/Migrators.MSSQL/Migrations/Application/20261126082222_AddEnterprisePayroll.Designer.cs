@@ -7422,7 +7422,7 @@ namespace Migrators.MSSQL.Migrations.Application
                     b.HasOne("Retailer.Domain.Payroll.SalaryStructure", "SalaryStructure")
                         .WithMany()
                         .HasForeignKey("SalaryStructureId", "TenantId")
-                        .OnDelete(DeleteBehavior.SetNull)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_hr_info_salary_structures_salary_structure_id_tenant_id");
 
                     b.Navigation("ExpenseAccountRef");
@@ -8214,7 +8214,7 @@ namespace Migrators.MSSQL.Migrations.Application
                     b.HasOne("Retailer.Domain.Payroll.PayrollRunItem", "PayrollRunItem")
                         .WithMany()
                         .HasForeignKey("PayrollRunItemId", "TenantId")
-                        .OnDelete(DeleteBehavior.SetNull)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_employee_loan_schedules_payroll_run_items_payroll_run_item_id_tenant_id");
 
                     b.Navigation("EmployeeLoan");
@@ -8339,7 +8339,7 @@ namespace Migrators.MSSQL.Migrations.Application
                     b.HasOne("Retailer.Domain.Payroll.PayrollComponent", "PayrollComponent")
                         .WithMany()
                         .HasForeignKey("PayrollComponentId", "TenantId")
-                        .OnDelete(DeleteBehavior.SetNull)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_payroll_run_item_components_payroll_components_payroll_component_id_tenant_id");
 
                     b.HasOne("Retailer.Domain.Payroll.PayrollRunItem", "PayrollRunItem")

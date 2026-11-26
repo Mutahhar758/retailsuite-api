@@ -147,7 +147,7 @@ public class EmployeeLoanScheduleConfig : IEntityTypeConfiguration<EmployeeLoanS
         builder.HasOne(x => x.PayrollRunItem)
             .WithMany()
             .HasForeignKey(x => x.PayrollRunItemId)
-            .OnDelete(DeleteBehavior.SetNull);
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }
 
@@ -240,7 +240,7 @@ public class PayrollRunItemComponentConfig : IEntityTypeConfiguration<PayrollRun
         builder.HasOne(x => x.PayrollComponent)
             .WithMany()
             .HasForeignKey(x => x.PayrollComponentId)
-            .OnDelete(DeleteBehavior.SetNull);
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }
 

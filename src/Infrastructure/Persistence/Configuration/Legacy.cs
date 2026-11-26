@@ -112,7 +112,7 @@ public class HrInfoConfig : IEntityTypeConfiguration<HrInfo>
         builder.HasOne(x => x.SalaryStructure)
             .WithMany()
             .HasForeignKey(x => x.SalaryStructureId)
-            .OnDelete(DeleteBehavior.SetNull);
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(x => x.LoanReceivableAccountRef)
             .WithMany()

@@ -459,7 +459,7 @@ namespace Migrators.MSSQL.Migrations.Application
                         columns: x => new { x.payroll_run_item_id, x.tenant_id },
                         principalTable: "PayrollRunItems",
                         principalColumns: new[] { "id", "tenant_id" },
-                        onDelete: ReferentialAction.SetNull);
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -542,7 +542,7 @@ namespace Migrators.MSSQL.Migrations.Application
                         columns: x => new { x.payroll_component_id, x.tenant_id },
                         principalTable: "PayrollComponents",
                         principalColumns: new[] { "id", "tenant_id" },
-                        onDelete: ReferentialAction.SetNull);
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "fk_payroll_run_item_components_payroll_run_items_payroll_run_item_id_tenant_id",
                         columns: x => new { x.payroll_run_item_id, x.tenant_id },
@@ -731,7 +731,7 @@ namespace Migrators.MSSQL.Migrations.Application
                 columns: new[] { "salary_structure_id", "tenant_id" },
                 principalTable: "SalaryStructures",
                 principalColumns: new[] { "id", "tenant_id" },
-                onDelete: ReferentialAction.SetNull);
+                onDelete: ReferentialAction.Restrict);
         }
 
         /// <inheritdoc />

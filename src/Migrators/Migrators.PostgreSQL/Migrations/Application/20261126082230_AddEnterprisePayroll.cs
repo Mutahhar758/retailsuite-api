@@ -494,7 +494,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         principalSchema: "public",
                         principalTable: "PayrollRunItems",
                         principalColumns: new[] { "id", "tenant_id" },
-                        onDelete: ReferentialAction.SetNull);
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -583,7 +583,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         principalSchema: "public",
                         principalTable: "PayrollComponents",
                         principalColumns: new[] { "id", "tenant_id" },
-                        onDelete: ReferentialAction.SetNull);
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "fk_payroll_run_item_components_payroll_run_items_payroll_run_item_i",
                         columns: x => new { x.payroll_run_item_id, x.tenant_id },
@@ -807,7 +807,7 @@ namespace Migrators.PostgreSQL.Migrations.Application
                 principalSchema: "public",
                 principalTable: "SalaryStructures",
                 principalColumns: new[] { "id", "tenant_id" },
-                onDelete: ReferentialAction.SetNull);
+                onDelete: ReferentialAction.Restrict);
         }
 
         /// <inheritdoc />
