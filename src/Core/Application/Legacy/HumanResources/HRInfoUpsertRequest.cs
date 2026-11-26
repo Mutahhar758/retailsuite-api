@@ -18,4 +18,16 @@ public class HRInfoUpsertRequest
     public string? ExpenseAccount { get; set; }
     public string? PayableAccount { get; set; }
     public string? MediaId { get; set; }
+
+    // Enterprise Payroll additive fields
+    public string? Department { get; set; }
+    public string? EmploymentStatus { get; set; }
+    public DateOnly? TerminationDate { get; set; }
+    public string? PaymentMethod { get; set; }
+    public string? BankName { get; set; }
+    public string? BankAccountTitle { get; set; }
+    public string? BankAccountNo { get; set; }
+    public string? Iban { get; set; }
+    public int? SalaryStructureId { get; set; }
+    public string? LoanReceivableAccountId { get; set; }
 }

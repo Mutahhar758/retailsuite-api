@@ -11,6 +11,7 @@ public static class AppAction
     public const string Delete = nameof(Delete);
     public const string Export = nameof(Export);
     public const string Print = nameof(Print);
+    public const string Approve = nameof(Approve);
 }
 
 public static class AppResource
@@ -73,6 +74,11 @@ public static class AppResource
     public const string BillOfMaterials = nameof(BillOfMaterials);
     public const string Manufacturing = nameof(Manufacturing);
     public const string BankAccounts = nameof(BankAccounts);
+    public const string PayrollComponents = nameof(PayrollComponents);
+    public const string SalaryStructures = nameof(SalaryStructures);
+    public const string EmployeeLoans = nameof(EmployeeLoans);
+    public const string PayrollRuns = nameof(PayrollRuns);
+    public const string PayrollDisbursements = nameof(PayrollDisbursements);
 }
 
 public static class AppPermissions
@@ -376,6 +382,40 @@ public static class AppPermissions
         new("Delete Payrolls", AppAction.Delete, AppResource.Payrolls),
         new("Export Payrolls", AppAction.Export, AppResource.Payrolls),
 
+        // Payroll Components
+        new("View Payroll Components", AppAction.View, AppResource.PayrollComponents),
+        new("Create Payroll Components", AppAction.Create, AppResource.PayrollComponents),
+        new("Update Payroll Components", AppAction.Update, AppResource.PayrollComponents),
+        new("Delete Payroll Components", AppAction.Delete, AppResource.PayrollComponents),
+
+        // Salary Structures
+        new("View Salary Structures", AppAction.View, AppResource.SalaryStructures),
+        new("Create Salary Structures", AppAction.Create, AppResource.SalaryStructures),
+        new("Update Salary Structures", AppAction.Update, AppResource.SalaryStructures),
+        new("Delete Salary Structures", AppAction.Delete, AppResource.SalaryStructures),
+
+        // Employee Loans & Advances
+        new("View Employee Loans", AppAction.View, AppResource.EmployeeLoans),
+        new("Create Employee Loans", AppAction.Create, AppResource.EmployeeLoans),
+        new("Update Employee Loans", AppAction.Update, AppResource.EmployeeLoans),
+        new("Delete Employee Loans", AppAction.Delete, AppResource.EmployeeLoans),
+        new("Approve Employee Loans", AppAction.Approve, AppResource.EmployeeLoans),
+
+        // Payroll Runs
+        new("View Payroll Runs", AppAction.View, AppResource.PayrollRuns),
+        new("Create Payroll Runs", AppAction.Create, AppResource.PayrollRuns),
+        new("Update Payroll Runs", AppAction.Update, AppResource.PayrollRuns),
+        new("Delete Payroll Runs", AppAction.Delete, AppResource.PayrollRuns),
+        new("Approve Payroll Runs", AppAction.Approve, AppResource.PayrollRuns),
+        new("Export Payroll Runs", AppAction.Export, AppResource.PayrollRuns),
+        new("Print Payroll Runs", AppAction.Print, AppResource.PayrollRuns),
+
+        // Payroll Disbursements
+        new("View Payroll Disbursements", AppAction.View, AppResource.PayrollDisbursements),
+        new("Create Payroll Disbursements", AppAction.Create, AppResource.PayrollDisbursements),
+        new("Delete Payroll Disbursements", AppAction.Delete, AppResource.PayrollDisbursements),
+        new("Export Payroll Disbursements", AppAction.Export, AppResource.PayrollDisbursements),
+
         // KotOrders
         new("View KotOrders", AppAction.View, AppResource.KotOrders),
         new("Create KotOrders", AppAction.Create, AppResource.KotOrders),
@@ -490,13 +530,21 @@ public static class AppPermissions
         p.Resource == AppResource.EnvelopeReport ||
         p.Resource == AppResource.BarcodeReport ||
         p.Resource == AppResource.ShipmentLabelReport ||
-        p.Resource == AppResource.MiscReports
+        p.Resource == AppResource.MiscReports ||
+        p.Resource == AppResource.PayrollRuns ||
+        p.Resource == AppResource.PayrollDisbursements ||
+        p.Resource == AppResource.EmployeeLoans
     ).ToArray());
 
     public static IReadOnlyList<AppPermission> PayrollManager { get; } = new ReadOnlyCollection<AppPermission>(_all.Where(p =>
         p.Resource == AppResource.Dashboard ||
         p.Resource == AppResource.HRInfo ||
-        p.Resource == AppResource.Payrolls
+        p.Resource == AppResource.Payrolls ||
+        p.Resource == AppResource.PayrollComponents ||
+        p.Resource == AppResource.SalaryStructures ||
+        p.Resource == AppResource.EmployeeLoans ||
+        p.Resource == AppResource.PayrollRuns ||
+        p.Resource == AppResource.PayrollDisbursements
     ).ToArray());
 }
 

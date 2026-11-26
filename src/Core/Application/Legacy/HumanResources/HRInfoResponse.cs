@@ -20,6 +20,16 @@ public class HRInfoResponse
     public string? PayableAccount { get; set; }
     public string? MediaId { get; set; }
     public string? MediaUrl { get; set; }
+    public string? Department { get; set; }
+    public string EmploymentStatus { get; set; } = "Active";
+    public DateOnly? TerminationDate { get; set; }
+    public string PaymentMethod { get; set; } = "Cash";
+    public string? BankName { get; set; }
+    public string? BankAccountTitle { get; set; }
+    public string? BankAccountNo { get; set; }
+    public string? Iban { get; set; }
+    public int? SalaryStructureId { get; set; }
+    public string? LoanReceivableAccountId { get; set; }
     public string? CreatedBy { get; set; }
     public DateTime? CreatedOn { get; set; }
     public string? LastModifiedBy { get; set; }

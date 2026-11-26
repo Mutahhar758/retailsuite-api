@@ -56,6 +56,10 @@ public class HRInfoService : IHRInfoService
 
         var newEmployee = request.Adapt<HrInfo>();
         newEmployee.Id = nextCode;
+        newEmployee.EmploymentStatus = string.IsNullOrWhiteSpace(request.EmploymentStatus) ? "Active" : request.EmploymentStatus.Trim();
+        newEmployee.PaymentMethod = string.IsNullOrWhiteSpace(request.PaymentMethod) ? "Cash" : request.PaymentMethod.Trim();
+        newEmployee.ExpenseAccountId = string.IsNullOrWhiteSpace(request.ExpenseAccount) ? null : request.ExpenseAccount.Trim();
+        newEmployee.PayableAccountId = string.IsNullOrWhiteSpace(request.PayableAccount) ? null : request.PayableAccount.Trim();
 
         await _hrInfoRepository.AddAsync(newEmployee);
     }
@@ -71,6 +75,12 @@ public class HRInfoService : IHRInfoService
             throw new NotFoundException($"Employee with ID {id} not found.");
 
         request.Adapt(employee);
+        if (string.IsNullOrWhiteSpace(employee.EmploymentStatus))
+            employee.EmploymentStatus = "Active";
+        if (string.IsNullOrWhiteSpace(employee.PaymentMethod))
+            employee.PaymentMethod = "Cash";
+        employee.ExpenseAccountId = string.IsNullOrWhiteSpace(request.ExpenseAccount) ? null : request.ExpenseAccount.Trim();
+        employee.PayableAccountId = string.IsNullOrWhiteSpace(request.PayableAccount) ? null : request.PayableAccount.Trim();
         await _hrInfoRepository.UpdateAsync(employee);
     }
 

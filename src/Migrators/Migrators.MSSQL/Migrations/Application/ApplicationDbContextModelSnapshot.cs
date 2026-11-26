@@ -1568,6 +1568,21 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasColumnType("date")
                         .HasColumnName("appointment_date");
 
+                    b.Property<string>("BankAccountNo")
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)")
+                        .HasColumnName("bank_account_no");
+
+                    b.Property<string>("BankAccountTitle")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("bank_account_title");
+
+                    b.Property<string>("BankName")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)")
+                        .HasColumnName("bank_name");
+
                     b.Property<string>("Cnic")
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("cnic");
@@ -1589,6 +1604,11 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasColumnType("datetime2")
                         .HasColumnName("deleted_on");
 
+                    b.Property<string>("Department")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)")
+                        .HasColumnName("department");
+
                     b.Property<string>("Designation")
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("designation");
@@ -1596,6 +1616,14 @@ namespace Migrators.MSSQL.Migrations.Application
                     b.Property<DateOnly>("Dob")
                         .HasColumnType("date")
                         .HasColumnName("dob");
+
+                    b.Property<string>("EmploymentStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)")
+                        .HasDefaultValue("Active")
+                        .HasColumnName("employment_status");
 
                     b.Property<string>("ExpenseAccount")
                         .HasColumnType("nvarchar(max)")
@@ -1614,6 +1642,11 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("gender");
 
+                    b.Property<string>("Iban")
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)")
+                        .HasColumnName("iban");
+
                     b.Property<DateOnly>("JoiningDate")
                         .HasColumnType("date")
                         .HasColumnName("joining_date");
@@ -1630,6 +1663,10 @@ namespace Migrators.MSSQL.Migrations.Application
                     b.Property<decimal>("LeaveCharges")
                         .HasColumnType("decimal(18,2)")
                         .HasColumnName("leave_charges");
+
+                    b.Property<string>("LoanReceivableAccountId")
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("loan_receivable_account_id");
 
                     b.Property<string>("MaritialStatus")
                         .HasColumnType("nvarchar(max)")
@@ -1656,14 +1693,30 @@ namespace Migrators.MSSQL.Migrations.Application
                         .HasColumnType("nvarchar(450)")
                         .HasColumnName("payable_account_id");
 
+                    b.Property<string>("PaymentMethod")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)")
+                        .HasDefaultValue("Cash")
+                        .HasColumnName("payment_method");
+
                     b.Property<decimal>("Salary")
                         .HasColumnType("decimal(18,2)")
                         .HasColumnName("salary");
+
+                    b.Property<int?>("SalaryStructureId")
+                        .HasColumnType("int")
+                        .HasColumnName("salary_structure_id");
 
                     b.Property<string>("SalaryType")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("salary_type");
+
+                    b.Property<DateOnly?>("TerminationDate")
+                        .HasColumnType("date")
+                        .HasColumnName("termination_date");
 
                     b.HasKey("Id", "TenantId")
                         .HasName("ak_hr_info_id_tenant_id");
@@ -1671,8 +1724,14 @@ namespace Migrators.MSSQL.Migrations.Application
                     b.HasIndex("ExpenseAccountId", "TenantId")
                         .HasDatabaseName("ix_hr_info_expense_account_id_tenant_id");
 
+                    b.HasIndex("LoanReceivableAccountId", "TenantId")
+                        .HasDatabaseName("ix_hr_info_loan_receivable_account_id_tenant_id");
+
                     b.HasIndex("PayableAccountId", "TenantId")
                         .HasDatabaseName("ix_hr_info_payable_account_id_tenant_id");
+
+                    b.HasIndex("SalaryStructureId", "TenantId")
+                        .HasDatabaseName("ix_hr_info_salary_structure_id_tenant_id");
 
                     b.ToTable("HRInfo");
 
@@ -5709,6 +5768,1283 @@ namespace Migrators.MSSQL.Migrations.Application
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
 
+            modelBuilder.Entity("Retailer.Domain.Payroll.EmployeeLoan", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("TenantId")
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("ApprovedBy")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("approved_by");
+
+                    b.Property<DateTime?>("ApprovedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("approved_on");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_on");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("deleted_on");
+
+                    b.Property<string>("DisbursementAccountId")
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("disbursement_account_id");
+
+                    b.Property<DateOnly?>("DisbursementDate")
+                        .HasColumnType("date")
+                        .HasColumnName("disbursement_date");
+
+                    b.Property<string>("GlVoucherNo")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("gl_voucher_no");
+
+                    b.Property<string>("HrInfoId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("hr_info_id");
+
+                    b.Property<decimal>("InstallmentAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("installment_amount");
+
+                    b.Property<int>("InstallmentCount")
+                        .HasColumnType("int")
+                        .HasColumnName("installment_count");
+
+                    b.Property<string>("LastModifiedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("last_modified_by");
+
+                    b.Property<DateTime?>("LastModifiedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("last_modified_on");
+
+                    b.Property<string>("LoanNo")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)")
+                        .HasColumnName("loan_no");
+
+                    b.Property<int>("LoanType")
+                        .HasColumnType("int")
+                        .HasColumnName("loan_type");
+
+                    b.Property<decimal>("PrincipalAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("principal_amount");
+
+                    b.Property<string>("ReceivableAccountId")
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("receivable_account_id");
+
+                    b.Property<decimal>("RemainingBalance")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("remaining_balance");
+
+                    b.Property<string>("Remarks")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("remarks");
+
+                    b.Property<int>("StartMonth")
+                        .HasColumnType("int")
+                        .HasColumnName("start_month");
+
+                    b.Property<int>("StartYear")
+                        .HasColumnType("int")
+                        .HasColumnName("start_year");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id", "TenantId")
+                        .HasName("ak_employee_loans_id_tenant_id");
+
+                    b.HasIndex("DisbursementAccountId", "TenantId")
+                        .HasDatabaseName("ix_employee_loans_disbursement_account_id_tenant_id");
+
+                    b.HasIndex("HrInfoId", "TenantId")
+                        .HasDatabaseName("ix_employee_loans_hr_info_id_tenant_id");
+
+                    b.HasIndex("LoanNo", "TenantId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_employee_loans_loan_no")
+                        .HasFilter("deleted_on IS NULL");
+
+                    b.HasIndex("ReceivableAccountId", "TenantId")
+                        .HasDatabaseName("ix_employee_loans_receivable_account_id_tenant_id");
+
+                    b.ToTable("EmployeeLoans");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Payroll.EmployeeLoanSchedule", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("TenantId")
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_on");
+
+                    b.Property<decimal>("DeductedAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("deducted_amount");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("deleted_on");
+
+                    b.Property<int>("DueMonth")
+                        .HasColumnType("int")
+                        .HasColumnName("due_month");
+
+                    b.Property<int>("DueYear")
+                        .HasColumnType("int")
+                        .HasColumnName("due_year");
+
+                    b.Property<int>("EmployeeLoanId")
+                        .HasColumnType("int")
+                        .HasColumnName("employee_loan_id");
+
+                    b.Property<int>("InstallmentNo")
+                        .HasColumnType("int")
+                        .HasColumnName("installment_no");
+
+                    b.Property<string>("LastModifiedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("last_modified_by");
+
+                    b.Property<DateTime?>("LastModifiedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("last_modified_on");
+
+                    b.Property<int?>("PayrollRunItemId")
+                        .HasColumnType("int")
+                        .HasColumnName("payroll_run_item_id");
+
+                    b.Property<string>("Remarks")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("remarks");
+
+                    b.Property<decimal>("ScheduledAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("scheduled_amount");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id", "TenantId")
+                        .HasName("ak_employee_loan_schedules_id_tenant_id");
+
+                    b.HasIndex("EmployeeLoanId", "TenantId")
+                        .HasDatabaseName("ix_employee_loan_schedules_employee_loan_id_tenant_id");
+
+                    b.HasIndex("PayrollRunItemId", "TenantId")
+                        .HasDatabaseName("ix_employee_loan_schedules_payroll_run_item_id_tenant_id");
+
+                    b.HasIndex("EmployeeLoanId", "InstallmentNo", "TenantId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_employee_loan_schedules_employee_loan_id_installment_no")
+                        .HasFilter("deleted_on IS NULL");
+
+                    b.ToTable("EmployeeLoanSchedules");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Payroll.EmployeeSalaryComponent", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("TenantId")
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<int?>("CalculationTypeOverride")
+                        .HasColumnType("int")
+                        .HasColumnName("calculation_type_override");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_on");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("deleted_on");
+
+                    b.Property<DateOnly?>("EffectiveFrom")
+                        .HasColumnType("date")
+                        .HasColumnName("effective_from");
+
+                    b.Property<DateOnly?>("EffectiveTo")
+                        .HasColumnType("date")
+                        .HasColumnName("effective_to");
+
+                    b.Property<string>("FormulaOverride")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("formula_override");
+
+                    b.Property<string>("HrInfoId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("hr_info_id");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("LastModifiedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("last_modified_by");
+
+                    b.Property<DateTime?>("LastModifiedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("last_modified_on");
+
+                    b.Property<int>("PayrollComponentId")
+                        .HasColumnType("int")
+                        .HasColumnName("payroll_component_id");
+
+                    b.Property<decimal>("Value")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
+                        .HasColumnName("value");
+
+                    b.HasKey("Id", "TenantId")
+                        .HasName("ak_employee_salary_components_id_tenant_id");
+
+                    b.HasIndex("HrInfoId", "TenantId")
+                        .HasDatabaseName("ix_employee_salary_components_hr_info_id_tenant_id");
+
+                    b.HasIndex("PayrollComponentId", "TenantId")
+                        .HasDatabaseName("ix_employee_salary_components_payroll_component_id_tenant_id");
+
+                    b.ToTable("EmployeeSalaryComponents");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Payroll.PayrollComponent", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("TenantId")
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<int>("CalculationType")
+                        .HasColumnType("int")
+                        .HasColumnName("calculation_type");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)")
+                        .HasColumnName("code");
+
+                    b.Property<int>("ComponentType")
+                        .HasColumnType("int")
+                        .HasColumnName("component_type");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_on");
+
+                    b.Property<decimal>("DefaultValue")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("default_value");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("deleted_on");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("description");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("int")
+                        .HasColumnName("display_order");
+
+                    b.Property<string>("ExpenseAccountId")
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("expense_account_id");
+
+                    b.Property<string>("FormulaExpression")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("formula_expression");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit")
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsRecurring")
+                        .HasColumnType("bit")
+                        .HasColumnName("is_recurring");
+
+                    b.Property<bool>("IsSystem")
+                        .HasColumnType("bit")
+                        .HasColumnName("is_system");
+
+                    b.Property<string>("LastModifiedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("last_modified_by");
+
+                    b.Property<DateTime?>("LastModifiedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("last_modified_on");
+
+                    b.Property<string>("LiabilityAccountId")
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("liability_account_id");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)")
+                        .HasColumnName("name");
+
+                    b.Property<bool>("ShowOnPayslip")
+                        .HasColumnType("bit")
+                        .HasColumnName("show_on_payslip");
+
+                    b.HasKey("Id", "TenantId")
+                        .HasName("ak_payroll_components_id_tenant_id");
+
+                    b.HasIndex("Code", "TenantId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_payroll_components_code")
+                        .HasFilter("deleted_on IS NULL");
+
+                    b.HasIndex("ExpenseAccountId", "TenantId")
+                        .HasDatabaseName("ix_payroll_components_expense_account_id_tenant_id");
+
+                    b.HasIndex("LiabilityAccountId", "TenantId")
+                        .HasDatabaseName("ix_payroll_components_liability_account_id_tenant_id");
+
+                    b.ToTable("PayrollComponents");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Payroll.PayrollDisbursement", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("TenantId")
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_on");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("deleted_on");
+
+                    b.Property<string>("DisbursementNo")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)")
+                        .HasColumnName("disbursement_no");
+
+                    b.Property<string>("GlVoucherNo")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("gl_voucher_no");
+
+                    b.Property<string>("LastModifiedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("last_modified_by");
+
+                    b.Property<DateTime?>("LastModifiedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("last_modified_on");
+
+                    b.Property<DateOnly>("PaymentDate")
+                        .HasColumnType("date")
+                        .HasColumnName("payment_date");
+
+                    b.Property<string>("PaymentMethod")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)")
+                        .HasColumnName("payment_method");
+
+                    b.Property<int>("PayrollRunId")
+                        .HasColumnType("int")
+                        .HasColumnName("payroll_run_id");
+
+                    b.Property<string>("ReferenceNo")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("reference_no");
+
+                    b.Property<string>("Remarks")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("remarks");
+
+                    b.Property<string>("SourceAccountId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("source_account_id");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("total_amount");
+
+                    b.HasKey("Id", "TenantId")
+                        .HasName("ak_payroll_disbursements_id_tenant_id");
+
+                    b.HasIndex("DisbursementNo", "TenantId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_payroll_disbursements_disbursement_no")
+                        .HasFilter("deleted_on IS NULL");
+
+                    b.HasIndex("PayrollRunId", "TenantId")
+                        .HasDatabaseName("ix_payroll_disbursements_payroll_run_id_tenant_id");
+
+                    b.HasIndex("SourceAccountId", "TenantId")
+                        .HasDatabaseName("ix_payroll_disbursements_source_account_id_tenant_id");
+
+                    b.ToTable("PayrollDisbursements");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Payroll.PayrollDisbursementLine", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("TenantId")
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("amount");
+
+                    b.Property<string>("BankAccountSnapshot")
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)")
+                        .HasColumnName("bank_account_snapshot");
+
+                    b.Property<string>("BankNameSnapshot")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)")
+                        .HasColumnName("bank_name_snapshot");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_on");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("deleted_on");
+
+                    b.Property<string>("EmployeeName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("employee_name");
+
+                    b.Property<string>("HrInfoId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("hr_info_id");
+
+                    b.Property<string>("IbanSnapshot")
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)")
+                        .HasColumnName("iban_snapshot");
+
+                    b.Property<string>("LastModifiedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("last_modified_by");
+
+                    b.Property<DateTime?>("LastModifiedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("last_modified_on");
+
+                    b.Property<int>("PayrollDisbursementId")
+                        .HasColumnType("int")
+                        .HasColumnName("payroll_disbursement_id");
+
+                    b.Property<int>("PayrollRunItemId")
+                        .HasColumnType("int")
+                        .HasColumnName("payroll_run_item_id");
+
+                    b.HasKey("Id", "TenantId")
+                        .HasName("ak_payroll_disbursement_lines_id_tenant_id");
+
+                    b.HasIndex("HrInfoId", "TenantId")
+                        .HasDatabaseName("ix_payroll_disbursement_lines_hr_info_id_tenant_id");
+
+                    b.HasIndex("PayrollDisbursementId", "TenantId")
+                        .HasDatabaseName("ix_payroll_disbursement_lines_payroll_disbursement_id_tenant_id");
+
+                    b.HasIndex("PayrollRunItemId", "TenantId")
+                        .HasDatabaseName("ix_payroll_disbursement_lines_payroll_run_item_id_tenant_id");
+
+                    b.ToTable("PayrollDisbursementLines");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Payroll.PayrollRun", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("TenantId")
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("ApprovedBy")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("approved_by");
+
+                    b.Property<DateTime?>("ApprovedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("approved_on");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_on");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("deleted_on");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("description");
+
+                    b.Property<int>("EmployeeCount")
+                        .HasColumnType("int")
+                        .HasColumnName("employee_count");
+
+                    b.Property<string>("GlVoucherNo")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("gl_voucher_no");
+
+                    b.Property<string>("LastModifiedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("last_modified_by");
+
+                    b.Property<DateTime?>("LastModifiedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("last_modified_on");
+
+                    b.Property<DateOnly>("PayDate")
+                        .HasColumnType("date")
+                        .HasColumnName("pay_date");
+
+                    b.Property<int>("PayMonth")
+                        .HasColumnType("int")
+                        .HasColumnName("pay_month");
+
+                    b.Property<int>("PayYear")
+                        .HasColumnType("int")
+                        .HasColumnName("pay_year");
+
+                    b.Property<DateOnly>("PeriodEnd")
+                        .HasColumnType("date")
+                        .HasColumnName("period_end");
+
+                    b.Property<DateOnly>("PeriodStart")
+                        .HasColumnType("date")
+                        .HasColumnName("period_start");
+
+                    b.Property<string>("PostedBy")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("posted_by");
+
+                    b.Property<DateTime?>("PostedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("posted_on");
+
+                    b.Property<string>("RejectionReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("rejection_reason");
+
+                    b.Property<string>("ReversalGlVoucherNo")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("reversal_gl_voucher_no");
+
+                    b.Property<string>("RunNo")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)")
+                        .HasColumnName("run_no");
+
+                    b.Property<string>("SalaryType")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)")
+                        .HasColumnName("salary_type");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int")
+                        .HasColumnName("status");
+
+                    b.Property<string>("SubmittedBy")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("submitted_by");
+
+                    b.Property<DateTime?>("SubmittedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("submitted_on");
+
+                    b.Property<decimal>("TotalDeductions")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("total_deductions");
+
+                    b.Property<decimal>("TotalGrossEarnings")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("total_gross_earnings");
+
+                    b.Property<decimal>("TotalLoanRecovery")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("total_loan_recovery");
+
+                    b.Property<decimal>("TotalNetSalary")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("total_net_salary");
+
+                    b.Property<decimal>("TotalPaidAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("total_paid_amount");
+
+                    b.HasKey("Id", "TenantId")
+                        .HasName("ak_payroll_runs_id_tenant_id");
+
+                    b.HasIndex("RunNo", "TenantId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_payroll_runs_run_no")
+                        .HasFilter("deleted_on IS NULL");
+
+                    b.ToTable("PayrollRuns");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Payroll.PayrollRunItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("TenantId")
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("BankAccountNo")
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)")
+                        .HasColumnName("bank_account_no");
+
+                    b.Property<string>("BankAccountTitle")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("bank_account_title");
+
+                    b.Property<string>("BankName")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)")
+                        .HasColumnName("bank_name");
+
+                    b.Property<decimal>("BasicSalary")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("basic_salary");
+
+                    b.Property<decimal>("BonusAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("bonus_amount");
+
+                    b.Property<string>("Cnic")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("cnic");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_on");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("deleted_on");
+
+                    b.Property<string>("Department")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)")
+                        .HasColumnName("department");
+
+                    b.Property<string>("Designation")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)")
+                        .HasColumnName("designation");
+
+                    b.Property<string>("EmployeeName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("employee_name");
+
+                    b.Property<string>("ExpenseAccountId")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("expense_account_id");
+
+                    b.Property<decimal>("GrossEarnings")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("gross_earnings");
+
+                    b.Property<string>("HrInfoId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("hr_info_id");
+
+                    b.Property<string>("Iban")
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)")
+                        .HasColumnName("iban");
+
+                    b.Property<bool>("IsOnHold")
+                        .HasColumnType("bit")
+                        .HasColumnName("is_on_hold");
+
+                    b.Property<string>("LastModifiedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("last_modified_by");
+
+                    b.Property<DateTime?>("LastModifiedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("last_modified_on");
+
+                    b.Property<decimal>("LeaveChargeRate")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("leave_charge_rate");
+
+                    b.Property<decimal>("LoanRecoveryAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("loan_recovery_amount");
+
+                    b.Property<decimal>("NetSalary")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("net_salary");
+
+                    b.Property<decimal>("OvertimeHours")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("overtime_hours");
+
+                    b.Property<decimal>("OvertimeRate")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("overtime_rate");
+
+                    b.Property<decimal>("PaidAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("paid_amount");
+
+                    b.Property<string>("PayableAccountId")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("payable_account_id");
+
+                    b.Property<string>("PaymentMethod")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)")
+                        .HasColumnName("payment_method");
+
+                    b.Property<int>("PayrollRunId")
+                        .HasColumnType("int")
+                        .HasColumnName("payroll_run_id");
+
+                    b.Property<decimal>("PresentDays")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("present_days");
+
+                    b.Property<string>("Remarks")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("remarks");
+
+                    b.Property<decimal>("TotalDeductions")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("total_deductions");
+
+                    b.Property<decimal>("UnpaidLeaveDays")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("unpaid_leave_days");
+
+                    b.Property<decimal>("WorkingDays")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("working_days");
+
+                    b.HasKey("Id", "TenantId")
+                        .HasName("ak_payroll_run_items_id_tenant_id");
+
+                    b.HasIndex("HrInfoId", "TenantId")
+                        .HasDatabaseName("ix_payroll_run_items_hr_info_id_tenant_id");
+
+                    b.HasIndex("PayrollRunId", "TenantId")
+                        .HasDatabaseName("ix_payroll_run_items_payroll_run_id_tenant_id");
+
+                    b.HasIndex("PayrollRunId", "HrInfoId", "TenantId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_payroll_run_items_payroll_run_id_hr_info_id")
+                        .HasFilter("deleted_on IS NULL");
+
+                    b.ToTable("PayrollRunItems");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Payroll.PayrollRunItemComponent", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("TenantId")
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("amount");
+
+                    b.Property<int>("CalculationType")
+                        .HasColumnType("int")
+                        .HasColumnName("calculation_type");
+
+                    b.Property<string>("ComponentCode")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)")
+                        .HasColumnName("component_code");
+
+                    b.Property<string>("ComponentName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)")
+                        .HasColumnName("component_name");
+
+                    b.Property<int>("ComponentType")
+                        .HasColumnType("int")
+                        .HasColumnName("component_type");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_on");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("deleted_on");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("int")
+                        .HasColumnName("display_order");
+
+                    b.Property<string>("GlAccountId")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("gl_account_id");
+
+                    b.Property<bool>("IsManualOverride")
+                        .HasColumnType("bit")
+                        .HasColumnName("is_manual_override");
+
+                    b.Property<string>("LastModifiedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("last_modified_by");
+
+                    b.Property<DateTime?>("LastModifiedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("last_modified_on");
+
+                    b.Property<int?>("PayrollComponentId")
+                        .HasColumnType("int")
+                        .HasColumnName("payroll_component_id");
+
+                    b.Property<int>("PayrollRunItemId")
+                        .HasColumnType("int")
+                        .HasColumnName("payroll_run_item_id");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
+                        .HasColumnName("quantity");
+
+                    b.Property<decimal>("Rate")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
+                        .HasColumnName("rate");
+
+                    b.Property<bool>("ShowOnPayslip")
+                        .HasColumnType("bit")
+                        .HasColumnName("show_on_payslip");
+
+                    b.HasKey("Id", "TenantId")
+                        .HasName("ak_payroll_run_item_components_id_tenant_id");
+
+                    b.HasIndex("PayrollComponentId", "TenantId")
+                        .HasDatabaseName("ix_payroll_run_item_components_payroll_component_id_tenant_id");
+
+                    b.HasIndex("PayrollRunItemId", "TenantId")
+                        .HasDatabaseName("ix_payroll_run_item_components_payroll_run_item_id_tenant_id");
+
+                    b.ToTable("PayrollRunItemComponents");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Payroll.SalaryStructure", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("TenantId")
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)")
+                        .HasColumnName("code");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_on");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("deleted_on");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("description");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit")
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("bit")
+                        .HasColumnName("is_default");
+
+                    b.Property<string>("LastModifiedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("last_modified_by");
+
+                    b.Property<DateTime?>("LastModifiedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("last_modified_on");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("SalaryType")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)")
+                        .HasColumnName("salary_type");
+
+                    b.HasKey("Id", "TenantId")
+                        .HasName("ak_salary_structures_id_tenant_id");
+
+                    b.HasIndex("Code", "TenantId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_salary_structures_code")
+                        .HasFilter("deleted_on IS NULL");
+
+                    b.ToTable("SalaryStructures");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Payroll.SalaryStructureLine", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("TenantId")
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<int?>("CalculationTypeOverride")
+                        .HasColumnType("int")
+                        .HasColumnName("calculation_type_override");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_on");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("deleted_on");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("int")
+                        .HasColumnName("display_order");
+
+                    b.Property<string>("FormulaOverride")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("formula_override");
+
+                    b.Property<string>("LastModifiedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("last_modified_by");
+
+                    b.Property<DateTime?>("LastModifiedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("last_modified_on");
+
+                    b.Property<int>("PayrollComponentId")
+                        .HasColumnType("int")
+                        .HasColumnName("payroll_component_id");
+
+                    b.Property<int>("SalaryStructureId")
+                        .HasColumnType("int")
+                        .HasColumnName("salary_structure_id");
+
+                    b.Property<decimal>("Value")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
+                        .HasColumnName("value");
+
+                    b.HasKey("Id", "TenantId")
+                        .HasName("ak_salary_structure_lines_id_tenant_id");
+
+                    b.HasIndex("PayrollComponentId", "TenantId")
+                        .HasDatabaseName("ix_salary_structure_lines_payroll_component_id_tenant_id");
+
+                    b.HasIndex("SalaryStructureId", "TenantId")
+                        .HasDatabaseName("ix_salary_structure_lines_salary_structure_id_tenant_id");
+
+                    b.HasIndex("SalaryStructureId", "PayrollComponentId", "TenantId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_salary_structure_lines_salary_structure_id_payroll_component_id")
+                        .HasFilter("deleted_on IS NULL");
+
+                    b.ToTable("SalaryStructureLines");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
             modelBuilder.Entity("Retailer.Domain.Public.Document", b =>
                 {
                     b.Property<int>("Id")
@@ -6068,15 +7404,31 @@ namespace Migrators.MSSQL.Migrations.Application
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_hr_info_chart_of_account_expense_account_id_tenant_id");
 
+                    b.HasOne("Retailer.Domain.Legacy.ChartOfAccount", "LoanReceivableAccountRef")
+                        .WithMany()
+                        .HasForeignKey("LoanReceivableAccountId", "TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_hr_info_chart_of_account_loan_receivable_account_id_tenant_id");
+
                     b.HasOne("Retailer.Domain.Legacy.ChartOfAccount", "PayableAccountRef")
                         .WithMany()
                         .HasForeignKey("PayableAccountId", "TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_hr_info_chart_of_account_payable_account_id_tenant_id");
 
+                    b.HasOne("Retailer.Domain.Payroll.SalaryStructure", "SalaryStructure")
+                        .WithMany()
+                        .HasForeignKey("SalaryStructureId", "TenantId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_hr_info_salary_structures_salary_structure_id_tenant_id");
+
                     b.Navigation("ExpenseAccountRef");
 
+                    b.Navigation("LoanReceivableAccountRef");
+
                     b.Navigation("PayableAccountRef");
+
+                    b.Navigation("SalaryStructure");
                 });
 
             modelBuilder.Entity("Retailer.Domain.Legacy.ImeiCostAddition", b =>
@@ -6819,6 +8171,207 @@ namespace Migrators.MSSQL.Migrations.Application
                     b.Navigation("ParentUnit");
                 });
 
+            modelBuilder.Entity("Retailer.Domain.Payroll.EmployeeLoan", b =>
+                {
+                    b.HasOne("Retailer.Domain.Legacy.ChartOfAccount", "DisbursementAccount")
+                        .WithMany()
+                        .HasForeignKey("DisbursementAccountId", "TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_employee_loans_chart_of_account_disbursement_account_id_tenant_id");
+
+                    b.HasOne("Retailer.Domain.Legacy.HrInfo", "HrInfo")
+                        .WithMany()
+                        .HasForeignKey("HrInfoId", "TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_employee_loans_hr_info_hr_info_id_tenant_id");
+
+                    b.HasOne("Retailer.Domain.Legacy.ChartOfAccount", "ReceivableAccount")
+                        .WithMany()
+                        .HasForeignKey("ReceivableAccountId", "TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_employee_loans_chart_of_account_receivable_account_id_tenant_id");
+
+                    b.Navigation("DisbursementAccount");
+
+                    b.Navigation("HrInfo");
+
+                    b.Navigation("ReceivableAccount");
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Payroll.EmployeeLoanSchedule", b =>
+                {
+                    b.HasOne("Retailer.Domain.Payroll.EmployeeLoan", "EmployeeLoan")
+                        .WithMany("Schedules")
+                        .HasForeignKey("EmployeeLoanId", "TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_employee_loan_schedules_employee_loans_employee_loan_id_tenant_id");
+
+                    b.HasOne("Retailer.Domain.Payroll.PayrollRunItem", "PayrollRunItem")
+                        .WithMany()
+                        .HasForeignKey("PayrollRunItemId", "TenantId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_employee_loan_schedules_payroll_run_items_payroll_run_item_id_tenant_id");
+
+                    b.Navigation("EmployeeLoan");
+
+                    b.Navigation("PayrollRunItem");
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Payroll.EmployeeSalaryComponent", b =>
+                {
+                    b.HasOne("Retailer.Domain.Legacy.HrInfo", "HrInfo")
+                        .WithMany()
+                        .HasForeignKey("HrInfoId", "TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_employee_salary_components_hr_info_hr_info_id_tenant_id");
+
+                    b.HasOne("Retailer.Domain.Payroll.PayrollComponent", "PayrollComponent")
+                        .WithMany()
+                        .HasForeignKey("PayrollComponentId", "TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_employee_salary_components_payroll_components_payroll_component_id_tenant_id");
+
+                    b.Navigation("HrInfo");
+
+                    b.Navigation("PayrollComponent");
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Payroll.PayrollComponent", b =>
+                {
+                    b.HasOne("Retailer.Domain.Legacy.ChartOfAccount", "ExpenseAccount")
+                        .WithMany()
+                        .HasForeignKey("ExpenseAccountId", "TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_payroll_components_chart_of_account_expense_account_id_tenant_id");
+
+                    b.HasOne("Retailer.Domain.Legacy.ChartOfAccount", "LiabilityAccount")
+                        .WithMany()
+                        .HasForeignKey("LiabilityAccountId", "TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_payroll_components_chart_of_account_liability_account_id_tenant_id");
+
+                    b.Navigation("ExpenseAccount");
+
+                    b.Navigation("LiabilityAccount");
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Payroll.PayrollDisbursement", b =>
+                {
+                    b.HasOne("Retailer.Domain.Payroll.PayrollRun", "PayrollRun")
+                        .WithMany("Disbursements")
+                        .HasForeignKey("PayrollRunId", "TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_payroll_disbursements_payroll_runs_payroll_run_id_tenant_id");
+
+                    b.HasOne("Retailer.Domain.Legacy.ChartOfAccount", "SourceAccount")
+                        .WithMany()
+                        .HasForeignKey("SourceAccountId", "TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_payroll_disbursements_chart_of_account_source_account_id_tenant_id");
+
+                    b.Navigation("PayrollRun");
+
+                    b.Navigation("SourceAccount");
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Payroll.PayrollDisbursementLine", b =>
+                {
+                    b.HasOne("Retailer.Domain.Legacy.HrInfo", "HrInfo")
+                        .WithMany()
+                        .HasForeignKey("HrInfoId", "TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_payroll_disbursement_lines_hr_info_hr_info_id_tenant_id");
+
+                    b.HasOne("Retailer.Domain.Payroll.PayrollDisbursement", "PayrollDisbursement")
+                        .WithMany("Lines")
+                        .HasForeignKey("PayrollDisbursementId", "TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_payroll_disbursement_lines_payroll_disbursements_payroll_disbursement_id_tenant_id");
+
+                    b.HasOne("Retailer.Domain.Payroll.PayrollRunItem", "PayrollRunItem")
+                        .WithMany()
+                        .HasForeignKey("PayrollRunItemId", "TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_payroll_disbursement_lines_payroll_run_items_payroll_run_item_id_tenant_id");
+
+                    b.Navigation("HrInfo");
+
+                    b.Navigation("PayrollDisbursement");
+
+                    b.Navigation("PayrollRunItem");
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Payroll.PayrollRunItem", b =>
+                {
+                    b.HasOne("Retailer.Domain.Legacy.HrInfo", "HrInfo")
+                        .WithMany()
+                        .HasForeignKey("HrInfoId", "TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_payroll_run_items_hr_info_hr_info_id_tenant_id");
+
+                    b.HasOne("Retailer.Domain.Payroll.PayrollRun", "PayrollRun")
+                        .WithMany("Items")
+                        .HasForeignKey("PayrollRunId", "TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_payroll_run_items_payroll_runs_payroll_run_id_tenant_id");
+
+                    b.Navigation("HrInfo");
+
+                    b.Navigation("PayrollRun");
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Payroll.PayrollRunItemComponent", b =>
+                {
+                    b.HasOne("Retailer.Domain.Payroll.PayrollComponent", "PayrollComponent")
+                        .WithMany()
+                        .HasForeignKey("PayrollComponentId", "TenantId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_payroll_run_item_components_payroll_components_payroll_component_id_tenant_id");
+
+                    b.HasOne("Retailer.Domain.Payroll.PayrollRunItem", "PayrollRunItem")
+                        .WithMany("Components")
+                        .HasForeignKey("PayrollRunItemId", "TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_payroll_run_item_components_payroll_run_items_payroll_run_item_id_tenant_id");
+
+                    b.Navigation("PayrollComponent");
+
+                    b.Navigation("PayrollRunItem");
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Payroll.SalaryStructureLine", b =>
+                {
+                    b.HasOne("Retailer.Domain.Payroll.PayrollComponent", "PayrollComponent")
+                        .WithMany()
+                        .HasForeignKey("PayrollComponentId", "TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_salary_structure_lines_payroll_components_payroll_component_id_tenant_id");
+
+                    b.HasOne("Retailer.Domain.Payroll.SalaryStructure", "SalaryStructure")
+                        .WithMany("Lines")
+                        .HasForeignKey("SalaryStructureId", "TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_salary_structure_lines_salary_structures_salary_structure_id_tenant_id");
+
+                    b.Navigation("PayrollComponent");
+
+                    b.Navigation("SalaryStructure");
+                });
+
             modelBuilder.Entity("Retailer.Domain.Identity.ApplicationUser", b =>
                 {
                     b.Navigation("UserSessions");
@@ -6935,6 +8488,33 @@ namespace Migrators.MSSQL.Migrations.Application
                     b.Navigation("Sales");
 
                     b.Navigation("SecondaryUnitItems");
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Payroll.EmployeeLoan", b =>
+                {
+                    b.Navigation("Schedules");
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Payroll.PayrollDisbursement", b =>
+                {
+                    b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Payroll.PayrollRun", b =>
+                {
+                    b.Navigation("Disbursements");
+
+                    b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Payroll.PayrollRunItem", b =>
+                {
+                    b.Navigation("Components");
+                });
+
+            modelBuilder.Entity("Retailer.Domain.Payroll.SalaryStructure", b =>
+                {
+                    b.Navigation("Lines");
                 });
 #pragma warning restore 612, 618
         }

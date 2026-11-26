@@ -100,6 +100,24 @@ public class HrInfoConfig : IEntityTypeConfiguration<HrInfo>
             .WithMany()
             .HasForeignKey(x => x.PayableAccountId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Property(x => x.EmploymentStatus).HasMaxLength(30).HasDefaultValue("Active");
+        builder.Property(x => x.PaymentMethod).HasMaxLength(30).HasDefaultValue("Cash");
+        builder.Property(x => x.Department).HasMaxLength(150);
+        builder.Property(x => x.BankName).HasMaxLength(150);
+        builder.Property(x => x.BankAccountTitle).HasMaxLength(200);
+        builder.Property(x => x.BankAccountNo).HasMaxLength(80);
+        builder.Property(x => x.Iban).HasMaxLength(80);
+
+        builder.HasOne(x => x.SalaryStructure)
+            .WithMany()
+            .HasForeignKey(x => x.SalaryStructureId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasOne(x => x.LoanReceivableAccountRef)
+            .WithMany()
+            .HasForeignKey(x => x.LoanReceivableAccountId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }
 

@@ -71,6 +71,9 @@ public class AccountSeeder : ICustomSeeder
             new() { Id = "001002003001001", Title = "INVENTORY", ParentId = "001002003001", AccType = "Detail", AccLevel = 5 },
             new() { Id = "001002004", Title = "OFFICE SUPPLIES", ParentId = "001002", AccType = "Parent", AccLevel = 3 },
             new() { Id = "001002005", Title = "PREPAID INSURANCE", ParentId = "001002", AccType = "Parent", AccLevel = 3 },
+            new() { Id = "001002006", Title = "STAFF LOANS & ADVANCES", ParentId = "001002", AccType = "Parent", AccLevel = 3 },
+            new() { Id = "001002006001", Title = "Employee Loans & Advances", ParentId = "001002006", AccType = "Parent", AccLevel = 4 },
+            new() { Id = "001002006001001", Title = "Staff Loans & Advances Receivable", ParentId = "001002006001", AccType = "Detail", AccLevel = 5 },
             new() { Id = "001003", Title = "Other Assets", ParentId = "001", AccType = "Parent", AccLevel = 2 },
 
             // --- LIABILITIES ---
@@ -80,6 +83,9 @@ public class AccountSeeder : ICustomSeeder
             new() { Id = "002001002", Title = "BILL PAYABLE", ParentId = "002001", AccType = "Parent", AccLevel = 3 },
             new() { Id = "002001003", Title = "SINGER PAYABLE", ParentId = "002001", AccType = "Parent", AccLevel = 3 },
             new() { Id = "002001004", Title = "BANK OVER DRAFT (Loan)", ParentId = "002001", AccType = "Parent", AccLevel = 3 },
+            new() { Id = "002001005", Title = "PAYROLL LIABILITIES", ParentId = "002001", AccType = "Parent", AccLevel = 3 },
+            new() { Id = "002001005001", Title = "Salaries & Wages Payable", ParentId = "002001005", AccType = "Parent", AccLevel = 4 },
+            new() { Id = "002001005001001", Title = "Salaries Payable", ParentId = "002001005001", AccType = "Detail", AccLevel = 5 },
             new() { Id = "002002", Title = "LONG TERM LIABILITIES", ParentId = "002", AccType = "Parent", AccLevel = 2 },
             new() { Id = "002002001", Title = "BANK LOAN PAYABLE", ParentId = "002002", AccType = "Parent", AccLevel = 3 },
             new() { Id = "002002002", Title = "DEPENTURE PAYABLE", ParentId = "002002", AccType = "Parent", AccLevel = 3 },
@@ -113,6 +119,7 @@ public class AccountSeeder : ICustomSeeder
             new() { Id = "004002001004", Title = "Refreshments & Staff Welfare", ParentId = "004002001", AccType = "Parent", AccLevel = 4 },
             new() { Id = "004002001005", Title = "Printing, Stationery & Supplies", ParentId = "004002001", AccType = "Parent", AccLevel = 4 },
             new() { Id = "004002001006", Title = "Cleaning & Janitorial", ParentId = "004002001", AccType = "Parent", AccLevel = 4 },
+            new() { Id = "004002001007", Title = "Payroll & Staff Salaries", ParentId = "004002001", AccType = "Parent", AccLevel = 4 },
 
             // Level 4 Subcategories under Selling & Distribution
             new() { Id = "004002002001", Title = "Delivery & Fuel Charges", ParentId = "004002002", AccType = "Parent", AccLevel = 4 },
@@ -134,6 +141,7 @@ public class AccountSeeder : ICustomSeeder
             new() { Id = "004002002001001", Title = "Fuel Expenses", ParentId = "004002002001", AccType = "Detail", AccLevel = 5 },
             new() { Id = "004002002002001", Title = "Promotion & Banners", ParentId = "004002002002", AccType = "Detail", AccLevel = 5 },
             new() { Id = "004002003001001", Title = "Bank Service Charges", ParentId = "004002003001", AccType = "Detail", AccLevel = 5 },
+            new() { Id = "004002001007001", Title = "Salaries & Wages Expense", ParentId = "004002001007", AccType = "Detail", AccLevel = 5 },
 
             // --- CAPITAL ---
             new() { Id = "005001", Title = "CAPITAL", ParentId = "005", AccType = "Parent", AccLevel = 2 },

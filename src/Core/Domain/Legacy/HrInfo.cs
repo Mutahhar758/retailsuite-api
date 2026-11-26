@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations.Schema;
+using Retailer.Domain.Payroll;
 
 namespace Retailer.Domain.Legacy;
 
@@ -26,4 +27,19 @@ public class HrInfo : AuditableEntity<string>, IAggregateRoot
     public ChartOfAccount? ExpenseAccountRef { get; set; }
     public ChartOfAccount? PayableAccountRef { get; set; }
     public string? MediaId { get; set; }
+
+    // Enterprise Payroll additive fields
+    public string? Department { get; set; }
+    public string EmploymentStatus { get; set; } = "Active";
+    public DateOnly? TerminationDate { get; set; }
+    public string PaymentMethod { get; set; } = "Cash";
+    public string? BankName { get; set; }
+    public string? BankAccountTitle { get; set; }
+    public string? BankAccountNo { get; set; }
+    public string? Iban { get; set; }
+    public int? SalaryStructureId { get; set; }
+    public string? LoanReceivableAccountId { get; set; }
+
+    public SalaryStructure? SalaryStructure { get; set; }
+    public ChartOfAccount? LoanReceivableAccountRef { get; set; }
 }
