@@ -258,7 +258,7 @@ internal class ChartOfAccountService : IChartOfAccountService
             where coa.AccLevel == 5 && coa.Id.StartsWith(prefix)
             join vd in _supplierDetailRepository.GetAll().AsNoTracking() on coa.Id equals vd.Id into vdGroup
             from vd in vdGroup.DefaultIfEmpty()
-            orderby (vd == null || vd.SortIndex == null ? 1 : 0), vd != null ? vd.SortIndex : null, coa.Title, coa.Id
+            orderby coa.ParentId, (vd == null || vd.SortIndex == null ? 1 : 0), vd != null ? vd.SortIndex : null, coa.Title, coa.Id
             select new ChartOfAccountHeadResponse
             {
                 Account = coa.Id,
@@ -290,13 +290,18 @@ internal class ChartOfAccountService : IChartOfAccountService
             .Distinct()
             .ToList();
 
-        var accounts = (await _repository.GetAll()
+        var rawAccounts = (await _repository.GetAll()
             .AsNoTracking()
             .Where(x => x.AccLevel == 5)
             .OrderBy(x => x.Id)
-            .Select(x => new ChartOfAccountHeadResponse { Account = x.Id, Title = x.Title })
+            .Select(x => new { x.Id, x.Title, x.ParentId })
             .ToListAsync(cancellationToken))
-            .Where(x => distinctPrefixes.Any(p => x.Account.StartsWith(p, StringComparison.Ordinal)))
+            .Where(x => distinctPrefixes.Any(p => x.Id.StartsWith(p, StringComparison.Ordinal)))
+            .ToList();
+
+        var parentIdMap = rawAccounts.ToDictionary(x => x.Id, x => x.ParentId ?? string.Empty);
+        var accounts = rawAccounts
+            .Select(x => new ChartOfAccountHeadResponse { Account = x.Id, Title = x.Title })
             .ToList();
 
         foreach (var acc in accounts)
@@ -354,7 +359,9 @@ internal class ChartOfAccountService : IChartOfAccountService
         }
 
         return accounts
-            .OrderBy(a => a.SortIndex.HasValue ? 0 : 1)
+            .OrderBy(a => string.Equals(a.AccountType, "Customer", StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+            .ThenBy(a => parentIdMap.TryGetValue(a.Account, out var pid) ? pid : string.Empty, StringComparer.Ordinal)
+            .ThenBy(a => a.SortIndex.HasValue ? 0 : 1)
             .ThenBy(a => a.SortIndex)
             .ThenBy(a => a.Title, StringComparer.OrdinalIgnoreCase)
             .ThenBy(a => a.Account, StringComparer.Ordinal)
