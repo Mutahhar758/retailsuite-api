@@ -17,6 +17,7 @@ public class VendorResponse
     public bool EmailAlert { get; set; }
     public bool Active { get; set; }
     public bool ShowInSales { get; set; }
+    public decimal? SortIndex { get; set; }
     public string? MediaId { get; set; }
     public string? MediaUrl { get; set; }
     public string? CreatedBy { get; set; }

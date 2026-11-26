@@ -16,6 +16,7 @@ public class CustomerResponse
     public bool SmsAlert { get; set; }
     public bool EmailAlert { get; set; }
     public bool Active { get; set; }
+    public decimal? SortIndex { get; set; }
     public string? MediaId { get; set; }
     public string? MediaUrl { get; set; }
     public string? CustomerCategoryId { get; set; }

@@ -37,4 +37,5 @@ public class InventoryItemResponse
     public string? Storage { get; set; }
     public string? Ram { get; set; }
     public string? Color { get; set; }
+    public decimal? SortIndex { get; set; }
 }

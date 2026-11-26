@@ -22,5 +22,6 @@ public class VendorBulkItemDto
     public bool EmailAlert { get; set; }
     public bool Active { get; set; } = true;
     public bool ShowInSales { get; set; }
+    public decimal? SortIndex { get; set; }
     public decimal? OpeningBalance { get; set; }
 }

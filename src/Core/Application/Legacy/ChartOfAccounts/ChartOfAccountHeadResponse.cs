@@ -10,4 +10,5 @@ public class ChartOfAccountHeadResponse
     public string? ParentCustomerAccountId { get; set; }
     public string? ParentCustomerTitle { get; set; }
     public bool IsSubAccount => !string.IsNullOrEmpty(ParentCustomerAccountId);
+    public decimal? SortIndex { get; set; }
 }
