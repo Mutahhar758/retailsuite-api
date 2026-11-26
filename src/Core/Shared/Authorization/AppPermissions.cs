@@ -79,6 +79,7 @@ public static class AppResource
     public const string EmployeeLoans = nameof(EmployeeLoans);
     public const string PayrollRuns = nameof(PayrollRuns);
     public const string PayrollDisbursements = nameof(PayrollDisbursements);
+    public const string AccountingPeriods = nameof(AccountingPeriods);
 }
 
 public static class AppPermissions
@@ -267,6 +268,11 @@ public static class AppPermissions
         // OpeningBalances
         new("View OpeningBalances", AppAction.View, AppResource.OpeningBalances),
         new("Update OpeningBalances", AppAction.Update, AppResource.OpeningBalances),
+
+        // AccountingPeriods
+        new("View AccountingPeriods", AppAction.View, AppResource.AccountingPeriods),
+        new("Create AccountingPeriods", AppAction.Create, AppResource.AccountingPeriods),
+        new("Approve AccountingPeriods", AppAction.Approve, AppResource.AccountingPeriods),
 
         // PaymentVouchers
         new("View PaymentVouchers", AppAction.View, AppResource.PaymentVouchers),
@@ -513,6 +519,7 @@ public static class AppPermissions
         p.Resource == AppResource.BankAccounts ||
         p.Resource == AppResource.BankReconciliations ||
         p.Resource == AppResource.OpeningBalances ||
+        (p.Resource == AppResource.AccountingPeriods && p.Action != AppAction.Approve) ||
         p.Resource == AppResource.AccountStatement ||
         p.Resource == AppResource.AccountStatementWithDue ||
         p.Resource == AppResource.AccountBalance ||

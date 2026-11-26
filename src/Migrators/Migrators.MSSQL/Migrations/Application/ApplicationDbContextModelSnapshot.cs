@@ -447,6 +447,151 @@ namespace Migrators.MSSQL.Migrations.Application
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
 
+            modelBuilder.Entity("Retailer.Domain.Legacy.AccountingPeriodClose", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("TenantId")
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<bool>("ClosedDrawings")
+                        .HasColumnType("bit")
+                        .HasColumnName("closed_drawings");
+
+                    b.Property<DateOnly>("ClosingDate")
+                        .HasColumnType("date")
+                        .HasColumnName("closing_date");
+
+                    b.Property<decimal>("ClosingStockValue")
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("closing_stock_value");
+
+                    b.Property<string>("ClosingVoucherNo")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("closing_voucher_no");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_on");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("deleted_on");
+
+                    b.Property<bool>("IsBalanced")
+                        .HasColumnType("bit")
+                        .HasColumnName("is_balanced");
+
+                    b.Property<string>("LastModifiedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("last_modified_by");
+
+                    b.Property<DateTime?>("LastModifiedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("last_modified_on");
+
+                    b.Property<decimal>("NetProfitLoss")
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("net_profit_loss");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)")
+                        .HasColumnName("notes");
+
+                    b.Property<decimal>("OpeningStockValue")
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("opening_stock_value");
+
+                    b.Property<string>("PeriodName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)")
+                        .HasColumnName("period_name");
+
+                    b.Property<DateOnly>("PeriodStartDate")
+                        .HasColumnType("date")
+                        .HasColumnName("period_start_date");
+
+                    b.Property<string>("ReopenReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)")
+                        .HasColumnName("reopen_reason");
+
+                    b.Property<string>("ReopenedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("reopened_by");
+
+                    b.Property<DateTime?>("ReopenedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("reopened_on");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("TargetEquityAccountId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("target_equity_account_id");
+
+                    b.Property<decimal>("TotalAssets")
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("total_assets");
+
+                    b.Property<decimal>("TotalCogs")
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("total_cogs");
+
+                    b.Property<decimal>("TotalEquity")
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("total_equity");
+
+                    b.Property<decimal>("TotalExpenses")
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("total_expenses");
+
+                    b.Property<decimal>("TotalIncome")
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("total_income");
+
+                    b.Property<decimal>("TotalLiabilities")
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("total_liabilities");
+
+                    b.HasKey("Id", "TenantId")
+                        .HasName("ak_accounting_period_closes_id_tenant_id");
+
+                    b.HasIndex("Status", "ClosingDate")
+                        .HasDatabaseName("ix_accounting_period_closes_status_closing_date");
+
+                    b.ToTable("AccountingPeriodCloses");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
             modelBuilder.Entity("Retailer.Domain.Legacy.BankDetail", b =>
                 {
                     b.Property<string>("Id")

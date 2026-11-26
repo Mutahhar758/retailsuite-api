@@ -1,5 +1,7 @@
 using System.Data;
+using Retailer.Application.Common.Exceptions;
 using Retailer.Application.Common.Interfaces;
+using Retailer.Domain.Payroll;
 using Retailer.Domain.Common.Contracts;
 using Retailer.Domain.Identity;
 using Retailer.Domain.Legacy;
@@ -155,6 +157,7 @@ public abstract class BaseDbContext : IdentityDbContext<ApplicationUser, Applica
         }
 
         this.EnforceMultiTenant();
+        await EnforceAccountingPeriodLockAsync(cancellationToken);
         var userId = _currentUser.GetUserId();
         var username = string.IsNullOrWhiteSpace(_currentUser.Username) ? userId : _currentUser.Username;
         var auditEntries = HandleAuditingBeforeSaveChanges(userId, username);
@@ -164,6 +167,146 @@ public abstract class BaseDbContext : IdentityDbContext<ApplicationUser, Applica
         return result;
     }
 
+
+    private static readonly HashSet<string> AllowedClosedItemTxProps = new(StringComparer.Ordinal)
+    {
+        nameof(ItemTransaction.RemainingQty),
+        nameof(ItemTransaction.CostPrice),
+        nameof(ItemTransaction.CostAmount),
+        nameof(ItemTransaction.RunningQtyBalance),
+        nameof(IAuditableEntity.LastModifiedOn),
+        nameof(IAuditableEntity.LastModifiedBy)
+    };
+
+    private static readonly HashSet<string> AllowedClosedGlReconcileProps = new(StringComparer.Ordinal)
+    {
+        nameof(GlEntry.Clear),
+        nameof(GlEntry.ClearingDate),
+        nameof(GlEntry.CheckStatus),
+        nameof(IAuditableEntity.LastModifiedOn),
+        nameof(IAuditableEntity.LastModifiedBy)
+    };
+
+    private async Task EnforceAccountingPeriodLockAsync(CancellationToken cancellationToken)
+    {
+        if (!ApplicationState.IsStarted || PeriodClosingScope.IsActive)
+        {
+            return;
+        }
+
+        var guardedEntries = ChangeTracker.Entries()
+            .Where(e => e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted)
+            .Where(e => TryGetGuardedDatePropertyName(e.Entity) != null)
+            .ToList();
+
+        if (guardedEntries.Count == 0)
+        {
+            return;
+        }
+
+        var tenantId = TenantInfo?.Id ?? "__default__";
+        if (!PeriodLockCache.TryGet(tenantId, out var lockDate))
+        {
+            lockDate = await Set<AccountingPeriodClose>()
+                .AsNoTracking()
+                .Where(x => x.Status == "Closed")
+                .MaxAsync(x => (DateOnly?)x.ClosingDate, cancellationToken);
+
+            PeriodLockCache.Set(tenantId, lockDate);
+        }
+
+        if (!lockDate.HasValue)
+        {
+            return;
+        }
+
+        var effectiveLock = lockDate.Value;
+        var lockMsg = $"Accounting period is closed through {effectiveLock:dd-MMM-yyyy}. Transactions on or before this date cannot be created, modified, or deleted.";
+
+        foreach (var entry in guardedEntries)
+        {
+            var datePropName = TryGetGuardedDatePropertyName(entry.Entity)!;
+
+            if (entry.Entity is GlEntry glEntry && string.Equals(glEntry.VType, "Op", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new BadRequestException($"Opening balances cannot be modified after an accounting period has been closed (locked through {effectiveLock:dd-MMM-yyyy}).");
+            }
+
+            bool isSoftDelete = entry.State == EntityState.Modified
+                && entry.Entity is ISoftDelete
+                && entry.Property(nameof(ISoftDelete.DeletedOn)).OriginalValue == null
+                && entry.Property(nameof(ISoftDelete.DeletedOn)).CurrentValue != null;
+
+            if (entry.State == EntityState.Modified && !isSoftDelete)
+            {
+                var changedProps = entry.Properties
+                    .Where(p => p.IsModified && !Equals(p.OriginalValue, p.CurrentValue))
+                    .Select(p => p.Metadata.Name)
+                    .ToList();
+
+                if (changedProps.Count == 0)
+                {
+                    continue;
+                }
+
+                // Allow FIFO consumption & running balance cache updates on historical ItemTransaction batches
+                if (entry.Entity is ItemTransaction && changedProps.All(p => AllowedClosedItemTxProps.Contains(p)))
+                {
+                    continue;
+                }
+
+                // Allow Bank Reconciliation clearing status updates on pre-close cheques without modifying amounts/dates
+                if (entry.Entity is GlEntry && changedProps.All(p => AllowedClosedGlReconcileProps.Contains(p)))
+                {
+                    continue;
+                }
+            }
+
+            var dateProp = entry.Property(datePropName);
+            var currentDate = dateProp.CurrentValue is DateOnly cd ? cd : default;
+            var originalDate = dateProp.OriginalValue is DateOnly od ? od : currentDate;
+
+            if (entry.State == EntityState.Added)
+            {
+                if (currentDate <= effectiveLock)
+                {
+                    throw new BadRequestException(lockMsg);
+                }
+            }
+            else if (entry.State == EntityState.Deleted || isSoftDelete)
+            {
+                if (originalDate <= effectiveLock)
+                {
+                    throw new BadRequestException(lockMsg);
+                }
+            }
+            else if (entry.State == EntityState.Modified)
+            {
+                if (originalDate <= effectiveLock || currentDate <= effectiveLock)
+                {
+                    throw new BadRequestException(lockMsg);
+                }
+            }
+        }
+    }
+
+    private static string? TryGetGuardedDatePropertyName(object entity) => entity switch
+    {
+        GlEntry => nameof(GlEntry.VDate),
+        ItemTransaction => nameof(ItemTransaction.VDate),
+        SaleMaster => nameof(SaleMaster.VDate),
+        SaleRetMaster => nameof(SaleRetMaster.VDate),
+        SaleSupplyMaster => nameof(SaleSupplyMaster.VDate),
+        PurchaseMaster => nameof(PurchaseMaster.VDate),
+        PurchaseRetMaster => nameof(PurchaseRetMaster.VDate),
+        StockAdjMaster => nameof(StockAdjMaster.VDate),
+        ProductionMaster => nameof(ProductionMaster.VDate),
+        Payroll => nameof(Payroll.VDate),
+        PayrollRun => nameof(PayrollRun.PayDate),
+        PayrollDisbursement => nameof(PayrollDisbursement.PaymentDate),
+        ImeiCostAddition => nameof(ImeiCostAddition.Date),
+        _ => null
+    };
 
     private List<AuditTrail> HandleAuditingBeforeSaveChanges(string userId, string username)
     {

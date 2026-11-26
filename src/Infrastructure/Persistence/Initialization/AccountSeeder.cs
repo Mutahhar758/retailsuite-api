@@ -148,6 +148,8 @@ public class AccountSeeder : ICustomSeeder
             new() { Id = "005001001", Title = "CAPITAL", ParentId = "005001", AccType = "Parent", AccLevel = 3 },
             new() { Id = "005001001001", Title = "EQUITY", ParentId = "005001001", AccType = "Parent", AccLevel = 4 },
             new() { Id = "005001001001001", Title = "Owner's Equity", ParentId = "005001001001", AccType = "Detail", AccLevel = 5 },
+            new() { Id = "005001001001002", Title = "Retained Earnings", ParentId = "005001001001", AccType = "Detail", AccLevel = 5 },
+            new() { Id = "005001001001003", Title = "Income Summary", ParentId = "005001001001", AccType = "Detail", AccLevel = 5 },
             new() { Id = "005002", Title = "DRAWING", ParentId = "005", AccType = "Parent", AccLevel = 2 },
         };
     }
@@ -220,6 +222,8 @@ public class AccountSeeder : ICustomSeeder
                 new() { Title = "Cash", A = null, AccountId = "001002002001001", MapAccountId = "001002002001" },
                 new() { Title = "INVENTORY", A = null, AccountId = "001002003001001", MapAccountId = null },
                 new() { Title = "Capital", A = null, AccountId = "005001001001001", MapAccountId = null },
+                new() { Title = ChartOfAccountConstants.DefaultAccountTitles.RetainedEarnings, A = null, AccountId = ChartOfAccountConstants.WellKnownAccountIds.RetainedEarnings, MapAccountId = null },
+                new() { Title = ChartOfAccountConstants.DefaultAccountTitles.IncomeSummary, A = null, AccountId = ChartOfAccountConstants.WellKnownAccountIds.IncomeSummary, MapAccountId = null },
                 new() { Title = "Customers", A = null, AccountId = "001002001001", MapAccountId = null },
                 new() { Title = "Suppliers", A = null, AccountId = "002001001001", MapAccountId = null },
                 new() { Title = "SR", A = null, AccountId = "003001001001001", MapAccountId = null },
@@ -250,6 +254,36 @@ public class AccountSeeder : ICustomSeeder
             {
                 existingBank.MapAccountId = ChartOfAccountConstants.Prefixes.Banks;
                 await _defaultAccRepository.UpdateAsync(existingBank);
+                updated = true;
+            }
+
+            var existingRetainedEarnings = await _defaultAccRepository.GetAll().FirstOrDefaultAsync(
+                x => x.Title == ChartOfAccountConstants.DefaultAccountTitles.RetainedEarnings,
+                cancellationToken);
+            if (existingRetainedEarnings is null)
+            {
+                await _defaultAccRepository.AddAsync(new DefaultAccount
+                {
+                    Title = ChartOfAccountConstants.DefaultAccountTitles.RetainedEarnings,
+                    A = null,
+                    AccountId = ChartOfAccountConstants.WellKnownAccountIds.RetainedEarnings,
+                    MapAccountId = null
+                }, doSaveChanges: false);
+                updated = true;
+            }
+
+            var existingIncomeSummary = await _defaultAccRepository.GetAll().FirstOrDefaultAsync(
+                x => x.Title == ChartOfAccountConstants.DefaultAccountTitles.IncomeSummary,
+                cancellationToken);
+            if (existingIncomeSummary is null)
+            {
+                await _defaultAccRepository.AddAsync(new DefaultAccount
+                {
+                    Title = ChartOfAccountConstants.DefaultAccountTitles.IncomeSummary,
+                    A = null,
+                    AccountId = ChartOfAccountConstants.WellKnownAccountIds.IncomeSummary,
+                    MapAccountId = null
+                }, doSaveChanges: false);
                 updated = true;
             }
 

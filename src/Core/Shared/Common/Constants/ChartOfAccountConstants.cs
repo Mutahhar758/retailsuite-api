@@ -37,6 +37,15 @@ public static class ChartOfAccountConstants
         public const string Cash = "001002002001";
         public const string Banks = "001002002002";
         public const string VendorBillLegacy = "02";
+        public const string Drawings = "005002";
+    }
+
+    public static class WellKnownAccountIds
+    {
+        public const string Inventory = "001002003001001";
+        public const string OwnerEquity = "005001001001001";
+        public const string RetainedEarnings = "005001001001002";
+        public const string IncomeSummary = "005001001001003";
     }
 
     public static class DefaultAccountTitles
@@ -50,6 +59,8 @@ public static class ChartOfAccountConstants
         public const string Purchases = "PU";
         public const string Inventory = "INVENTORY";
         public const string Capital = "Capital";
+        public const string RetainedEarnings = "RetainedEarnings";
+        public const string IncomeSummary = "IncomeSummary";
         public const string SalesReturn = "SR";
         public const string PurchaseReturn = "PR";
         public const string SalesToRec = "SalesToRec";

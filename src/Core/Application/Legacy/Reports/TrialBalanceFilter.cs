@@ -4,4 +4,5 @@ public class TrialBalanceFilter
 {
     public DateOnly FromDate { get; set; }
     public DateOnly ToDate { get; set; }
+    public bool ExcludeClosingEntries { get; set; }
 }

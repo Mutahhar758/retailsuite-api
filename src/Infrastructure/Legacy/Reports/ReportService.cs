@@ -569,7 +569,7 @@ internal partial class ReportService : IReportService
 
         var accountIds = detailAccounts.Select(x => x.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        var gl = await _glRepository.GetAll()
+        var glQuery = _glRepository.GetAll()
             .AsNoTracking()
             .Where(x =>
                 (accountIds.Contains(x.DrAccountId!) || accountIds.Contains(x.CrAccountId!))
@@ -577,7 +577,14 @@ internal partial class ReportService : IReportService
                     x.VType == "Op"
                     || (x.VDate >= filter.FromDate && x.VDate <= filter.ToDate)
                     || x.VDate <= filter.ToDate
-                    || x.VDate < filter.FromDate))
+                    || x.VDate < filter.FromDate));
+
+        if (filter.ExcludeClosingEntries)
+        {
+            glQuery = glQuery.Where(x => x.VType != "CL");
+        }
+
+        var gl = await glQuery
             .Select(x => new
             {
                 x.VDate,
@@ -1316,6 +1323,33 @@ internal partial class ReportService : IReportService
             .ThenBy(x => x.Lvl4)
             .ToList();
 
+        // Compute unclosed current-period Net Profit / (Loss) from temporary (Income 003 + Expenses 004) accounts
+        // On a closed date, CL entries have already zeroed 003 & 004 into Equity, so this sum is 0.00.
+        // On an open (mid-period) date, this ensures the Balance Sheet satisfies Assets == Liabilities + Equity.
+        var unclosedNetIncomeDrCr = detailAccounts
+            .Where(a =>
+            {
+                var rootId = GetParent(GetParent(GetParent(GetParent(a.Id))));
+                return rootId == ChartOfAccountConstants.RootIds.Income
+                    || rootId == ChartOfAccountConstants.RootIds.Expenses;
+            })
+            .Sum(a => curBal.ContainsKey(a.Id) ? curBal[a.Id] : 0m);
+
+        if (Math.Abs(unclosedNetIncomeDrCr) >= 0.01m)
+        {
+            grouped.Add(new BalanceSheetLineResponse
+            {
+                Lvl1 = GetTitle(ChartOfAccountConstants.RootIds.Capital),
+                Lvl2 = "CAPITAL",
+                Lvl3 = "UNCLOSED EARNINGS",
+                Lvl4 = "Current Period Net Profit / (Loss)",
+                Title = "Current Period Net Profit / (Loss) (Unclosed)",
+                PriBal = 0m,
+                DrCr = unclosedNetIncomeDrCr,
+                CurBal = unclosedNetIncomeDrCr
+            });
+        }
+
         return grouped;
     }
 
@@ -1392,7 +1426,7 @@ internal partial class ReportService : IReportService
 
         var glRows = await _glRepository.GetAll()
             .AsNoTracking()
-            .Where(x => x.VDate >= filter.FromDate && x.VDate <= filter.ToDate)
+            .Where(x => x.VDate >= filter.FromDate && x.VDate <= filter.ToDate && x.VType != "CL")
             .Select(x => new { x.Amount, x.DrAccountId, x.CrAccountId })
             .ToListAsync(cancellationToken);
 
