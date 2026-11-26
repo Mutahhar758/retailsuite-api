@@ -19,5 +19,6 @@ public class SupplierDetail : AuditableEntity<string>, IAggregateRoot
     public byte[]? Image { get; set; }
     public bool? Active { get; set; }
     public bool? ShowInSales { get; set; }
+    public decimal? SortIndex { get; set; }
     public string? MediaId { get; set; }
 }

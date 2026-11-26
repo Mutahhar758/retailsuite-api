@@ -1177,8 +1177,16 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnType("text")
                         .HasColumnName("sms_number");
 
+                    b.Property<decimal?>("SortIndex")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("sort_index");
+
                     b.HasKey("Id", "TenantId")
                         .HasName("ak_customer_detail_id_tenant_id");
+
+                    b.HasIndex("SortIndex")
+                        .HasDatabaseName("ix_customer_detail_sort_index");
 
                     b.HasIndex("CustomerCategoryId", "TenantId")
                         .HasDatabaseName("ix_customer_detail_customer_category_id_tenant_id");
@@ -2095,6 +2103,11 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnType("text")
                         .HasColumnName("secondary_unit_id");
 
+                    b.Property<decimal?>("SortIndex")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("sort_index");
+
                     b.Property<string>("Storage")
                         .HasColumnType("text")
                         .HasColumnName("storage");
@@ -2109,6 +2122,9 @@ namespace Migrators.PostgreSQL.Migrations.Application
 
                     b.HasIndex("FifoRebuildFromDate")
                         .HasDatabaseName("ix_item_detail_fifo_rebuild_from_date");
+
+                    b.HasIndex("SortIndex")
+                        .HasDatabaseName("ix_item_detail_sort_index");
 
                     b.HasIndex("BrandId", "TenantId")
                         .HasDatabaseName("ix_item_detail_brand_id_tenant_id");
@@ -5495,8 +5511,16 @@ namespace Migrators.PostgreSQL.Migrations.Application
                         .HasColumnType("text")
                         .HasColumnName("sms_number");
 
+                    b.Property<decimal?>("SortIndex")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("sort_index");
+
                     b.HasKey("Id", "TenantId")
                         .HasName("ak_supplier_detail_id_tenant_id");
+
+                    b.HasIndex("SortIndex")
+                        .HasDatabaseName("ix_supplier_detail_sort_index");
 
                     b.ToTable("SupplierDetail", "public");
 

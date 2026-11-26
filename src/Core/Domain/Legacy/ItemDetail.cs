@@ -32,6 +32,7 @@ public class ItemDetail : AuditableEntity<string>, IAggregateRoot
     public string? Storage { get; set; }
     public string? Ram { get; set; }
     public string? Color { get; set; }
+    public decimal? SortIndex { get; set; }
     public DateOnly? FifoRebuildFromDate { get; set; }
 
     public string? ItemCategoryId { get; set; }

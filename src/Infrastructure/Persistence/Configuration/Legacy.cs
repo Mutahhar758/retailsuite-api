@@ -138,6 +138,8 @@ public class CustomerDetailConfig : IEntityTypeConfiguration<CustomerDetail>
     {
         builder.IsMultiTenant();
         builder.Property(x => x.Id).ValueGeneratedNever();
+        builder.Property(x => x.SortIndex).HasPrecision(18, 4);
+        builder.HasIndex(x => x.SortIndex);
 
         builder.HasOne(x => x.CustomerCategory)
             .WithMany()
@@ -209,6 +211,8 @@ public class ItemDetailConfig : IEntityTypeConfiguration<ItemDetail>
         builder.Property(x => x.AdditionalUnits)
             .HasMaxLength(2000);
 
+        builder.Property(x => x.SortIndex).HasPrecision(18, 4);
+        builder.HasIndex(x => x.SortIndex);
         builder.HasIndex(x => x.FifoRebuildFromDate);
 
         builder.HasOne(x => x.ItemCategory)
@@ -778,6 +782,8 @@ public class SupplierDetailConfig : IEntityTypeConfiguration<SupplierDetail>
     {
         builder.IsMultiTenant();
         builder.Property(x => x.Id).ValueGeneratedNever();
+        builder.Property(x => x.SortIndex).HasPrecision(18, 4);
+        builder.HasIndex(x => x.SortIndex);
     }
 }
 

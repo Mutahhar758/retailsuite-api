@@ -69,6 +69,7 @@ internal class VendorService : IVendorService
                 x.EmailAlert,
                 x.Active,
                 x.ShowInSales,
+                x.SortIndex,
                 x.MediaId,
                 x.CreatedBy,
                 x.CreatedOn,
@@ -97,6 +98,7 @@ internal class VendorService : IVendorService
                 EmailAlert = detail?.EmailAlert ?? false,
                 Active = detail?.Active ?? true,
                 ShowInSales = detail?.ShowInSales ?? false,
+                SortIndex = detail?.SortIndex,
                 MediaId = detail?.MediaId,
                 CreatedBy = detail?.CreatedBy,
                 CreatedOn = detail?.CreatedOn,
@@ -188,6 +190,7 @@ internal class VendorService : IVendorService
                 x.EmailAlert,
                 x.Active,
                 x.ShowInSales,
+                x.SortIndex,
                 x.MediaId,
                 x.CreatedBy,
                 x.CreatedOn,
@@ -216,6 +219,7 @@ internal class VendorService : IVendorService
                 EmailAlert = detail?.EmailAlert ?? false,
                 Active = detail?.Active ?? true,
                 ShowInSales = detail?.ShowInSales ?? false,
+                SortIndex = detail?.SortIndex,
                 MediaId = detail?.MediaId,
                 CreatedBy = detail?.CreatedBy,
                 CreatedOn = detail?.CreatedOn,
@@ -319,6 +323,7 @@ internal class VendorService : IVendorService
             EmailAlert = request.EmailAlert,
             Active = request.Active,
             ShowInSales = request.ShowInSales,
+            SortIndex = request.SortIndex,
             MediaId = request.MediaId
         };
         await _vendorDetailRepository.AddAsync(vendorDetail);
@@ -431,6 +436,7 @@ internal class VendorService : IVendorService
         vendorDetail.EmailAlert = request.EmailAlert;
         vendorDetail.Active = request.Active;
         vendorDetail.ShowInSales = request.ShowInSales;
+        vendorDetail.SortIndex = request.SortIndex;
         vendorDetail.MediaId = request.MediaId;
     }
 
@@ -449,6 +455,7 @@ internal class VendorService : IVendorService
         vendorDetail.EmailAlert = request.EmailAlert;
         vendorDetail.Active = request.Active;
         vendorDetail.ShowInSales = request.ShowInSales;
+        vendorDetail.SortIndex = request.SortIndex;
         vendorDetail.MediaId = request.MediaId;
     }
 
@@ -561,6 +568,7 @@ internal class VendorService : IVendorService
                     detail.EmailAlert = item.EmailAlert;
                     detail.Active = item.Active;
                     detail.ShowInSales = item.ShowInSales;
+                    detail.SortIndex = item.SortIndex;
                     detailsToUpdate.Add(detail);
                 }
                 else
@@ -580,7 +588,8 @@ internal class VendorService : IVendorService
                         SmsAlert = item.SmsAlert,
                         EmailAlert = item.EmailAlert,
                         Active = item.Active,
-                        ShowInSales = item.ShowInSales
+                        ShowInSales = item.ShowInSales,
+                        SortIndex = item.SortIndex
                     };
                     newDetailsToAdd.Add(newDetail);
                 }
@@ -628,7 +637,8 @@ internal class VendorService : IVendorService
                     SmsAlert = item.SmsAlert,
                     EmailAlert = item.EmailAlert,
                     Active = item.Active,
-                    ShowInSales = item.ShowInSales
+                    ShowInSales = item.ShowInSales,
+                    SortIndex = item.SortIndex
                 };
                 newDetailsToAdd.Add(newDetail);
 

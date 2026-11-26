@@ -77,6 +77,7 @@ internal class CustomerService : ICustomerService
                 x.SmsAlert,
                 x.EmailAlert,
                 x.Active,
+                x.SortIndex,
                 x.MediaId,
                 x.CustomerCategoryId,
                 CustomerCategoryTitle = x.CustomerCategory != null ? x.CustomerCategory.Title : null,
@@ -145,6 +146,7 @@ internal class CustomerService : ICustomerService
                 SmsAlert = detail?.SmsAlert ?? false,
                 EmailAlert = detail?.EmailAlert ?? false,
                 Active = detail?.Active ?? true,
+                SortIndex = detail?.SortIndex,
                 MediaId = detail?.MediaId,
                 CustomerCategoryId = detail?.CustomerCategoryId,
                 CustomerCategoryTitle = detail?.CustomerCategoryTitle,
@@ -244,6 +246,7 @@ internal class CustomerService : ICustomerService
                 x.SmsAlert,
                 x.EmailAlert,
                 x.Active,
+                x.SortIndex,
                 x.MediaId,
                 x.CustomerCategoryId,
                 CustomerCategoryTitle = x.CustomerCategory != null ? x.CustomerCategory.Title : null,
@@ -312,6 +315,7 @@ internal class CustomerService : ICustomerService
                 SmsAlert = detail?.SmsAlert ?? false,
                 EmailAlert = detail?.EmailAlert ?? false,
                 Active = detail?.Active ?? true,
+                SortIndex = detail?.SortIndex,
                 MediaId = detail?.MediaId,
                 CustomerCategoryId = detail?.CustomerCategoryId,
                 CustomerCategoryTitle = detail?.CustomerCategoryTitle,
@@ -398,6 +402,7 @@ internal class CustomerService : ICustomerService
             SmsAlert = request.SmsAlert,
             EmailAlert = request.EmailAlert,
             Active = request.Active,
+            SortIndex = request.SortIndex,
             MediaId = request.MediaId,
             CustomerCategoryId = request.CustomerCategoryId,
             ParentCustomerAccountId = string.IsNullOrWhiteSpace(request.ParentCustomerAccountId) ? null : request.ParentCustomerAccountId.Trim()
@@ -651,6 +656,7 @@ internal class CustomerService : ICustomerService
         customerDetail.SmsAlert = request.SmsAlert;
         customerDetail.EmailAlert = request.EmailAlert;
         customerDetail.Active = request.Active;
+        customerDetail.SortIndex = request.SortIndex;
         customerDetail.CustomerCategoryId = request.CustomerCategoryId;
         customerDetail.ParentCustomerAccountId = string.IsNullOrWhiteSpace(request.ParentCustomerAccountId) ? null : request.ParentCustomerAccountId.Trim();
     }
@@ -810,6 +816,7 @@ internal class CustomerService : ICustomerService
                     detail.SmsAlert = item.SmsAlert;
                     detail.EmailAlert = item.EmailAlert;
                     detail.Active = item.Active;
+                    detail.SortIndex = item.SortIndex;
                     if (resolvedCategoryId != null)
                         detail.CustomerCategoryId = resolvedCategoryId;
                     detailsToUpdate.Add(detail);
@@ -831,6 +838,7 @@ internal class CustomerService : ICustomerService
                         SmsAlert = item.SmsAlert,
                         EmailAlert = item.EmailAlert,
                         Active = item.Active,
+                        SortIndex = item.SortIndex,
                         CustomerCategoryId = resolvedCategoryId
                     };
                     newDetailsToAdd.Add(newDetail);
@@ -879,6 +887,7 @@ internal class CustomerService : ICustomerService
                     SmsAlert = item.SmsAlert,
                     EmailAlert = item.EmailAlert,
                     Active = item.Active,
+                    SortIndex = item.SortIndex,
                     CustomerCategoryId = resolvedCategoryId
                 };
                 newDetailsToAdd.Add(newDetail);

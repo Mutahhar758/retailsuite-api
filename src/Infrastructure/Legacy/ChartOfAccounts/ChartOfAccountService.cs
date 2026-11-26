@@ -16,15 +16,18 @@ internal class ChartOfAccountService : IChartOfAccountService
     private readonly IRepository<ChartOfAccount> _repository;
     private readonly IRepository<DefaultAccount> _defaultAccountRepository;
     private readonly IRepository<CustomerDetail> _customerDetailRepository;
+    private readonly IRepository<SupplierDetail> _supplierDetailRepository;
 
     public ChartOfAccountService(
         IRepository<ChartOfAccount> repository,
         IRepository<DefaultAccount> defaultAccountRepository,
-        IRepository<CustomerDetail> customerDetailRepository)
+        IRepository<CustomerDetail> customerDetailRepository,
+        IRepository<SupplierDetail> supplierDetailRepository)
     {
         _repository = repository;
         _defaultAccountRepository = defaultAccountRepository;
         _customerDetailRepository = customerDetailRepository;
+        _supplierDetailRepository = supplierDetailRepository;
     }
 
     public async Task<List<ChartOfAccountResponse>> GetActiveAsync(CancellationToken cancellationToken)
@@ -250,16 +253,21 @@ internal class ChartOfAccountService : IChartOfAccountService
         if (string.IsNullOrWhiteSpace(prefix))
             throw new NotFoundException($"Default account mapping for '{SupplierDefaultAccountTitle}' is not configured.");
 
-        return await _repository.GetAll()
-            .AsNoTracking()
-            .Where(x => x.AccLevel == 5 && x.Id.StartsWith(prefix))
-            .OrderBy(x => x.Id)
-            .Select(x => new ChartOfAccountHeadResponse
+        var supplierAccountsQuery =
+            from coa in _repository.GetAll().AsNoTracking()
+            where coa.AccLevel == 5 && coa.Id.StartsWith(prefix)
+            join vd in _supplierDetailRepository.GetAll().AsNoTracking() on coa.Id equals vd.Id into vdGroup
+            from vd in vdGroup.DefaultIfEmpty()
+            orderby (vd == null || vd.SortIndex == null ? 1 : 0), vd != null ? vd.SortIndex : null, coa.Title, coa.Id
+            select new ChartOfAccountHeadResponse
             {
-                Account = x.Id,
-                Title = x.Title
-            })
-            .ToListAsync(cancellationToken);
+                Account = coa.Id,
+                Title = coa.Title,
+                AccountType = "Vendor",
+                SortIndex = vd != null ? vd.SortIndex : null
+            };
+
+        return await supplierAccountsQuery.ToListAsync(cancellationToken);
     }
 
     public async Task<List<ChartOfAccountHeadResponse>> GetCustomerAccountsAsync(CancellationToken cancellationToken)
@@ -312,6 +320,7 @@ internal class ChartOfAccountService : IChartOfAccountService
                 .Select(x => new
                 {
                     x.Id,
+                    x.SortIndex,
                     x.CustomerCategoryId,
                     CustomerCategoryTitle = x.CustomerCategory != null ? x.CustomerCategory.Title : null,
                     x.ParentCustomerAccountId,
@@ -321,18 +330,34 @@ internal class ChartOfAccountService : IChartOfAccountService
 
             var detailMap = details.ToDictionary(x => x.Id, x => x);
 
+            var supplierSortMap = await _supplierDetailRepository.GetAll()
+                .AsNoTracking()
+                .Where(x => accountIds.Contains(x.Id))
+                .Select(x => new { x.Id, x.SortIndex })
+                .ToDictionaryAsync(x => x.Id, x => x.SortIndex, cancellationToken);
+
             foreach (var acc in accounts)
             {
                 if (detailMap.TryGetValue(acc.Account, out var d))
                 {
+                    acc.SortIndex = d.SortIndex;
                     acc.CustomerCategoryId = d.CustomerCategoryId;
                     acc.CustomerCategoryTitle = d.CustomerCategoryTitle;
                     acc.ParentCustomerAccountId = d.ParentCustomerAccountId;
                     acc.ParentCustomerTitle = d.ParentTitle;
                 }
+                else if (supplierSortMap.TryGetValue(acc.Account, out var supplierSortIndex))
+                {
+                    acc.SortIndex = supplierSortIndex;
+                }
             }
         }
 
-        return accounts;
+        return accounts
+            .OrderBy(a => a.SortIndex.HasValue ? 0 : 1)
+            .ThenBy(a => a.SortIndex)
+            .ThenBy(a => a.Title, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(a => a.Account, StringComparer.Ordinal)
+            .ToList();
     }
 }

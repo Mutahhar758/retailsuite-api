@@ -55,8 +55,10 @@ internal class InventoryService : IInventoryService
             query = query.Where(x => x.ItemCategoryId == itemCategoryCode);
 
         var rawItems = await query
-            .OrderBy(x => x.ItemCategoryId)
+            .OrderBy(x => x.SortIndex == null ? 1 : 0)
+            .ThenBy(x => x.SortIndex)
             .ThenBy(x => x.Title)
+            .ThenBy(x => x.Id)
             .Select(x => new
             {
                 x.Id,
@@ -84,7 +86,8 @@ internal class InventoryService : IInventoryService
                 x.ModelName,
                 x.Storage,
                 x.Ram,
-                x.Color
+                x.Color,
+                x.SortIndex
             })
             .ToListAsync(cancellationToken);
 
@@ -128,7 +131,8 @@ internal class InventoryService : IInventoryService
             ModelName = x.ModelName,
             Storage = x.Storage,
             Ram = x.Ram,
-            Color = x.Color
+            Color = x.Color,
+            SortIndex = x.SortIndex
         }).ToList();
 
         await PopulateMediaUrlsAsync(items, cancellationToken);
@@ -220,7 +224,8 @@ internal class InventoryService : IInventoryService
             ModelName = x.ModelName,
             Storage = x.Storage,
             Ram = x.Ram,
-            Color = x.Color
+            Color = x.Color,
+            SortIndex = x.SortIndex
         }).ToList();
 
         await PopulateMediaUrlsAsync(mappedItems, cancellationToken);
@@ -303,7 +308,8 @@ internal class InventoryService : IInventoryService
             ModelName = x.ModelName,
             Storage = x.Storage,
             Ram = x.Ram,
-            Color = x.Color
+            Color = x.Color,
+            SortIndex = x.SortIndex
         }).ToList();
 
         await PopulateMediaUrlsAsync(mappedItems, cancellationToken);
@@ -357,7 +363,8 @@ internal class InventoryService : IInventoryService
             ModelName = item.ModelName,
             Storage = item.Storage,
             Ram = item.Ram,
-            Color = item.Color
+            Color = item.Color,
+            SortIndex = item.SortIndex
         };
         if (!string.IsNullOrEmpty(response.MediaId))
         {
@@ -419,7 +426,8 @@ internal class InventoryService : IInventoryService
                 ModelName = request.ModelName,
                 Storage = request.Storage,
                 Ram = request.Ram,
-                Color = request.Color
+                Color = request.Color,
+                SortIndex = request.SortIndex
             };
 
             await _itemRepository.AddAsync(item);
@@ -470,6 +478,7 @@ internal class InventoryService : IInventoryService
         existing.Storage = request.Storage;
         existing.Ram = request.Ram;
         existing.Color = request.Color;
+        existing.SortIndex = request.SortIndex;
 
         await _itemRepository.UpdateAsync(existing);
 
@@ -796,6 +805,7 @@ internal class InventoryService : IInventoryService
                 existing.Storage = item.Storage;
                 existing.Ram = item.Ram;
                 existing.Color = item.Color;
+                existing.SortIndex = item.SortIndex;
 
                 if (!string.IsNullOrWhiteSpace(item.Barcode))
                 {
@@ -853,7 +863,8 @@ internal class InventoryService : IInventoryService
                     ModelName = item.ModelName,
                     Storage = item.Storage,
                     Ram = item.Ram,
-                    Color = item.Color
+                    Color = item.Color,
+                    SortIndex = item.SortIndex
                 };
 
                 newItemsToAdd.Add(newItem);
