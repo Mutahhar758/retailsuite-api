@@ -169,7 +169,9 @@ internal class StockAdjustmentService : IStockAdjustmentService
                 QtyIn = d.QtyIn,
                 QtyOut = d.QtyOut,
                 Rate = d.Rate,
-                Amount = ((d.QtyIn - d.QtyOut) * d.Rate) + (((d.SecQtyIn ?? 0) - (d.SecQtyOut ?? 0)) * (d.SecRate ?? 0)),
+                Amount = _currentTenant.HasVariablePackFeature
+                    ? ((d.QtyIn - d.QtyOut) * d.Rate)
+                    : (((d.QtyIn - d.QtyOut) * d.Rate) + (((d.SecQtyIn ?? 0) - (d.SecQtyOut ?? 0)) * (d.SecRate ?? 0))),
                 SecUnit = d.SecUnitId,
                 SecQtyIn = d.SecQtyIn,
                 SecQtyOut = d.SecQtyOut,
@@ -392,7 +394,9 @@ internal class StockAdjustmentService : IStockAdjustmentService
             var resolvedSecUnitId = item?.SecondaryUnitId;
 
             var netQty = line.QtyIn - line.QtyOut;
-            var amount = (netQty * line.Rate) + (((line.SecQtyIn ?? 0) - (line.SecQtyOut ?? 0)) * (line.SecRate ?? 0));
+            var amount = _currentTenant.HasVariablePackFeature
+                ? (netQty * line.Rate)
+                : (netQty * line.Rate) + (((line.SecQtyIn ?? 0) - (line.SecQtyOut ?? 0)) * (line.SecRate ?? 0));
             var tranType = (netQty + ((line.SecQtyIn ?? 0) - (line.SecQtyOut ?? 0))) >= 0 ? "in" : "out";
             var tx = await _itemTransactionRepository.GetAll()
                 .IgnoreQueryFilters([GlobalQueryFilterConstants.SoftDelete])

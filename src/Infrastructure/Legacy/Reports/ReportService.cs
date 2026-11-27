@@ -744,8 +744,8 @@ internal partial class ReportService : IReportService
             .AsNoTracking()
             .Where(x => x.ItemId == filter.FkItem && x.VDate < filter.FromDate)
             .OrderByDescending(x => x.VDate)
-            .ThenByDescending(x => x.VTime)
             .ThenByDescending(x => x.TranType == "in" ? 0 : 1)
+            .ThenByDescending(x => x.VTime)
             .ThenByDescending(x => x.Id)
             .Select(x => (decimal?)x.RunningQtyBalance)
             .FirstOrDefaultAsync(cancellationToken) ?? 0m;
@@ -772,6 +772,7 @@ internal partial class ReportService : IReportService
             {
                 Vdate = x.VDate,
                 Vno = x.VType + "-" + x.VNo,
+                x.Seq,
                 Particular = x.Account != null ? x.Account.Title : string.Empty,
                 QtyIn = x.QtyIn,
                 QtyOut = x.QtyOut,
@@ -785,7 +786,9 @@ internal partial class ReportService : IReportService
                 SecQtyOut = x.SecQtyOut ?? 0
             })
             .OrderBy(x => x.Vdate)
+            .ThenBy(x => x.TranType == "in" ? 0 : 1)
             .ThenBy(x => x.Vno)
+            .ThenBy(x => x.Seq)
             .ToListAsync(cancellationToken);
 
         var movement = rawMovements.Select(x =>

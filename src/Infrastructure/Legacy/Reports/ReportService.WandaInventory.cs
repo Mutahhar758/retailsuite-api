@@ -74,6 +74,7 @@ internal partial class ReportService
             {
                 Vdate = x.VDate,
                 Vno = x.VType + "-" + x.VNo,
+                x.Seq,
                 Particular = x.Account != null ? x.Account.Title : string.Empty,
                 QtyIn = x.QtyIn,
                 QtyOut = x.QtyOut,
@@ -87,7 +88,9 @@ internal partial class ReportService
                 SecQtyOut = x.SecQtyOut ?? 0
             })
             .OrderBy(x => x.Vdate)
+            .ThenBy(x => x.TranType == "in" ? 0 : 1)
             .ThenBy(x => x.Vno)
+            .ThenBy(x => x.Seq)
             .ToListAsync(cancellationToken);
 
         var movement = rawMovements.Select(x =>

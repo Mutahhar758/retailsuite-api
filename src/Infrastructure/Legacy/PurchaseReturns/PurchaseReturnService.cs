@@ -403,7 +403,9 @@ internal class PurchaseReturnService : IPurchaseReturnService
 
         var amount = await _purchaseRetDetailRepository.GetAll()
             .Where(x => x.VType == VType && x.VNo == voucherNo)
-            .SumAsync(x => (decimal?)((x.Qty * x.Rate) + ((x.SecQty ?? 0) * (x.SecRate ?? 0))), cancellationToken) ?? 0;
+            .SumAsync(x => (decimal?)(_currentTenant.HasVariablePackFeature
+                ? (x.Qty * x.Rate)
+                : ((x.Qty * x.Rate) + ((x.SecQty ?? 0) * (x.SecRate ?? 0)))), cancellationToken) ?? 0;
 
         var master = await _purchaseRetMasterRepository.GetAll()
             .FirstOrDefaultAsync(x => x.VType == VType && x.VNo == voucherNo, cancellationToken);
@@ -442,7 +444,9 @@ internal class PurchaseReturnService : IPurchaseReturnService
             var resolvedUnitId = item?.DefaultUnitId ?? item?.PrimaryUnitId;
             var resolvedSecUnitId = item?.SecondaryUnitId;
 
-            var amount = (line.Qty * line.Rate) + ((line.SecQty ?? 0) * (line.SecRate ?? 0));
+            var amount = _currentTenant.HasVariablePackFeature
+                ? (line.Qty * line.Rate)
+                : (line.Qty * line.Rate) + ((line.SecQty ?? 0) * (line.SecRate ?? 0));
             var tx = await _itemTransactionRepository.GetAll()
                 .IgnoreQueryFilters([GlobalQueryFilterConstants.SoftDelete])
                 .FirstOrDefaultAsync(x => x.VType == VType && x.VNo == voucherNo && x.Seq == line.Seq, cancellationToken);

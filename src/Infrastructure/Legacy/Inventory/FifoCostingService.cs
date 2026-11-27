@@ -53,9 +53,9 @@ public class FifoCostingService : IFifoCostingService
             return new FifoAllocationResult(0m, 0m, 0m, new List<TransactionFifoMapping>());
         }
 
-        // Fetch available "in" batches for this item ordered chronologically
+        // Fetch available "in" batches for this item received on or before this sale date, ordered chronologically
         var availableBatches = await _itemTransactionRepository.GetAll()
-            .Where(x => x.ItemId == outTx.ItemId && x.TranType == "in" && x.RemainingQty > 0)
+            .Where(x => x.ItemId == outTx.ItemId && x.TranType == "in" && x.RemainingQty > 0 && x.VDate <= outTx.VDate)
             .OrderBy(x => x.VDate)
             .ThenBy(x => x.VTime)
             .ThenBy(x => x.Id)
@@ -448,12 +448,12 @@ public class FifoCostingService : IFifoCostingService
         await dbContext.SaveChangesAsync(cancellationToken);
 
         // 4. Chronological sequential replay of all transactions from fromDate forward
-        // Purchases ('in') ordered before sales ('out') on the same timestamp
+        // Purchases ('in') ordered before sales ('out') on the same date regardless of entry wall-clock VTime
         var replayTransactions = await txRepo.GetAll()
             .Where(x => x.ItemId == itemId && x.VDate >= fromDate)
             .OrderBy(x => x.VDate)
-            .ThenBy(x => x.VTime)
             .ThenBy(x => x.TranType == "in" ? 0 : 1)
+            .ThenBy(x => x.VTime)
             .ThenBy(x => x.Id)
             .ToListAsync(cancellationToken);
 
@@ -470,8 +470,8 @@ public class FifoCostingService : IFifoCostingService
         var seedRunningQty = await txRepo.GetAll()
             .Where(x => x.ItemId == itemId && x.VDate < fromDate)
             .OrderByDescending(x => x.VDate)
-            .ThenByDescending(x => x.VTime)
             .ThenByDescending(x => x.TranType == "in" ? 0 : 1)
+            .ThenByDescending(x => x.VTime)
             .ThenByDescending(x => x.Id)
             .Select(x => (decimal?)x.RunningQtyBalance)
             .FirstOrDefaultAsync(cancellationToken) ?? 0m;
@@ -505,9 +505,9 @@ public class FifoCostingService : IFifoCostingService
                     decimal neededQty = tx.QtyOut;
                     decimal totalCost = 0m;
 
-                    // Only consume from batches received on or before this sale date/time
+                    // Only consume from batches received on or before this sale date
                     var eligibleBatches = activePool
-                        .Where(b => b.RemainingQty > 0 && (b.VDate < tx.VDate || (b.VDate == tx.VDate && b.VTime <= tx.VTime)))
+                        .Where(b => b.RemainingQty > 0 && b.VDate <= tx.VDate)
                         .ToList();
 
                     foreach (var batch in eligibleBatches)
@@ -560,6 +560,107 @@ public class FifoCostingService : IFifoCostingService
             .ExecuteUpdateAsync(
                 s => s.SetProperty(i => i.FifoRebuildFromDate, (DateOnly?)null),
                 cancellationToken);
+    }
+
+    public async Task<FifoRepairResult> RepairAndRebuildAllAsync(
+        bool repairWandaAmounts,
+        CancellationToken cancellationToken = default)
+    {
+        int updatedAmountCount = 0;
+
+        if (repairWandaAmounts)
+        {
+            var wandaVTypes = new[] { "PU", "SL", "PR", "SR", "SA" };
+            var candidateTxs = await _itemTransactionRepository.GetAll()
+                .Where(x => wandaVTypes.Contains(x.VType)
+                    && x.SecRate != null && x.SecRate != 0m
+                    && ((x.SecQtyIn ?? 0m) != 0m || (x.SecQtyOut ?? 0m) != 0m))
+                .ToListAsync(cancellationToken);
+
+            if (candidateTxs.Count > 0)
+            {
+                var puVNos = candidateTxs.Where(x => x.VType == "PU").Select(x => x.VNo).Distinct().ToList();
+                var slVNos = candidateTxs.Where(x => x.VType == "SL").Select(x => x.VNo).Distinct().ToList();
+                var srVNos = candidateTxs.Where(x => x.VType == "SR").Select(x => x.VNo).Distinct().ToList();
+
+                var puAddLessMap = puVNos.Count > 0
+                    ? await _dbContext.Set<PurchaseDetail>()
+                        .AsNoTracking()
+                        .Where(d => d.VType == "PU" && puVNos.Contains(d.VNo))
+                        .ToDictionaryAsync(d => (d.VNo, d.Seq), d => d.AddLess, cancellationToken)
+                    : new Dictionary<(string VNo, int Seq), decimal>();
+
+                var slDiscountMap = slVNos.Count > 0
+                    ? await _dbContext.Set<Sale>()
+                        .AsNoTracking()
+                        .Where(s => s.VType == "SL" && slVNos.Contains(s.VNo))
+                        .ToDictionaryAsync(s => (s.VNo, s.Seq), s => s.Discount, cancellationToken)
+                    : new Dictionary<(string VNo, int Seq), decimal>();
+
+                var srDiscountMap = srVNos.Count > 0
+                    ? await _dbContext.Set<SaleRetDetail>()
+                        .AsNoTracking()
+                        .Where(d => d.VType == "SR" && srVNos.Contains(d.VNo))
+                        .ToDictionaryAsync(d => (d.VNo, d.Seq), d => d.Discount ?? 0m, cancellationToken)
+                    : new Dictionary<(string VNo, int Seq), decimal>();
+
+                foreach (var tx in candidateTxs)
+                {
+                    decimal expectedAmount = tx.VType switch
+                    {
+                        "PU" => (tx.QtyIn * tx.Rate) + puAddLessMap.GetValueOrDefault((tx.VNo, tx.Seq), 0m),
+                        "SL" => (tx.QtyOut * tx.Rate) - slDiscountMap.GetValueOrDefault((tx.VNo, tx.Seq), 0m),
+                        "PR" => tx.QtyOut * tx.Rate,
+                        "SR" => (tx.QtyIn * tx.Rate) - srDiscountMap.GetValueOrDefault((tx.VNo, tx.Seq), 0m),
+                        "SA" => (tx.QtyIn - tx.QtyOut) * tx.Rate,
+                        _ => tx.Amount
+                    };
+
+                    if (tx.Amount != expectedAmount)
+                    {
+                        tx.Amount = expectedAmount;
+                        await _itemTransactionRepository.UpdateAsync(tx, false);
+                        updatedAmountCount++;
+                    }
+                }
+
+                if (updatedAmountCount > 0)
+                {
+                    await _dbContext.SaveChangesAsync(cancellationToken);
+                }
+            }
+        }
+
+        var itemMinDates = await _itemTransactionRepository.GetAll()
+            .AsNoTracking()
+            .Where(x => !string.IsNullOrWhiteSpace(x.ItemId))
+            .GroupBy(x => x.ItemId!)
+            .Select(g => new { ItemId = g.Key, MinDate = g.Min(x => x.VDate) })
+            .ToListAsync(cancellationToken);
+
+        foreach (var entry in itemMinDates)
+        {
+            await MarkDirtyAsync(entry.ItemId, entry.MinDate, cancellationToken);
+        }
+
+        if (_transactionManager.Transaction != null)
+        {
+            await _transactionManager.Transaction.CommitAsync(cancellationToken);
+            await _transactionManager.Transaction.DisposeAsync();
+            _transactionManager.Transaction = null;
+        }
+
+        if (itemMinDates.Count > 0)
+        {
+            var itemIds = itemMinDates.Select(x => x.ItemId).ToList();
+            await FlushDirtyItemsAsync(itemIds, cancellationToken);
+        }
+
+        _logger.LogInformation(
+            "Completed FIFO and amount repair: UpdatedAmountCount={UpdatedAmountCount}, RebuiltItemCount={RebuiltItemCount}",
+            updatedAmountCount, itemMinDates.Count);
+
+        return new FifoRepairResult(updatedAmountCount, itemMinDates.Count);
     }
 
     private async Task AcquireItemRowLockAsync(

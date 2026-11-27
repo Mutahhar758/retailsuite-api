@@ -883,6 +883,7 @@ internal class SaleService : ISaleService
         Dictionary<string, ItemDetail> itemMap,
         CancellationToken cancellationToken)
     {
+        var isWanda = _currentTenant.HasVariablePackFeature;
         var txsToProcess = new List<ItemTransaction>();
         foreach (var line in lines)
         {
@@ -890,7 +891,9 @@ internal class SaleService : ISaleService
             var resolvedUnitId = item?.DefaultUnitId ?? item?.PrimaryUnitId;
             var resolvedSecUnitId = item?.SecondaryUnitId;
 
-            var amount = (line.Qty * line.Rate) - line.Discount + ((line.SecQty ?? 0) * (line.SecRate ?? 0));
+            var amount = isWanda
+                ? (line.Qty * line.Rate) - line.Discount
+                : (line.Qty * line.Rate) - line.Discount + ((line.SecQty ?? 0) * (line.SecRate ?? 0));
             var tx = await _itemTransactionRepository.GetAll()
                 .IgnoreQueryFilters([GlobalQueryFilterConstants.SoftDelete])
                 .FirstOrDefaultAsync(x => x.VType == VType && x.VNo == voucherNo && x.Seq == line.Seq, cancellationToken);

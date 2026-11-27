@@ -636,9 +636,12 @@ internal class PurchaseService : IPurchaseService
         if (itemTransaction is not null)
             await _itemTransactionRepository.DeleteAsync(itemTransaction, false);
 
+        var isWanda = _currentTenant.HasVariablePackFeature;
         var amount = await _purchaseDetailRepository.GetAll()
             .Where(x => x.VType == VType && x.VNo == voucherNo)
-            .SumAsync(x => (decimal?)((x.Qty * x.Rate) + x.AddLess + ((x.SecQty ?? 0) * (x.SecRate ?? 0))), cancellationToken) ?? 0;
+            .SumAsync(x => (decimal?)(isWanda
+                ? ((x.Qty * x.Rate) + x.AddLess)
+                : ((x.Qty * x.Rate) + x.AddLess + ((x.SecQty ?? 0) * (x.SecRate ?? 0)))), cancellationToken) ?? 0;
 
         var master = await _purchaseMasterRepository.GetAll()
             .FirstOrDefaultAsync(x => x.VType == VType && x.VNo == voucherNo, cancellationToken);
@@ -681,6 +684,7 @@ internal class PurchaseService : IPurchaseService
         Dictionary<string, ItemDetail> itemMap,
         CancellationToken cancellationToken)
     {
+        var isWanda = _currentTenant.HasVariablePackFeature;
         var txsToProcess = new List<ItemTransaction>();
         foreach (var line in lines)
         {
@@ -688,7 +692,9 @@ internal class PurchaseService : IPurchaseService
             var resolvedUnitId = item?.DefaultUnitId ?? item?.PrimaryUnitId;
             var resolvedSecUnitId = item?.SecondaryUnitId;
 
-            var amount = (line.Qty * line.Rate) + line.AddLess + ((line.SecQty ?? 0) * (line.SecRate ?? 0));
+            var amount = isWanda
+                ? (line.Qty * line.Rate) + line.AddLess
+                : (line.Qty * line.Rate) + line.AddLess + ((line.SecQty ?? 0) * (line.SecRate ?? 0));
             var tx = await _itemTransactionRepository.GetAll()
                 .IgnoreQueryFilters([GlobalQueryFilterConstants.SoftDelete])
                 .FirstOrDefaultAsync(x => x.VType == VType && x.VNo == voucherNo && x.Seq == line.Seq, cancellationToken);

@@ -11,10 +11,17 @@ namespace Retailer.Host.Controllers.Legacy;
 public class InventoryController : VersionNeutralApiController
 {
     private readonly IInventoryService _inventoryService;
+    private readonly IFifoCostingService _fifoCostingService;
+    private readonly ICurrentTenant _currentTenant;
 
-    public InventoryController(IInventoryService inventoryService)
+    public InventoryController(
+        IInventoryService inventoryService,
+        IFifoCostingService fifoCostingService,
+        ICurrentTenant currentTenant)
     {
         _inventoryService = inventoryService;
+        _fifoCostingService = fifoCostingService;
+        _currentTenant = currentTenant;
     }
 
     [HttpPost("items/presigned-upload-url")]
@@ -135,5 +142,14 @@ public class InventoryController : VersionNeutralApiController
     {
         await _inventoryService.SaveItemCategoryPricesAsync(id, request, cancellationToken);
         return "Item category prices saved.".ToInformationResponse("Item category prices saved.");
+    }
+
+    [HttpPost("repair-fifo-and-amounts")]
+    [MustHavePermission(AppAction.Update, AppResource.InventoryItems)]
+    [OpenApiOperation("Repair Wanda ItemTransaction amounts and rebuild FIFO costing for all items.", "")]
+    public async Task<HttpResponseDto<FifoRepairResult>> RepairFifoAndAmountsAsync(CancellationToken cancellationToken)
+    {
+        var result = await _fifoCostingService.RepairAndRebuildAllAsync(_currentTenant.HasVariablePackFeature, cancellationToken);
+        return result.ToInformationResponse($"Repaired {result.UpdatedAmountCount} transaction amounts and rebuilt FIFO for {result.RebuiltItemCount} items.");
     }
 }

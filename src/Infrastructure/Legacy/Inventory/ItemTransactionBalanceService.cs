@@ -67,8 +67,8 @@ public class ItemTransactionBalanceService : IItemTransactionBalanceService
                     && !(x.VType == voucherType && x.VNo == voucherNo)
                     && x.VDate <= voucherDate)
                 .OrderByDescending(x => x.VDate)
-                .ThenByDescending(x => x.VTime)
                 .ThenByDescending(x => x.TranType == "in" ? 0 : 1)
+                .ThenByDescending(x => x.VTime)
                 .ThenByDescending(x => x.Id)
                 .Select(x => new { x.Id, x.RunningQtyBalance, x.VDate })
                 .FirstOrDefaultAsync(cancellationToken);
