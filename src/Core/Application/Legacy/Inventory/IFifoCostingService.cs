@@ -9,6 +9,10 @@ public record FifoAllocationResult(
     decimal ShortageQty,
     List<TransactionFifoMapping> Mappings);
 
+public record FifoRepairResult(
+    int UpdatedAmountCount,
+    int RebuiltItemCount);
+
 public interface IFifoCostingService : ITransientService
 {
     Task<FifoAllocationResult> AllocateFifoCostAsync(
@@ -36,5 +40,9 @@ public interface IFifoCostingService : ITransientService
         CancellationToken cancellationToken = default);
 
     Task FlushAllTenantsAsync(
+        CancellationToken cancellationToken = default);
+
+    Task<FifoRepairResult> RepairAndRebuildAllAsync(
+        bool repairWandaAmounts,
         CancellationToken cancellationToken = default);
 }
